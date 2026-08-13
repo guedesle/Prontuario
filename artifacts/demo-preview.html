@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prontuário Aprimorado — Demonstração</title>
+<style>
+:root{--p:#896d72;--soft:#f0ebec;--ink:#2e2f30;--muted:#6e6264;--line:#e2d9da;--bg:#f7f4f4}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,sans-serif}.shell{width:min(1080px,calc(100% - 32px));margin:auto;padding:40px 0 70px}.hero,.panel,.card,.metric{background:white;border:1px solid var(--line);border-radius:16px}.hero{padding:34px}h1{margin:0;color:var(--p);font-size:48px}.hero p{color:var(--muted);font-size:18px}.eyebrow,small{color:var(--p);font-weight:700;text-transform:uppercase;letter-spacing:.07em}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0 32px}.metric{padding:16px;display:grid;gap:4px}.metric b{font-size:28px;color:var(--p)}.metric span{color:var(--muted);font-size:13px}.list{display:grid;gap:10px}.card{padding:16px 18px;display:grid;grid-template-columns:1fr 80px 24px 80px 80px;align-items:center;gap:10px}.card h3{margin:3px 0}.card p{margin:0;color:var(--muted);font-size:13px}.score{display:grid;text-align:center;gap:3px}.score span{font-size:10px;text-transform:uppercase;color:var(--muted)}.score b{font-size:20px}.current{background:var(--soft);padding:10px;border-radius:10px}.arrow{text-align:center}.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}.panel{padding:22px}.panel h2{margin-top:6px}.panel ul{padding-left:20px}.panel li{margin-bottom:10px;line-height:1.45}.panel li span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.docs pre{white-space:pre-wrap;font:11px/1.5 ui-monospace,monospace}.warning{border-left:4px solid var(--p);padding:14px 18px;background:var(--soft);margin:18px 0;border-radius:8px}@media(max-width:760px){.metrics{grid-template-columns:1fr 1fr}.card{grid-template-columns:1fr 60px 18px 60px}.card .score:last-child{display:none}.cols{grid-template-columns:1fr}h1{font-size:36px}}
+</style></head><body><main class="shell">
+<header class="hero"><p class="eyebrow">Caso sintético — nenhum dado real</p><h1>O que mudou?</h1><p>2 piora(s) numérica(s) · 1 melhora(s) numérica(s)</p></header>
+<div class="warning"><b>Apoio à decisão:</b> tendências numéricas e propostas precisam de revisão médica antes de integrar o prontuário.</div>
+<section class="metrics">
+<div class="metric"><b>2</b><span>desfavoráveis</span></div><div class="metric"><b>1</b><span>favoráveis</span></div><div class="metric"><b>0</b><span>estáveis</span></div><div class="metric"><b>0</b><span>alertas urgentes</span></div>
+</section>
+<section><p class="eyebrow">Evolução longitudinal</p><h2>Escalas prioritárias</h2><div class="list">
+  <article class="card">
+    <div><small>mobilidade</small><h3>SARC-F</h3><p>Dados insuficientes</p></div>
+    <div class="score"><span>Anterior</span><b>—</b></div>
+    <div class="arrow">→</div>
+    <div class="score current"><span>Atual</span><b>5</b></div>
+    <div class="score"><span>Baseline</span><b>5</b></div>
+  </article>
+  <article class="card">
+    <div><small>funcionalidade</small><h3>Índice de Barthel</h3><p>Tendência numérica desfavorável</p></div>
+    <div class="score"><span>Anterior</span><b>85</b></div>
+    <div class="arrow">→</div>
+    <div class="score current"><span>Atual</span><b>65</b></div>
+    <div class="score"><span>Baseline</span><b>90</b></div>
+  </article>
+  <article class="card">
+    <div><small>funcionalidade</small><h3>Lawton — AIVD</h3><p>Tendência numérica desfavorável</p></div>
+    <div class="score"><span>Anterior</span><b>18</b></div>
+    <div class="arrow">→</div>
+    <div class="score current"><span>Atual</span><b>15</b></div>
+    <div class="score"><span>Baseline</span><b>20</b></div>
+  </article>
+  <article class="card">
+    <div><small>nutricao</small><h3>MNA-SF</h3><p>Dados insuficientes</p></div>
+    <div class="score"><span>Anterior</span><b>—</b></div>
+    <div class="arrow">→</div>
+    <div class="score current"><span>Atual</span><b>9</b></div>
+    <div class="score"><span>Baseline</span><b>9</b></div>
+  </article>
+  <article class="card">
+    <div><small>humor</small><h3>GDS-15</h3><p>Tendência numérica favorável</p></div>
+    <div class="score"><span>Anterior</span><b>5</b></div>
+    <div class="arrow">→</div>
+    <div class="score current"><span>Atual</span><b>3</b></div>
+    <div class="score"><span>Baseline</span><b>8</b></div>
+  </article></div></section>
+<section class="cols"><article class="panel"><p class="eyebrow">Revisão médica</p><h2>Problemas sugeridos</h2><ul><li><b>Dependência para atividades básicas de vida diária</b><span>barthel: 65 — Dependência leve</span></li><li><b>Dependência para atividades instrumentais de vida diária</b><span>lawton: 15 — Dependência parcial</span></li><li><b>Risco de sarcopenia / desempenho físico reduzido</b><span>sarcf: 5 — Rastreio positivo</span></li><li><b>Risco nutricional / desnutrição</b><span>mna_sf: 9 — Risco de desnutrição</span></li></ul></article><article class="panel"><p class="eyebrow">Plano integrado</p><h2>Intervenções sugeridas</h2><ul><li>Iniciar treino de força (exercício resistido) para membros superiores e inferiores, 2 a 3 vezes por semana, com carga progressiva — é a intervenção com maior evidência de benefício em sarcopenia (EWGSOP2).</li><li>Se ainda não realizados nesta avaliação, confirmar com força de preensão palmar ou teste de sentar-levantar 5 vezes.</li><li>Adaptar o ambiente para preservar a independência nas atividades que ainda são feitas sozinho.</li><li>Simplificar o que já está difícil: caixa semanal de remédios, débito automático das contas fixas e lista de compras pronta.</li><li>Pesar o paciente uma vez por mês, sempre na mesma balança e no mesmo horário, e anotar em um caderno.</li></ul></article></section>
+<section class="cols docs"><article class="panel"><p class="eyebrow">Prévia SOAP</p><pre>S — SUBJETIVO
+Caso inteiramente sintético.
+
+O — OBJETIVO
+Exame físico: sem dados registrados
+Sinais vitais: sem dados registrados
+Antropometria: sem dados registrados
+Medicações em uso:
+- sem dados registrados
+
+A — AVALIAÇÃO
+1. Hipertensão arterial
+2. Dependência para atividades instrumentais
+
+P — PLANO
+1. Hipertensão arterial
+- sem dados registrados
+2. Dependência para atividades instrumentais
+- sem dados registrados</pre></article><article class="panel"><p class="eyebrow">Prévia família</p><pre>RELATÓRIO DE CUIDADOS — Paciente Demonstração
+
+Problemas clínicos
+- Hipertensão arterial
+
+Problemas geriátricos
+- Dependência para atividades instrumentais
+
+Evolução desde a última avaliação
+- Barthel: piora na pontuação registrada (85 → 65).
+- Lawton: piora na pontuação registrada (18 → 15).
+- GDS-15: melhora na pontuação registrada (5 → 3).
+
+O que fazer agora
+- Iniciar treino de força (exercício resistido) para membros superiores e inferiores, 2 a 3 vezes por semana, com carga progressiva — é a intervenção com maior evidência de benefício em sarcopenia (EWGSOP2).
+- Se ainda não realizados nesta avaliação, confirmar com força de preensão palmar ou teste de sentar-levantar 5 vezes.
+- Adaptar o ambiente para preservar a independência nas atividades que ainda são feitas sozinho.
+- Simplificar o que já está difícil: caixa semanal de remédios, débito automático das contas fixas e lista de compras pronta.
+- Pesar o paciente uma vez por mês, sempre na mesma balança e no mesmo horário, e anotar em um caderno.
+
+Próximos passos
+- Avaliação nutricional com ingestão de proteína em torno de 1,0 a 1,2 g por quilo de peso ao dia (ajustar se houver doença renal), e dosagem de vitamina D com reposição se deficiente.
+- Investigar causas secundárias — inatividade física, doença inflamatória, neoplasia, insuficiência de órgão ou doença neurológica — já que a sarcopenia pode sinalizar outra condição de base, além do envelhecimento isolado (EWGSOP2).
+- Se disponível, considerar avaliação de massa muscular (DXA ou bioimpedância) e de desempenho físico (velocidade de marcha ou SPPB) para confirmar o diagnóstico e classificar a gravidade.
+- Reavaliar em 3 meses quais atividades continuam sendo feitas sozinho, para detectar perdas novas cedo.
+- Avaliação nutricional preventiva.
+
+Orientações ao cuidador
+- Estimular caminhadas e atividades que exijam força (levantar, carregar objetos leves) no dia a dia, sem forçar além da tolerância — e ficar atento a quedas, que se tornam mais prováveis com a sarcopenia.
+
+Encaminhamentos
+- Fisioterapia
+- Nutrição
+- Terapia ocupacional
+
+Sinais de atenção
+- Perda de peso continuada apesar das orientações.
+
+Quando entrar em contato com o consultório: 71 99992-1416</pre></article></section>
+</main></body></html>

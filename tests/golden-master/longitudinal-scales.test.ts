@@ -1,0 +1,38 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { buildScaleEvolution, compareScalePoints } from "../../src/domain/longitudinal-scales.ts";
+
+const point = (score:number, date:string, extra:Record<string,unknown>={}) => ({
+  patientId:"p1", consultationId:`c-${date}`, scaleCode:"barthel", scaleVersion:"1.0", score, appliedAt:date, ...extra,
+});
+
+test("escala higher-better classifica aumento como tendência favorável", () => {
+  const result = compareScalePoints(point(60,"2026-01-01"), point(80,"2026-02-01"));
+  assert.equal(result.trend, "favorable");
+  assert.equal(result.delta, 20);
+});
+
+test("escala higher-worse classifica aumento como tendência desfavorável", () => {
+  const a = { ...point(5,"2026-01-01"), scaleCode:"gds15" };
+  const b = { ...point(8,"2026-02-01"), scaleCode:"gds15" };
+  assert.equal(compareScalePoints(a,b).trend, "unfavorable");
+});
+
+test("versões diferentes nunca são comparadas silenciosamente", () => {
+  const a = point(60,"2026-01-01");
+  const b = { ...point(70,"2026-02-01"), scaleVersion:"2.0" };
+  assert.equal(compareScalePoints(a,b).trend, "not-comparable");
+});
+
+test("evolução compara atual com anterior e baseline explicitamente", () => {
+  const result = buildScaleEvolution([
+    point(80,"2026-01-01", { isBaseline:true }),
+    point(70,"2026-03-01"),
+    point(60,"2026-06-01"),
+  ]);
+  assert.equal(result.baseline?.score, 80);
+  assert.equal(result.previous?.score, 70);
+  assert.equal(result.current?.score, 60);
+  assert.equal(result.vsPrevious.trend, "unfavorable");
+  assert.equal(result.vsBaseline.delta, -20);
+});

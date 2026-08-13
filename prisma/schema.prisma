@@ -1,0 +1,306 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  ADMIN
+  PHYSICIAN
+  READ_ONLY
+}
+
+enum ConsultationType {
+  AGA_INITIAL
+  FOLLOW_UP
+}
+
+enum ConsultationStatus {
+  DRAFT
+  IN_REVIEW
+  FINALIZED
+}
+
+enum ProblemType {
+  CLINICAL
+  GERIATRIC
+}
+
+enum ProblemStatus {
+  ACTIVE
+  STABLE
+  MONITORING
+  RESOLVED
+}
+
+enum DocumentType {
+  SOAP
+  FAMILY_REPORT
+  MEDICATION_PLAN
+}
+
+enum MedicationStatus {
+  ACTIVE
+  SUSPENDED
+  FINISHED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  emailVerified Boolean        @default(false)
+  name          String
+  image         String?
+  role          UserRole       @default(PHYSICIAN)
+  active        Boolean        @default(true)
+  consultations Consultation[]
+  documents     DocumentSnapshot[] @relation("FinalizedDocuments")
+  auditEvents   AuditEvent[]
+  sessions      Session[]
+  accounts      Account[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?  @db.Text
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.LongText
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([expiresAt])
+}
+
+model RateLimit {
+  id          String @id @default(cuid())
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+}
+
+model Patient {
+  id                     String              @id @default(cuid())
+  fullName               String
+  birthDate              DateTime?
+  sex                    String?
+  education              String?
+  phone                  String?
+  caregiverName          String?
+  caregiverPhone         String?
+  baselineConsultationId String?             @unique
+  baselineConsultation   Consultation?       @relation("PatientBaseline", fields: [baselineConsultationId], references: [id], onDelete: SetNull)
+  consultations          Consultation[]      @relation("PatientConsultations")
+  problems               ClinicalProblem[]
+  scaleAssessments       ScaleAssessment[]
+  medications            Medication[]
+  documents              DocumentSnapshot[]
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+}
+
+model Consultation {
+  id                String              @id @default(cuid())
+  patientId         String
+  physicianId       String
+  type              ConsultationType
+  status            ConsultationStatus  @default(DRAFT)
+  occurredAt        DateTime
+  subjective        Json?
+  objective         Json?
+  assessment        Json?
+  plan              Json?
+  patient           Patient             @relation("PatientConsultations", fields: [patientId], references: [id], onDelete: Restrict)
+  physician         User                @relation(fields: [physicianId], references: [id], onDelete: Restrict)
+  baselineFor       Patient?            @relation("PatientBaseline")
+  problemsOriginated ClinicalProblem[]  @relation("ProblemOrigin")
+  problemEvents     ProblemEvent[]
+  scaleAssessments  ScaleAssessment[]
+  medicationRegimens MedicationRegimen[]
+  documents         DocumentSnapshot[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([patientId, occurredAt])
+  @@index([physicianId, occurredAt])
+}
+
+model ClinicalProblem {
+  id                   String         @id @default(cuid())
+  patientId            String
+  originConsultationId String
+  type                 ProblemType
+  status               ProblemStatus  @default(ACTIVE)
+  title                String
+  description          String?        @db.Text
+  priority             Int?
+  resolvedAt           DateTime?
+  patient              Patient        @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  originConsultation   Consultation   @relation("ProblemOrigin", fields: [originConsultationId], references: [id], onDelete: Restrict)
+  events               ProblemEvent[]
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  @@index([patientId, status])
+  @@index([patientId, type])
+}
+
+model ProblemEvent {
+  id             String         @id @default(cuid())
+  problemId      String
+  consultationId String
+  previousStatus ProblemStatus?
+  newStatus      ProblemStatus
+  note           String?        @db.Text
+  problem        ClinicalProblem @relation(fields: [problemId], references: [id], onDelete: Restrict)
+  consultation   Consultation    @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  createdAt      DateTime        @default(now())
+
+  @@index([problemId, createdAt])
+}
+
+model ScaleDefinition {
+  id           String            @id @default(cuid())
+  code         String
+  version      String
+  name         String
+  sourceStatus String
+  config       Json
+  isActive     Boolean           @default(true)
+  assessments  ScaleAssessment[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([code, version])
+  @@index([code, isActive])
+}
+
+model ScaleAssessment {
+  id             String       @id @default(cuid())
+  scaleDefinitionId String?
+  patientId      String
+  consultationId String
+  scaleCode      String
+  scaleVersion   String
+  answers        Json
+  scoreNumeric   Decimal?     @db.Decimal(10, 2)
+  scoreText      String?
+  classification String?
+  interpretation String?      @db.Text
+  clinicalColor  String?
+  scaleDefinition ScaleDefinition? @relation(fields: [scaleDefinitionId], references: [id], onDelete: Restrict)
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  appliedAt      DateTime     @default(now())
+
+  @@index([patientId, scaleCode, appliedAt])
+  @@index([scaleDefinitionId])
+  @@index([consultationId])
+}
+
+model Medication {
+  id          String           @id @default(cuid())
+  patientId   String
+  name        String
+  presentation String?
+  route       String?
+  status      MedicationStatus @default(ACTIVE)
+  patient     Patient          @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  regimens    MedicationRegimen[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([patientId, status])
+}
+
+model MedicationRegimen {
+  id             String       @id @default(cuid())
+  medicationId   String
+  consultationId String
+  dose           String?
+  frequency      String?
+  schedule       Json?
+  instructions   String?      @db.Text
+  startsAt       DateTime?
+  endsAt         DateTime?
+  medication     Medication   @relation(fields: [medicationId], references: [id], onDelete: Restrict)
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  createdAt      DateTime     @default(now())
+
+  @@index([consultationId])
+}
+
+model DocumentSnapshot {
+  id             String       @id @default(cuid())
+  patientId      String
+  consultationId String
+  type           DocumentType
+  version        Int
+  content        Json
+  finalizedAt    DateTime?
+  finalizedById  String?
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  finalizedBy    User?        @relation("FinalizedDocuments", fields: [finalizedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+
+  @@unique([consultationId, type, version])
+  @@index([patientId, createdAt])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  userId     String?
+  entityType String
+  entityId   String
+  action     String
+  requestId  String?
+  outcome    String?
+  reasonCode String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([userId, createdAt])
+  @@index([requestId])
+}
+

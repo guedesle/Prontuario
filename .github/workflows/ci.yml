@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_ENV: production
+      APP_URL: https://prontuario-ci.example.com
+      DATABASE_URL: mysql://ci_user:ci_password@127.0.0.1:3306/prontuario_ci
+      BETTER_AUTH_SECRET: ci-only-secret-that-is-longer-than-thirty-two-characters
+      GOOGLE_CLIENT_ID: ci-client.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: ci-only-google-secret
+      AUTH_ALLOWED_EMAILS: admin-ci@example.com,medica-ci@example.com
+      AUTH_BOOTSTRAP_ADMIN_EMAILS: admin-ci@example.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Repository safety check
+        run: npm run validate:repo
+      - name: Backup/restore encrypted roundtrip
+        run: npm run test:backup
+      - name: Install dependencies
+        run: npm install
+      - name: Generate Prisma Client
+        run: npm run prisma:generate
+      - name: Clinical golden master and domain typecheck
+        run: npm run validate:domain
+      - name: Full typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical
