@@ -40,12 +40,29 @@ enum DocumentType {
   SOAP
   FAMILY_REPORT
   MEDICATION_PLAN
+  AGA_REPORT
 }
 
 enum MedicationStatus {
   ACTIVE
   SUSPENDED
   FINISHED
+}
+
+enum MedicationMoment {
+  MORNING
+  LUNCH
+  AFTERNOON
+  EVENING
+  BEDTIME
+  AS_NEEDED
+}
+
+enum PatientIdentifierType {
+  CPF
+  CNS
+  MEDICAL_RECORD
+  OTHER
 }
 
 model User {
@@ -58,6 +75,7 @@ model User {
   active        Boolean        @default(true)
   consultations Consultation[]
   documents     DocumentSnapshot[] @relation("FinalizedDocuments")
+  generatedDocuments DocumentSnapshot[] @relation("GeneratedDocuments")
   auditEvents   AuditEvent[]
   sessions      Session[]
   accounts      Account[]
@@ -121,6 +139,10 @@ model RateLimit {
 model Patient {
   id                     String              @id @default(cuid())
   fullName               String
+  normalizedFullName     String
+  identityFingerprint    String
+  homonymDiscriminator   String              @default("primary")
+  needsIdentityReview    Boolean             @default(false)
   birthDate              DateTime?
   sex                    String?
   education              String?
@@ -134,8 +156,25 @@ model Patient {
   scaleAssessments       ScaleAssessment[]
   medications            Medication[]
   documents              DocumentSnapshot[]
+  identifiers            PatientIdentifier[]
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
+
+  @@unique([identityFingerprint, homonymDiscriminator])
+  @@index([normalizedFullName, birthDate])
+}
+
+model PatientIdentifier {
+  id              String                @id @default(cuid())
+  patientId       String
+  type            PatientIdentifierType
+  value           String
+  normalizedValue String
+  patient         Patient               @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  createdAt       DateTime              @default(now())
+
+  @@unique([type, normalizedValue])
+  @@index([patientId])
 }
 
 model Consultation {
@@ -162,6 +201,7 @@ model Consultation {
 
   @@index([patientId, occurredAt])
   @@index([physicianId, occurredAt])
+  @@unique([id, patientId])
 }
 
 model ClinicalProblem {
@@ -175,24 +215,26 @@ model ClinicalProblem {
   priority             Int?
   resolvedAt           DateTime?
   patient              Patient        @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  originConsultation   Consultation   @relation("ProblemOrigin", fields: [originConsultationId], references: [id], onDelete: Restrict)
+  originConsultation   Consultation   @relation("ProblemOrigin", fields: [originConsultationId, patientId], references: [id, patientId], onDelete: Restrict)
   events               ProblemEvent[]
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
   @@index([patientId, status])
   @@index([patientId, type])
+  @@unique([id, patientId])
 }
 
 model ProblemEvent {
   id             String         @id @default(cuid())
   problemId      String
+  patientId      String
   consultationId String
   previousStatus ProblemStatus?
   newStatus      ProblemStatus
   note           String?        @db.Text
-  problem        ClinicalProblem @relation(fields: [problemId], references: [id], onDelete: Restrict)
-  consultation   Consultation    @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  problem        ClinicalProblem @relation(fields: [problemId, patientId], references: [id, patientId], onDelete: Restrict)
+  consultation   Consultation    @relation(fields: [consultationId, patientId], references: [id, patientId], onDelete: Restrict)
   createdAt      DateTime        @default(now())
 
   @@index([problemId, createdAt])
@@ -203,7 +245,14 @@ model ScaleDefinition {
   code         String
   version      String
   name         String
+  dimension    String?
   sourceStatus String
+  sourceCitation String?          @db.Text
+  sourceNote   String?            @db.Text
+  interpretationConfig Json?
+  interventionConfig Json?
+  definitionHash String?
+  reviewedAt   DateTime?
   config       Json
   isActive     Boolean           @default(true)
   assessments  ScaleAssessment[]
@@ -229,7 +278,7 @@ model ScaleAssessment {
   clinicalColor  String?
   scaleDefinition ScaleDefinition? @relation(fields: [scaleDefinitionId], references: [id], onDelete: Restrict)
   patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  consultation   Consultation @relation(fields: [consultationId, patientId], references: [id, patientId], onDelete: Restrict)
   appliedAt      DateTime     @default(now())
 
   @@index([patientId, scaleCode, appliedAt])
@@ -250,23 +299,40 @@ model Medication {
   updatedAt   DateTime         @updatedAt
 
   @@index([patientId, status])
+  @@unique([id, patientId])
 }
 
 model MedicationRegimen {
   id             String       @id @default(cuid())
   medicationId   String
+  patientId      String
   consultationId String
   dose           String?
   frequency      String?
   schedule       Json?
+  route          String?
+  continuous     Boolean      @default(false)
+  needsScheduleReview Boolean @default(false)
   instructions   String?      @db.Text
   startsAt       DateTime?
   endsAt         DateTime?
-  medication     Medication   @relation(fields: [medicationId], references: [id], onDelete: Restrict)
-  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  medication     Medication   @relation(fields: [medicationId, patientId], references: [id, patientId], onDelete: Restrict)
+  consultation   Consultation @relation(fields: [consultationId, patientId], references: [id, patientId], onDelete: Restrict)
+  scheduleSlots  MedicationScheduleSlot[]
   createdAt      DateTime     @default(now())
 
   @@index([consultationId])
+}
+
+model MedicationScheduleSlot {
+  id        String           @id @default(cuid())
+  regimenId String
+  moment    MedicationMoment
+  regimen   MedicationRegimen @relation(fields: [regimenId], references: [id], onDelete: Restrict)
+  createdAt DateTime         @default(now())
+
+  @@unique([regimenId, moment])
+  @@index([moment])
 }
 
 model DocumentSnapshot {
@@ -276,11 +342,15 @@ model DocumentSnapshot {
   type           DocumentType
   version        Int
   content        Json
+  contentSchemaVersion String @default("1.0")
+  sourceConsultationStatus ConsultationStatus
+  generatedById  String?
   finalizedAt    DateTime?
   finalizedById  String?
   patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Restrict)
+  consultation   Consultation @relation(fields: [consultationId, patientId], references: [id, patientId], onDelete: Restrict)
   finalizedBy    User?        @relation("FinalizedDocuments", fields: [finalizedById], references: [id], onDelete: SetNull)
+  generatedBy    User?        @relation("GeneratedDocuments", fields: [generatedById], references: [id], onDelete: SetNull)
   createdAt      DateTime     @default(now())
 
   @@unique([consultationId, type, version])
@@ -303,4 +373,3 @@ model AuditEvent {
   @@index([userId, createdAt])
   @@index([requestId])
 }
-

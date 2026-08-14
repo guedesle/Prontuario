@@ -93,3 +93,7 @@ Antes de disponibilizar uma escala em produção, exigir:
 - regra de pontuação testada;
 - pontos de corte documentados;
 - status de procedência diferente de `needs-review`, salvo liberação clínica explícita e registrada.
+
+## Registro v7
+
+A v7 não modificou pontos de corte, classificações ou referências. O novo catálogo tipado apenas reúne os metadados usados pelo relatório AGA. Ausência de referência no catálogo continua visível como `needs-review` e não é preenchida por inferência.

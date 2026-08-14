@@ -11,11 +11,13 @@ import {
   renderMedicationPlanText,
   type MedicationPlanItem,
 } from "./medication-plan.ts";
+import { buildAgaReportModel, renderAgaReportText } from "./aga-report.ts";
 
 export interface ConsultationOutputInput {
   patientId: string;
   consultationId: string;
   patientName: string;
+  consultationStatus?: "DRAFT" | "IN_REVIEW" | "FINALIZED";
   longitudinalAssessments: readonly LongitudinalAssessment[];
   longitudinalProblems: readonly ClinicalProblem[];
   subjective?: string;
@@ -36,6 +38,8 @@ export interface ConsultationOutputs {
   soapText: string;
   familyReportText: string;
   medicationPlanText: string;
+  agaReportModel: ReturnType<typeof buildAgaReportModel>;
+  agaReportText: string;
 }
 
 export function buildConsultationOutputs(
@@ -74,6 +78,14 @@ export function buildConsultationOutputs(
     attentionSigns: input.attentionSigns,
     contactPhone: input.contactPhone,
   });
+  const agaReportModel = buildAgaReportModel({
+    patientId: input.patientId,
+    consultationId: input.consultationId,
+    consultationStatus: input.consultationStatus ?? "DRAFT",
+    patientName: input.patientName,
+    longitudinalAssessments: input.longitudinalAssessments,
+    longitudinalProblems: input.longitudinalProblems,
+  });
 
   return {
     patientId: input.patientId,
@@ -85,5 +97,7 @@ export function buildConsultationOutputs(
       input.patientName,
       input.medicationPlan ?? [],
     ),
+    agaReportModel,
+    agaReportText: renderAgaReportText(agaReportModel),
   };
 }

@@ -162,3 +162,56 @@ a { color: var(--primary); font-weight: 700; }
   .metrics { grid-template-columns: 1fr 1fr; }
   .evolution-card { grid-template-columns: 1fr 60px 18px 60px; padding: 14px; gap: 8px; }
 }
+
+.narrow-shell { width: min(720px, calc(100% - 32px)); }
+.form-panel { margin-top: 20px; }
+.patient-form, .medication-editor { display: grid; gap: 16px; }
+.patient-form label, .medication-editor label { display: grid; gap: 6px; font-weight: 700; }
+.patient-form input, .medication-editor input, .medication-editor textarea {
+  width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; font: inherit;
+}
+button {
+  width: fit-content; padding: 10px 16px; border: 0; border-radius: 8px; background: var(--primary); color: white; font: inherit; font-weight: 700; cursor: pointer;
+}
+button:disabled { cursor: not-allowed; opacity: .55; }
+.duplicate-warning, .visible-alerts {
+  padding: 16px; border: 1px solid #d7a94d; border-radius: 10px; background: #fff8e6;
+}
+.duplicate-warning { display: grid; gap: 10px; }
+.field-error { color: #8f2727; font-weight: 700; }
+.compact-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.schedule-checkboxes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.schedule-checkboxes label, .inline-check { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+.schedule-checkboxes input, .inline-check input { width: auto; }
+.problem-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+.problem-list { display: grid; gap: 10px; padding: 0; list-style: none; }
+.problem-list li { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.problem-list li span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.report-workspace, .finalization-panel { margin-top: 24px; }
+.report-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.aga-report { margin-top: 18px; padding: 32px; background: white; border: 1px solid var(--line); border-radius: 14px; }
+.aga-report h1 { font-size: clamp(28px, 4vw, 42px); }
+.draft-watermark { display: inline-block; margin-top: 12px; padding: 7px 10px; border-radius: 6px; background: #fff1c7; color: #6f5010; }
+.scale-report-list { display: grid; gap: 16px; }
+.scale-report-card { padding: 20px; border: 1px solid var(--line); border-radius: 12px; break-inside: avoid; }
+.scale-report-card h2 { margin: 4px 0 14px; }
+.scale-report-card dl { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; gap: 8px 16px; }
+.scale-report-card dt { font-weight: 700; }
+.scale-report-card dd { margin: 0; line-height: 1.45; }
+.finalization-panel { padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--primary-soft); }
+
+@media (max-width: 760px) {
+  .problem-columns, .compact-fields { grid-template-columns: 1fr; }
+  .schedule-checkboxes { grid-template-columns: 1fr 1fr; }
+  .aga-report { padding: 20px; }
+  .scale-report-card dl { grid-template-columns: 1fr; }
+}
+
+@media print {
+  body { background: white; }
+  .no-print, .hero { display: none !important; }
+  .shell { width: 100%; padding: 0; }
+  .aga-report { margin: 0; padding: 0; border: 0; }
+  .problem-columns { grid-template-columns: 1fr 1fr; }
+  .scale-report-card { border-color: #bbb; }
+}

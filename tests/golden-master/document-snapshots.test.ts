@@ -31,6 +31,7 @@ test("versionamento é independente por consulta e tipo", () => {
   assert.equal(nextDocumentVersion(existing, "c1", "SOAP"), 3);
   assert.equal(nextDocumentVersion(existing, "c1", "FAMILY_REPORT"), 2);
   assert.equal(nextDocumentVersion(existing, "c2", "SOAP"), 1);
+  assert.equal(nextDocumentVersion(existing, "c1", "AGA_REPORT"), 1);
   const versioned = versionDocumentSnapshot({ document: { patientId: "p1", consultationId: "c1", type: "SOAP", content: { text: "x" } }, existing });
   assert.equal(versioned.version, 3);
 });

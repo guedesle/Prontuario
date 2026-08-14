@@ -77,3 +77,7 @@ A nova engine **não executa fórmulas clínicas com `Function(...)`**. Fórmula
 3. criar catálogo versionado de referências clínicas para as escalas restantes;
 4. ligar a engine testada ao formulário Next.js somente após autenticação e persistência P0;
 5. integrar `longitudinal-scales.ts` ao armazenamento de `ScaleAssessment` e ao dashboard “O que mudou?”.
+
+## Arquitetura v7
+
+`src/domain/scale-catalog.ts` centraliza código, versão, dimensão, procedência e vínculo com intervenções. Ele referencia as regras existentes sem alterar pontos de corte. Escalas sem procedência catalogada permanecem `needs-review`; a centralização arquitetural não constitui validação clínica.
