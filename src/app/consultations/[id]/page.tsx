@@ -1,4 +1,5 @@
 import { AgaReportPreview } from "@/components/reports/aga-report-preview";
+import { OncogeriatricScales } from "@/components/scales/oncogeriatric-scales";
 
 export default async function ConsultationPage({
   params,
@@ -13,6 +14,7 @@ export default async function ConsultationPage({
         <h1>Relatório e encerramento</h1>
         <p>Emissão documental e finalização são ações independentes.</p>
       </header>
+      <OncogeriatricScales consultationId={id} />
       <AgaReportPreview consultationId={id} />
       <section className="finalization-panel no-print">
         <h2>Finalizar consulta</h2>

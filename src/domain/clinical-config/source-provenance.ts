@@ -20,6 +20,25 @@ export interface ClinicalSourceProvenance {
  */
 export const SOURCE_PROVENANCE: Record<string, ClinicalSourceProvenance> = {
 
+  ecog: {
+    scaleId: "ecog",
+    status: "confirmed-primary",
+    legacyVersion: "Incluída na oncogeriatria em 2026-08-13",
+    primaryReference:
+      "Oken MM et al. Toxicity and response criteria of the Eastern Cooperative Oncology Group. Am J Clin Oncol. 1982;5(6):649-655. PMID: 7165009; ECOG-ACRIN Performance Status Scale.",
+    note:
+      "Graus 0 a 5 conforme a definição pública da ECOG-ACRIN. As cores da interface são auxiliares locais e não fazem parte do instrumento original.",
+  },
+  crash_mna_sf: {
+    scaleId: "crash_mna_sf",
+    status: "needs-review",
+    legacyVersion: "CRASH-MNA-SF-local-1.0, autorizada em 2026-08-13",
+    primaryReference:
+      "Extermann M et al. Cancer. 2012;118(13):3377-3386. PMID: 22072065. Adaptação local substitui o MNA completo pelo MNA-SF.",
+    note:
+      "Adaptação institucional não validada externamente. Mantém os demais componentes da CRASH, mas atribui 0 ponto ao MNA-SF 12-14 e 2 pontos ao MNA-SF 0-11. Não deve ser apresentada como equivalente à CRASH original nem usada isoladamente para decidir tratamento.",
+  },
+
   zarit_paliativo_7_ms2013: {
     scaleId: "zarit_paliativo_7_ms2013",
     status: "confirmed-institutional",

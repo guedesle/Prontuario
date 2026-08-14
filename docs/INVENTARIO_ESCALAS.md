@@ -29,6 +29,8 @@ Uma escala só recebe o status **testada** depois que seus pontos de corte e sua
 | `kps` | Prognóstico | testada | 90–100 / 70–80 / 10–60 |
 | `lace` | Transição de cuidado | testada | pesos do legado + 0–4 / 5–9 / 10–19 |
 | `g8` | Rastreio oncogeriátrico | testada | ≤14 positivo; ≥14,5 negativo, incluindo meio ponto |
+| `ecog` | Oncogeriatria/desempenho | testada | graus discretos 0–5 conforme ECOG-ACRIN/Oken 1982 |
+| `crash_mna_sf` | Oncogeriatria/toxicidade | testada como regra local* | subescores H/NH e combinado; *MNA completo substituído por MNA-SF 12–14 = 0 e 0–11 = 2, sem validação externa |
 | `apgar_familiar` | Suporte social | testada | 0–3 / 4–6 / 7–10; procedência dos cortes em revisão |
 | `zarit_reduzida` | Suporte social | testada* | 0–10 / 11–16 / 17–28; *golden master testado, referência bibliográfica precisa revisão |
 | `charlson` | Prognóstico | testada | 19 pesos + ajuste etário 0–4; faixas de cor são regra local |

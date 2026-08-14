@@ -1,6 +1,7 @@
 import { SOURCE_PROVENANCE, type SourceValidationStatus } from "./clinical-config/source-provenance.ts";
 import { LEGACY_CONFIG_VERSION } from "./clinical-config/legacy-core.ts";
 import { LEGACY_INTERVENTIONS } from "./interventions.ts";
+import { CRASH_MNA_SF_VERSION, ECOG_VERSION } from "./oncogeriatric-scales.ts";
 
 export type GeriatricDimension =
   | "funcionalidade"
@@ -51,6 +52,8 @@ const METADATA = {
   kps: ["Karnofsky Performance Status", "KPS", "prognostico"],
   lace: ["LACE", "LACE", "prognostico"],
   g8: ["G8", "G8", "oncogeriatria"],
+  ecog: ["Escala de Estado de Desempenho ECOG", "ECOG", "oncogeriatria"],
+  crash_mna_sf: ["CRASH adaptada — MNA-SF", "CRASH–MNA-SF", "oncogeriatria"],
   apgar_familiar: ["APGAR familiar", "APGAR", "suporte-social"],
   zarit_reduzida: ["Zarit reduzida", "Zarit", "suporte-social"],
   zarit_paliativo_7_ms2013: ["Zarit 7 itens — MS", "Zarit 7", "suporte-social"],
@@ -69,7 +72,11 @@ export const SCALE_CATALOG: Readonly<Record<string, ScaleCatalogEntry>> = Object
       code,
       version: code === "zarit_paliativo_7_ms2013"
         ? "MS-AD-CP-2013-7i-1to5"
-        : LEGACY_CONFIG_VERSION,
+        : code === "ecog"
+          ? ECOG_VERSION
+          : code === "crash_mna_sf"
+            ? CRASH_MNA_SF_VERSION
+            : LEGACY_CONFIG_VERSION,
       name,
       shortName,
       dimension,
