@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
@@ -46,5 +46,8 @@
     "@prisma/engines@7.9.1": true,
     "prisma@7.9.1": true,
     "sharp@0.34.5": true
+  },
+  "optionalDependencies": {
+    "@next/swc-wasm-nodejs": "16.3.1"
   }
 }
