@@ -22,10 +22,10 @@ test("SOAP inclui medicações no Objetivo", () => {
   const text = renderSoapText({
     subjective: "Sem queixas novas.",
     problems,
-    medications: [{ name: "Losartana", dose: "50 mg", route: "VO", frequency: "1x/dia" }],
+    medications: [{ medicationText: "Losartana 50 mg", doseInstruction: "1 comprimido", route: "VO", moments: ["manha", "noite"] }],
   });
   assert.match(text, /Medicações em uso:/);
-  assert.match(text, /Losartana — 50 mg · VO · 1x\/dia/);
+  assert.match(text, /Losartana 50 mg — 1 comprimido · VO · Manhã, Noite/);
 });
 
 test("relatório familiar separa problemas clínicos e geriátricos", () => {

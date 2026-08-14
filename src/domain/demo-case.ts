@@ -30,6 +30,6 @@ export const DEMO_ASSESSMENTS: LongitudinalAssessment[] = [
 ];
 
 export const DEMO_MEDICATIONS: MedicationPlanItem[] = [
-  { id: "demo-med-1", name: "Medicamento A", presentation: "50 mg", dose: "1 comprimido", route: "VO", moment: "manha", continuous: true },
-  { id: "demo-med-2", name: "Medicamento B", presentation: "5 mg", dose: "1 comprimido", route: "VO", moment: "noite", continuous: true },
+  { id: "demo-med-1", medicationText: "Losartana 50 mg", doseInstruction: "1 comprimido", route: "VO", moments: ["manha", "noite"], continuous: true },
+  { id: "demo-med-2", medicationText: "Donepezila 5 mg", doseInstruction: "1 comprimido", route: "VO", moments: ["noite"], continuous: true },
 ];

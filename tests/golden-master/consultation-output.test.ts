@@ -23,6 +23,8 @@ test("pipeline end-to-end gera as três saídas sem promover propostas automatic
   assert.match(outputs.familyReportText, /Problemas geriátricos/);
   assert.match(outputs.familyReportText, /71 99992-1416/);
   assert.match(outputs.medicationPlanText, /PLANO DE MEDICAMENTOS/);
+  assert.match(outputs.agaReportText, /RELATÓRIO DA AVALIAÇÃO GERIÁTRICA AMPLA/);
+  assert.equal(outputs.agaReportModel.draftContext, true);
 });
 
 test("pipeline bloqueia contexto sem paciente ou consulta", () => {

@@ -2,6 +2,7 @@ import type { ClinicalProblem } from "./problems.ts";
 import { splitProblems } from "./problems.ts";
 import type { ClinicalChangeSummary } from "./clinical-change-summary.ts";
 import type { InterventionPlan } from "./interventions.ts";
+import { MEDICATION_MOMENT_LABELS, type MedicationMoment } from "./medication-plan.ts";
 
 function clean(value: string | null | undefined): string {
   const text = value?.trim();
@@ -13,10 +14,10 @@ function bulletList(items: readonly string[]): string {
 }
 
 export interface SoapMedication {
-  name: string;
-  dose?: string;
+  medicationText: string;
+  doseInstruction?: string;
   route?: string;
-  frequency?: string;
+  moments: readonly MedicationMoment[];
 }
 
 export interface SoapInput {
@@ -33,8 +34,9 @@ export interface SoapInput {
 export function renderSoapText(input: SoapInput): string {
   const medications = input.medications?.length
     ? input.medications.map((medication) => {
-        const details = [medication.dose, medication.route, medication.frequency].filter(Boolean).join(" · ");
-        return `- ${medication.name}${details ? ` — ${details}` : ""}`;
+        const schedule = medication.moments.map((moment) => MEDICATION_MOMENT_LABELS[moment]).join(", ");
+        const details = [medication.doseInstruction, medication.route, schedule].filter(Boolean).join(" · ");
+        return `- ${medication.medicationText}${details ? ` — ${details}` : ""}`;
       }).join("\n")
     : "- sem dados registrados";
 

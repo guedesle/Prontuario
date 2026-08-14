@@ -1,5 +1,6 @@
 import { buildConsultationOutputs } from "@/domain/consultation-output.ts";
 import { DEMO_ASSESSMENTS, DEMO_MEDICATIONS, DEMO_PATIENT, DEMO_PROBLEMS } from "@/domain/demo-case.ts";
+import { ProblemColumns } from "@/components/problems/problem-columns";
 
 const outputs = buildConsultationOutputs({
   patientId: DEMO_PATIENT.id,
@@ -71,6 +72,8 @@ export default function DemoPage() {
           ))}
         </div>
       </section>
+
+      <ProblemColumns problems={DEMO_PROBLEMS} />
 
       <section className="two-columns">
         <article className="panel">

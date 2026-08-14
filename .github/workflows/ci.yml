@@ -12,6 +12,21 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_password
+          MYSQL_DATABASE: prontuario_ci
+          MYSQL_USER: ci_user
+          MYSQL_PASSWORD: ci_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uci_user -pci_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
     env:
       NODE_ENV: production
       APP_URL: https://prontuario-ci.example.com
@@ -21,6 +36,7 @@ jobs:
       GOOGLE_CLIENT_SECRET: ci-only-google-secret
       AUTH_ALLOWED_EMAILS: admin-ci@example.com,medica-ci@example.com
       AUTH_BOOTSTRAP_ADMIN_EMAILS: admin-ci@example.com
+      TEST_DATABASE_URL: mysql://ci_user:ci_password@127.0.0.1:3306/prontuario_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,11 +46,17 @@ jobs:
       - name: Repository safety check
         run: npm run validate:repo
       - name: Backup/restore encrypted roundtrip
+        env:
+          NODE_ENV: test
         run: npm run test:backup
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Generate Prisma Client
         run: npm run prisma:generate
+      - name: Apply migrations to ephemeral MySQL
+        run: npx prisma migrate deploy
+      - name: MySQL concurrency and patient isolation
+        run: npm run test:integration
       - name: Clinical golden master and domain typecheck
         run: npm run validate:domain
       - name: Full typecheck

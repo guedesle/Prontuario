@@ -1,4 +1,4 @@
-export type DocumentType = "SOAP" | "FAMILY_REPORT" | "MEDICATION_PLAN";
+export type DocumentType = "SOAP" | "FAMILY_REPORT" | "MEDICATION_PLAN" | "AGA_REPORT";
 
 export interface DocumentContext {
   patientId: string;

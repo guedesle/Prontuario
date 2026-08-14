@@ -86,6 +86,27 @@ As faixas globais e o limiar de ação são identificados como regras do aplicat
 ## Clinical Frailty Scale (CFS)
 Não foi localizada uma definição operacional da CFS dentro do `AGA 1.html` usado como golden master. Portanto ela **não será criada como se já fizesse parte do legado**. A inclusão futura deverá ter versão, material de aplicação e procedência definidos antes de entrar em produção.
 
+## ECOG Performance Status
+
+Os graus discretos 0–5 seguem a definição pública da ECOG-ACRIN e a publicação de Oken et al. (1982; PMID 7165009). A apresentação em português acompanha o conteúdo fornecido para revisão. As cores da interface são auxiliares locais e não fazem parte da escala.
+
+**Status:** `confirmed-primary`.
+
+## CRASH adaptada — MNA-SF
+
+A CRASH original de Extermann et al. (Cancer. 2012;118:3377–3386; PMID 22072065) utiliza Chemotox, pressão diastólica, AIVD, LDH, ECOG, MEEM e MNA completo, mantendo subescores hematológico e não hematológico.
+
+Por decisão clínica explícita registrada em 2026-08-13, esta aplicação criou uma versão institucional separada, `CRASH-MNA-SF-local-1.0`. Ela substitui apenas o componente MNA completo por:
+
+- MNA-SF 12–14: 0 ponto;
+- MNA-SF 0–11: 2 pontos.
+
+MEEM, ECOG e MNA-SF podem ser preenchidos a partir da avaliação mais recente do mesmo paciente, sempre com data e confirmação visíveis. AIVD não é preenchida pela escala de Lawton 7–21, pois as faixas não são intercambiáveis.
+
+Essa adaptação não possui validação externa, não deve ser rotulada como equivalente à CRASH original e não pode ser usada isoladamente para decidir tratamento oncológico.
+
+**Status:** `needs-review`.
+
 ## Governança
 Antes de disponibilizar uma escala em produção, exigir:
 - versão identificada;
@@ -93,3 +114,7 @@ Antes de disponibilizar uma escala em produção, exigir:
 - regra de pontuação testada;
 - pontos de corte documentados;
 - status de procedência diferente de `needs-review`, salvo liberação clínica explícita e registrada.
+
+## Registro v7
+
+A v7 não modificou pontos de corte, classificações ou referências. O novo catálogo tipado apenas reúne os metadados usados pelo relatório AGA. Ausência de referência no catálogo continua visível como `needs-review` e não é preenchida por inferência.

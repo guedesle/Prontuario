@@ -1,4 +1,4 @@
-export type SnapshotDocumentType = "SOAP" | "FAMILY_REPORT" | "MEDICATION_PLAN";
+export type SnapshotDocumentType = "SOAP" | "FAMILY_REPORT" | "MEDICATION_PLAN" | "AGA_REPORT";
 
 export interface DocumentSnapshotInput<TContent = unknown> {
   patientId: string;

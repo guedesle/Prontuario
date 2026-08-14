@@ -19,14 +19,15 @@ export default function Home() {
         </p>
       </header>
 
+      <p className="demo-link"><a href="/patients/new">Cadastrar paciente com verificação de duplicidade →</a></p>
       <p className="demo-link"><a href="/demo">Abrir demonstração longitudinal sintética →</a></p>
 
       <section className="notice">
         <strong>Segurança por padrão</strong>
         <span>
-          Este scaffold ainda não possui autenticação implementada e não deve
-          receber dados reais de pacientes até que autenticação, autorização,
-          auditoria e persistência estejam concluídas.
+          Autenticação, autorização e auditoria estão implementadas no scaffold,
+          mas dados reais só podem ser usados após migration, testes MySQL,
+          backup/restore e checklist de go-live concluídos.
         </span>
       </section>
 

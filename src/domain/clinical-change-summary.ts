@@ -11,62 +11,12 @@ import {
   type ScaleComparison,
   type ScaleTrend,
 } from "./longitudinal-scales.ts";
-
-export type GeriatricDimension =
-  | "funcionalidade"
-  | "cognicao"
-  | "humor"
-  | "fragilidade"
-  | "mobilidade"
-  | "nutricao"
-  | "medicamentos"
-  | "suporte-social"
-  | "oncogeriatria"
-  | "prognostico"
-  | "sintomas"
-  | "outros";
-
-export interface ScaleMetadata {
-  name: string;
-  dimension: GeriatricDimension;
-  shortName: string;
-}
-
-export const SCALE_METADATA: Record<string, ScaleMetadata> = {
-  katz: { name: "Katz — ABVD", shortName: "Katz", dimension: "funcionalidade" },
-  lawton: { name: "Lawton — AIVD", shortName: "Lawton", dimension: "funcionalidade" },
-  barthel: { name: "Índice de Barthel", shortName: "Barthel", dimension: "funcionalidade" },
-  pfeffer: { name: "Questionário de Pfeffer", shortName: "Pfeffer", dimension: "funcionalidade" },
-  gds15: { name: "GDS-15", shortName: "GDS-15", dimension: "humor" },
-  cornell: { name: "Cornell", shortName: "Cornell", dimension: "humor" },
-  moca: { name: "MoCA", shortName: "MoCA", dimension: "cognicao" },
-  meem: { name: "MEEM", shortName: "MEEM", dimension: "cognicao" },
-  dez_cs: { name: "10-CS", shortName: "10-CS", dimension: "cognicao" },
-  frail_br: { name: "FRAIL-BR", shortName: "FRAIL-BR", dimension: "fragilidade" },
-  sarcf: { name: "SARC-F", shortName: "SARC-F", dimension: "mobilidade" },
-  preensao: { name: "Força de preensão", shortName: "Preensão", dimension: "mobilidade" },
-  velocidade_marcha: { name: "Velocidade de marcha", shortName: "Marcha", dimension: "mobilidade" },
-  sentar_levantar_5x: { name: "Sentar-levantar 5x", shortName: "5x cadeira", dimension: "mobilidade" },
-  sppb: { name: "SPPB", shortName: "SPPB", dimension: "mobilidade" },
-  polifarmacia: { name: "Polifarmácia / MPI", shortName: "Polifarmácia", dimension: "medicamentos" },
-  stoppfall: { name: "STOPPFall", shortName: "STOPPFall", dimension: "medicamentos" },
-  kps: { name: "Karnofsky Performance Status", shortName: "KPS", dimension: "prognostico" },
-  lace: { name: "LACE", shortName: "LACE", dimension: "prognostico" },
-  g8: { name: "G8", shortName: "G8", dimension: "oncogeriatria" },
-  apgar_familiar: { name: "APGAR familiar", shortName: "APGAR", dimension: "suporte-social" },
-  zarit_reduzida: { name: "Zarit reduzida", shortName: "Zarit", dimension: "suporte-social" },
-  zarit_paliativo_7_ms2013: { name: "Zarit 7 itens — MS", shortName: "Zarit 7", dimension: "suporte-social" },
-  charlson: { name: "Índice de Charlson", shortName: "Charlson", dimension: "prognostico" },
-  ves13: { name: "VES-13", shortName: "VES-13", dimension: "fragilidade" },
-  mna_sf: { name: "MNA-SF", shortName: "MNA-SF", dimension: "nutricao" },
-  fast: { name: "FAST", shortName: "FAST", dimension: "cognicao" },
-  pps: { name: "Palliative Performance Scale", shortName: "PPS", dimension: "prognostico" },
-  esas: { name: "ESAS", shortName: "ESAS", dimension: "sintomas" },
-};
+import { scaleCatalogEntry, type GeriatricDimension } from "./scale-catalog.ts";
 
 export interface LongitudinalAssessment extends LongitudinalScalePoint {
   color?: ClinicalColor;
   classification?: string;
+  interpretation?: string;
   scoreText?: string;
   answers?: Record<string, unknown>;
 }
@@ -200,16 +150,14 @@ export function buildClinicalChangeSummary(
       answers: current.answers,
       result: makeScaleResult(current),
     });
-    const metadata = SCALE_METADATA[scaleId] ?? {
-      name: scaleId,
-      shortName: scaleId,
-      dimension: "outros" as const,
-    };
+    const metadata = scaleCatalogEntry(scaleId);
     const intervention = interventionFor(scaleId, current.color ?? "cinza");
     cards.push({
       scaleId,
       scaleVersion: current.scaleVersion,
-      ...metadata,
+      name: metadata.name,
+      shortName: metadata.shortName,
+      dimension: metadata.dimension,
       current,
       previous: evolution.previous as LongitudinalAssessment | null,
       baseline: evolution.baseline as LongitudinalAssessment,

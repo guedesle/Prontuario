@@ -21,7 +21,8 @@ const secretPatterns = [
 const violations = [];
 for (const file of files) {
   if (file === ".env.example") continue;
-  if (forbiddenNames.some((pattern) => pattern.test(file))) {
+  const versionedPrismaMigration = /^prisma\/migrations\/[^/]+\/migration\.sql$/.test(file);
+  if (!versionedPrismaMigration && forbiddenNames.some((pattern) => pattern.test(file))) {
     violations.push(`arquivo proibido: ${file}`);
     continue;
   }

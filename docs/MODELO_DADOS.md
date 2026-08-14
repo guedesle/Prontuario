@@ -125,3 +125,12 @@ Registra eventos importantes:
 
 ## Regra de integridade principal
 Nenhum `DocumentSnapshot`, `ScaleAssessment`, `ProblemEvent` ou `MedicationRegimen` pode apontar para paciente diferente daquele da consulta associada.
+
+## Extensões v7
+
+- `Patient` mantém nome normalizado, fingerprint e discriminador de homônimo; `PatientIdentifier` guarda identificadores fortes normalizados.
+- homônimos nunca são fundidos automaticamente e exigem confirmação auditada.
+- `MedicationScheduleSlot` representa manhã, almoço, tarde, noite, ao deitar e se necessário; um regime pode ter vários momentos sem duplicar o medicamento.
+- `ScaleDefinition` passa a comportar dimensão, fonte, status, configuração de interpretação e intervenções, sem alterar versões já usadas.
+- `DocumentSnapshot` inclui `AGA_REPORT`, versão do schema de conteúdo, estado de origem da consulta e usuário gerador.
+- chaves estrangeiras compostas com `patientId` reforçam a regra de isolamento no próprio banco.

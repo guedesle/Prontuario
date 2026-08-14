@@ -17,6 +17,7 @@ backups/
 *.bak
 
 *.sql
+!prisma/migrations/**/migration.sql
 *.sql.gz
 *.sql.gz.enc
 *.dump
