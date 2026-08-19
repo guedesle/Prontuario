@@ -5,6 +5,7 @@ import { OncogeriatricScales } from "@/components/scales/oncogeriatric-scales";
 import { buildConsultationContextViewModel } from "@/domain/consultation-context";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
 import { prisma } from "@/server/db";
+import styles from "./page.module.css";
 
 export default async function ConsultationPage({
   params,
@@ -45,17 +46,17 @@ export default async function ConsultationPage({
     <main className="shell consultation-shell">
       <header className="hero compact-hero clinical-hero">
         <p className="eyebrow">Consulta geriátrica longitudinal</p>
-        <div className="consultation-identity-heading">
+        <div className={styles.identityHeading}>
           <div>
             <h1>{context.patientName}</h1>
-            <p className="consultation-context-subtitle">Centro de cuidado e evolução</p>
+            <p className={styles.subtitle}>Centro de cuidado e evolução</p>
           </div>
-          <span className="consultation-status-badge" data-status={consultation.status}>
+          <span className={styles.statusBadge} data-status={consultation.status}>
             {context.consultationStatusLabel}
           </span>
         </div>
 
-        <dl className="consultation-context-grid" aria-label="Identificação da consulta atual">
+        <dl className={styles.contextGrid} aria-label="Identificação da consulta atual">
           <div>
             <dt>Data de nascimento</dt>
             <dd>{context.patientBirthDateLabel}</dd>
@@ -71,17 +72,17 @@ export default async function ConsultationPage({
         </dl>
 
         {context.needsIdentityReview ? (
-          <div className="consultation-identity-warning" role="alert">
+          <div className={styles.identityWarning} role="alert">
             <strong>Identidade/homônimo pendente de revisão</strong>
             <span>Confirme a identidade no cadastro do paciente antes de emitir ou compartilhar documentos.</span>
           </div>
         ) : null}
 
-        <a className="consultation-patient-link" href={`/patients/${context.patientId}`}>
+        <a className={styles.patientLink} href={`/patients/${context.patientId}`}>
           Voltar ao cadastro do paciente
         </a>
 
-        <p className="consultation-context-intro">
+        <p className={styles.intro}>
           Registre avaliações, acompanhe mudanças desde a AGA inicial e gere um relatório
           compartilhável após revisão clínica.
         </p>
