@@ -8,6 +8,8 @@
 - troca de paciente limpa contexto anterior;
 - teste impede mistura de dados.
 
+**Estado atual (2026-08-19):** além das chaves compostas e guardas fail-closed já existentes nos documentos, a própria página clínica da consulta agora carrega o vínculo consulta → paciente no servidor autenticado antes de renderizar as áreas editáveis. O cabeçalho exibe nome do paciente, data de nascimento, tipo/data/status da consulta e torna visível `needsIdentityReview`; consulta inexistente não renderiza e contexto sem identificador/nome de paciente válido falha fechado. A interface não cria nem reinterpreta identidade e não altera as regras existentes para homônimos.
+
 ### P0-02 Persistência real
 **Aceite**
 - rascunho persiste após fechar navegador;
