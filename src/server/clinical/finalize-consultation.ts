@@ -1,52 +1,83 @@
-import { prisma } from "../db";
-import { requireAuthenticatedUser } from "../auth/require-user";
-import { assertConsultationCanFinalize } from "../../domain/security/consultation-workflow";
+import type { Prisma } from "../../generated/prisma/client.ts";
+import type { ClinicalColor } from "../../domain/clinical-engine.ts";
+import { urgentAlertsForCurrentConsultation } from "../../domain/consultation-urgent-alerts.ts";
+import { requireAuthenticatedUser } from "../auth/require-user.ts";
+import { prisma } from "../db.ts";
+import {
+  consultationFinalizationService,
+  type ConsultationFinalizationTransaction,
+} from "./consultation-finalization-service.ts";
 
-export async function finalizeConsultation(input: {
-  patientId: string;
-  consultationId: string;
-  clinicalReviewConfirmed: boolean;
-  unresolvedUrgentAlerts: readonly string[];
-  requestId?: string;
-}) {
-  const { user } = await requireAuthenticatedUser("consultation.finalize");
-
-  return prisma.$transaction(async (tx) => {
-    const consultation = await tx.consultation.findUnique({
-      where: { id: input.consultationId },
-      select: { id: true, patientId: true, status: true },
-    });
-    if (!consultation) throw new Error("Consulta não encontrada.");
-
-    assertConsultationCanFinalize({
-      selectedPatientId: input.patientId,
-      consultationPatientId: consultation.patientId,
-      selectedConsultationId: input.consultationId,
-      consultationId: consultation.id,
-      status: consultation.status,
-      clinicalReviewConfirmed: input.clinicalReviewConfirmed,
-      unresolvedUrgentAlerts: input.unresolvedUrgentAlerts,
-    });
-
-    const updated = await tx.consultation.updateMany({
-      where: { id: consultation.id, patientId: consultation.patientId, status: "IN_REVIEW" },
-      data: { status: "FINALIZED" },
-    });
-    if (updated.count !== 1) {
-      throw new Error("A consulta mudou durante a finalização; recarregue antes de tentar novamente.");
-    }
-
-    await tx.auditEvent.create({
-      data: {
-        userId: user.id,
-        entityType: "Consultation",
-        entityId: consultation.id,
-        action: "consultation.finalize",
-        requestId: input.requestId,
-        outcome: "success",
-      },
-    });
-
-    return { id: consultation.id, patientId: consultation.patientId, status: "FINALIZED" as const };
-  });
+function answersRecord(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  return value as Record<string, unknown>;
 }
+
+async function workflowContext(
+  tx: Prisma.TransactionClient,
+  consultationId: string,
+) {
+  const consultation = await tx.consultation.findUnique({
+    where: { id: consultationId },
+    select: { id: true, patientId: true, status: true },
+  });
+  if (!consultation) return null;
+
+  const assessments = await tx.scaleAssessment.findMany({
+    where: {
+      consultationId: consultation.id,
+      patientId: consultation.patientId,
+    },
+    select: {
+      id: true,
+      scaleCode: true,
+      answers: true,
+      scoreNumeric: true,
+      scoreText: true,
+      classification: true,
+      clinicalColor: true,
+      appliedAt: true,
+    },
+  });
+
+  const urgentAlerts = urgentAlertsForCurrentConsultation(
+    assessments.map((assessment) => ({
+      id: assessment.id,
+      scaleCode: assessment.scaleCode,
+      answers: answersRecord(assessment.answers),
+      score: assessment.scoreNumeric === null ? null : Number(assessment.scoreNumeric),
+      scoreText: assessment.scoreText ?? undefined,
+      classification: assessment.classification ?? undefined,
+      color: (assessment.clinicalColor ?? undefined) as ClinicalColor | undefined,
+      appliedAt: assessment.appliedAt,
+    })),
+  );
+
+  return {
+    id: consultation.id,
+    patientId: consultation.patientId,
+    status: consultation.status,
+    urgentAlerts,
+  };
+}
+
+const service = consultationFinalizationService({
+  authenticate: requireAuthenticatedUser,
+  transaction: async (operation) => prisma.$transaction(async (tx) => operation({
+    findWorkflowContext: (consultationId) => workflowContext(tx, consultationId),
+    transitionStatus: async ({ consultationId, patientId, from, to }) => {
+      const updated = await tx.consultation.updateMany({
+        where: { id: consultationId, patientId, status: from },
+        data: { status: to },
+      });
+      return updated.count === 1;
+    },
+    createAuditEvent: async (input) => {
+      await tx.auditEvent.create({ data: input });
+    },
+  } satisfies ConsultationFinalizationTransaction), { isolationLevel: "Serializable" }),
+});
+
+export const getConsultationWorkflowState = service.getWorkflowState;
+export const startConsultationReview = service.startReview;
+export const finalizeConsultation = service.finalize;
