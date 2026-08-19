@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assertMedicationWorkspaceEditable,
+  canSubmitMedicationStatusChange,
   effectiveMedicationRegimens,
   medicationStatusForWorkspace,
   MedicationWorkspaceError,
@@ -51,6 +52,14 @@ test("status explícito prevalece; estado atual não reconstrói consulta histó
   assert.deepEqual(medicationStatusForWorkspace({ isLatestConsultation: false, explicitStatus: "SUSPENDED", currentStatus: "ACTIVE" }), { status: "SUSPENDED", source: "explicit-history" });
   assert.deepEqual(medicationStatusForWorkspace({ isLatestConsultation: false, explicitStatus: null, currentStatus: "ACTIVE" }), { status: "UNKNOWN", source: "unknown" });
   assert.deepEqual(medicationStatusForWorkspace({ isLatestConsultation: true, explicitStatus: null, currentStatus: "ACTIVE" }), { status: "ACTIVE", source: "current-record-only" });
+});
+
+test("mudança de status exige confirmação clínica explícita", () => {
+  assert.equal(canSubmitMedicationStatusChange({ confirmed: false, currentStatus: "ACTIVE", selectedStatus: "SUSPENDED", statusSource: "explicit-history" }), false);
+  assert.equal(canSubmitMedicationStatusChange({ confirmed: true, currentStatus: "ACTIVE", selectedStatus: "ACTIVE", statusSource: "explicit-history" }), false);
+  assert.equal(canSubmitMedicationStatusChange({ confirmed: true, currentStatus: "ACTIVE", selectedStatus: "SUSPENDED", statusSource: "explicit-history" }), true);
+  assert.equal(canSubmitMedicationStatusChange({ confirmed: false, currentStatus: "ACTIVE", selectedStatus: "ACTIVE", statusSource: "current-record-only" }), false);
+  assert.equal(canSubmitMedicationStatusChange({ confirmed: true, currentStatus: "ACTIVE", selectedStatus: "ACTIVE", statusSource: "current-record-only" }), true);
 });
 
 test("reconciliação bloqueia consulta finalizada e edição retrospectiva", () => {
