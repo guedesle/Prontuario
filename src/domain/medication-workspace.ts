@@ -68,6 +68,17 @@ export function assertMedicationWorkspaceEditable(input: {
   }
 }
 
+export function canSubmitMedicationStatusChange(input: {
+  confirmed: boolean;
+  currentStatus: MedicationWorkspaceStatus;
+  selectedStatus: MedicationLifecycleStatus;
+  statusSource: MedicationStatusSource;
+}): boolean {
+  if (!input.confirmed) return false;
+  if (input.statusSource === "explicit-history") return input.selectedStatus !== input.currentStatus;
+  return true;
+}
+
 /**
  * Seleciona um único regime efetivo por medicamento dentro do horizonte já
  * validado da consulta. A ordem dos IDs de consulta é a única fonte temporal;
