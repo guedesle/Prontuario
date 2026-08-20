@@ -71,6 +71,10 @@ export type ComplementaryScoreScaleDefinition = {
   name: string;
   dimension: string;
   instruction: string;
+  applicationGuide?: readonly {
+    title: string;
+    items: readonly string[];
+  }[];
   sourceNote: string;
   fields: readonly ComplementaryField[];
 };
@@ -99,6 +103,53 @@ const educationChoices: readonly ComplementaryChoice[] = [
   { value: "Mais de 11 anos", label: "Mais de 11 anos" },
 ];
 
+const FAST_CHOICES: readonly ComplementaryChoice[] = [
+  { value: 1, label: "1 — Sem dificuldade funcional objetiva" },
+  { value: 2, label: "2 — Queixa subjetiva de esquecimento" },
+  { value: 3, label: "3 — Dificuldade em tarefas complexas, trabalho ou organização" },
+  { value: 4, label: "4 — Precisa de ajuda nas atividades instrumentais complexas" },
+  { value: 5, label: "5 — Precisa de ajuda para escolher roupas adequadas" },
+  { value: 6.1, label: "6a — Precisa de ajuda para vestir-se" },
+  { value: 6.2, label: "6b — Precisa de ajuda para banhar-se" },
+  { value: 6.3, label: "6c — Precisa de ajuda com a mecânica do toalete" },
+  { value: 6.4, label: "6d — Incontinência urinária" },
+  { value: 6.5, label: "6e — Incontinência fecal" },
+  { value: 7.1, label: "7a — Fala limitada a cerca de seis palavras compreensíveis ao dia" },
+  { value: 7.2, label: "7b — Fala limitada a uma palavra compreensível ao dia" },
+  { value: 7.3, label: "7c — Perdeu a capacidade de caminhar" },
+  { value: 7.4, label: "7d — Perdeu a capacidade de sentar sem apoio" },
+  { value: 7.5, label: "7e — Perdeu a capacidade de sorrir" },
+  { value: 7.6, label: "7f — Perdeu a capacidade de sustentar a cabeça" },
+];
+
+const PPS_CHOICES: readonly ComplementaryChoice[] = [
+  { value: 100, label: "100% — Deambula e trabalha normalmente; autocuidado, ingestão e consciência preservados" },
+  { value: 90, label: "90% — Atividade normal, com sinais de doença; autocuidado e ingestão preservados" },
+  { value: 80, label: "80% — Atividade normal com esforço; autocuidado preservado; ingestão normal ou reduzida" },
+  { value: 70, label: "70% — Deambulação reduzida; não mantém trabalho habitual; autocuidado preservado" },
+  { value: 60, label: "60% — Deambulação reduzida; ajuda ocasional; ingestão normal ou reduzida" },
+  { value: 50, label: "50% — Principalmente sentado/deitado; ajuda considerável; ingestão normal ou reduzida" },
+  { value: 40, label: "40% — Principalmente no leito; requer assistência na maior parte do cuidado" },
+  { value: 30, label: "30% — Totalmente acamado; cuidado total; ingestão normal ou reduzida" },
+  { value: 20, label: "20% — Totalmente acamado; cuidado total; apenas pequenos goles" },
+  { value: 10, label: "10% — Totalmente acamado; cuidado total; apenas cuidados de boca" },
+];
+
+const KPS_CHOICES: readonly ComplementaryChoice[] = [
+  { value: 100, label: "100% — Normal, sem queixas ou evidência de doença" },
+  { value: 90, label: "90% — Atividade normal; sinais ou sintomas leves" },
+  { value: 80, label: "80% — Atividade normal com esforço; alguns sinais ou sintomas" },
+  { value: 70, label: "70% — Cuida de si, mas não mantém atividade ou trabalho habitual" },
+  { value: 60, label: "60% — Ajuda ocasional, mas atende à maioria das necessidades" },
+  { value: 50, label: "50% — Ajuda considerável e cuidados médicos frequentes" },
+  { value: 40, label: "40% — Incapacitado; requer cuidado e assistência especiais" },
+  { value: 30, label: "30% — Muito incapacitado; hospitalização pode estar indicada" },
+  { value: 20, label: "20% — Muito doente; necessita cuidado ativo de suporte" },
+  { value: 10, label: "10% — Moribundo; rápida progressão do processo fatal" },
+];
+
+const KPS_ALLOWED_VALUES = KPS_CHOICES.map((choice) => Number(choice.value));
+
 export const COMPLEMENTARY_SCORE_SCALES: readonly ComplementaryScoreScaleDefinition[] = [
   {
     code: "moca",
@@ -122,7 +173,11 @@ export const COMPLEMENTARY_SCORE_SCALES: readonly ComplementaryScoreScaleDefinit
     ],
   },
   { code: "barthel", version: LEGACY_SCORE_VERSION, name: "Índice de Barthel", dimension: "funcionalidade", instruction: "Registro rápido do escore total previamente aplicado.", sourceNote: "Faixas preservadas do golden master clínico do aplicativo.", fields: [scoreField(100, "Informe o escore total de 0 a 100.")] },
-  { code: "cornell", version: LEGACY_SCORE_VERSION, name: "Cornell — depressão na demência", dimension: "humor", instruction: "Registro rápido do escore total previamente aplicado.", sourceNote: "Faixas preservadas do golden master; resultado é rastreio clínico e não diagnóstico isolado.", fields: [scoreField(38, "Informe o total de 0 a 38.")] },
+  { code: "cornell", version: LEGACY_SCORE_VERSION, name: "Cornell — depressão na demência", dimension: "humor", instruction: "Entreviste cuidador e paciente separadamente, reconcilie as respostas com a observação clínica e registre o total.", applicationGuide: [
+    { title: "Como pontuar", items: ["Avalie 19 manifestações referentes à última semana.", "Para cada manifestação: 0 = ausente; 1 = leve ou intermitente; 2 = grave; use a opção de não avaliável quando não houver informação confiável.", "Some apenas os itens pontuados: total esperado de 0 a 38."] },
+    { title: "O que revisar", items: ["Humor: ansiedade, tristeza, irritabilidade e perda de reação a eventos agradáveis.", "Comportamento: agitação, lentificação, múltiplas queixas físicas e perda de interesse.", "Sinais físicos e ritmos: apetite, peso, energia, variação diurna, sono e despertares.", "Ideação: ideias de culpa, desesperança, desvalia ou suicídio."] },
+    { title: "Leitura usada no prontuário", items: ["0–7: sem indicação relevante no rastreio.", "8–11: sintomas depressivos prováveis.", "12–38: depressão maior provável; exige avaliação clínica, não diagnóstico automático."] },
+  ], sourceNote: "Faixas preservadas do golden master; resultado é rastreio clínico e não diagnóstico isolado.", fields: [scoreField(38, "Informe o total de 0 a 38 após integrar informante, paciente e observação clínica.")] },
   {
     code: "cam",
     version: MANUAL_CAM_VERSION,
@@ -132,9 +187,18 @@ export const COMPLEMENTARY_SCORE_SCALES: readonly ComplementaryScoreScaleDefinit
     sourceNote: "O formulário/algoritmo não é reproduzido neste registro rápido. CAM positivo exige avaliação clínica imediata de possível delirium.",
     fields: [{ id: "status", label: "Resultado do CAM aplicado", choices: [{ value: 0, label: "CAM negativo" }, { value: 1, label: "CAM positivo" }] }],
   },
-  { code: "dez_cs", version: LEGACY_SCORE_VERSION, name: "10-CS — 10-Point Cognitive Screener", dimension: "cognicao", instruction: "Registre o escore final já corrigido conforme a versão aplicada.", sourceNote: "Faixas preservadas do protocolo histórico. Não usar isoladamente como diagnóstico.", fields: [scoreField(10, "Informe o escore final de 0 a 10, após eventual ajuste educacional da versão aplicada.")] },
-  { code: "frail_br", version: LEGACY_SCORE_VERSION, name: "FRAIL-BR", dimension: "fragilidade", instruction: "Registro rápido do escore total previamente aplicado.", sourceNote: "Faixas 0 / 1–2 / 3–5 preservadas do golden master.", fields: [scoreField(5, "Informe o total de 0 a 5.")] },
-  { code: "sarcf", version: LEGACY_SCORE_VERSION, name: "SARC-F", dimension: "mobilidade", instruction: "Registro rápido do escore total previamente aplicado.", sourceNote: "Corte de rastreio preservado do golden master.", fields: [scoreField(10, "Informe o total de 0 a 10.")] },
+  { code: "dez_cs", version: LEGACY_SCORE_VERSION, name: "10-CS — 10-Point Cognitive Screener", dimension: "cognicao", instruction: "Aplique os três blocos abaixo e registre o escore final corrigido conforme a versão brasileira usada pelo serviço.", applicationGuide: [
+    { title: "Componentes (total bruto 0–10)", items: ["Orientação temporal: três perguntas, até 3 pontos.", "Fluência verbal: animais nomeados em um minuto, convertido na escala de 0 a 4 pontos da versão brasileira.", "Evocação tardia: recordar as três palavras apresentadas, até 3 pontos."] },
+    { title: "Correção e leitura do protocolo atual", items: ["Aplique a correção educacional prevista na versão brasileira adotada e limite o resultado a 10 pontos.", "8–10: desempenho dentro da faixa esperada; 6–7: possível comprometimento; 0–5: provável comprometimento.", "Registre o valor final corrigido. Rastreio alterado deve ser interpretado com funcionalidade, humor, visão, audição e contexto clínico."] },
+  ], sourceNote: "Estrutura baseada no 10-CS brasileiro (PMID 25779210); faixas e correção educacional permanecem as do protocolo histórico do aplicativo. Não usar isoladamente como diagnóstico.", fields: [scoreField(10, "Informe o escore final de 0 a 10 após a correção educacional da versão aplicada.")] },
+  { code: "frail_br", version: LEGACY_SCORE_VERSION, name: "FRAIL-BR", dimension: "fragilidade", instruction: "Pergunte os cinco componentes da última situação habitual e marque 1 ponto para cada resposta de risco.", applicationGuide: [
+    { title: "Cinco componentes (0 ou 1 ponto cada)", items: ["Fadiga: sentir-se cansado na maior parte ou o tempo todo nas últimas quatro semanas.", "Resistência: dificuldade para subir dez degraus sem parar e sem ajuda.", "Deambulação: dificuldade para caminhar algumas centenas de metros sem ajuda.", "Doenças: cinco ou mais entre as condições crônicas previstas na versão validada.", "Perda de peso: redução não intencional de pelo menos 5% no último ano."] },
+    { title: "Leitura usada no prontuário", items: ["0: robusto.", "1–2: pré-frágil.", "3–5: frágil."] },
+  ], sourceNote: "Faixas 0 / 1–2 / 3–5 preservadas do golden master. Confirme as perguntas e os limiares da versão FRAIL-BR validada adotada pelo serviço.", fields: [scoreField(5, "Some um ponto por componente positivo; informe o total de 0 a 5.")] },
+  { code: "sarcf", version: LEGACY_SCORE_VERSION, name: "SARC-F", dimension: "mobilidade", instruction: "Pontue os cinco domínios conforme a dificuldade relatada e some o total.", applicationGuide: [
+    { title: "Itens e pontuação", items: ["Força para carregar cerca de 4,5 kg; caminhar pelo quarto; levantar-se de cadeira ou cama; subir dez degraus: 0 = sem dificuldade, 1 = alguma dificuldade, 2 = muita dificuldade ou incapaz.", "Quedas no último ano: 0 = nenhuma, 1 = uma a três, 2 = quatro ou mais.", "Some os cinco itens: total de 0 a 10."] },
+    { title: "Leitura usada no prontuário", items: ["0–3: rastreio negativo.", "4–10: rastreio positivo para risco de sarcopenia; confirmar em avaliação clínica."] },
+  ], sourceNote: "Corte de rastreio ≥4 preservado do golden master; não confirma sarcopenia isoladamente.", fields: [scoreField(10, "Some os cinco itens e informe o total de 0 a 10.")] },
   {
     code: "preensao",
     version: LEGACY_SCORE_VERSION,
@@ -149,17 +213,37 @@ export const COMPLEMENTARY_SCORE_SCALES: readonly ComplementaryScoreScaleDefinit
   },
   { code: "velocidade_marcha", version: LEGACY_SCORE_VERSION, name: "Velocidade de marcha", dimension: "mobilidade", instruction: "Registre a velocidade de marcha calculada em m/s.", sourceNote: "Protocolo histórico considera ≤0,8 m/s como desempenho reduzido.", fields: [{ id: "score", label: "Velocidade de marcha", number: { min: 0, max: 4, step: 0.01, unit: "m/s", help: "Informe a velocidade já calculada." } }] },
   { code: "sentar_levantar_5x", version: LEGACY_SCORE_VERSION, name: "Sentar-levantar 5 vezes", dimension: "mobilidade", instruction: "Registre o tempo total do teste em segundos.", sourceNote: "Referência histórica do aplicativo: até 15 s preservado; acima de 15 s reduzido.", fields: [{ id: "score", label: "Tempo", number: { min: 0, max: 180, step: 0.1, unit: "s", help: "Informe o tempo em segundos." } }] },
-  { code: "polifarmacia", version: LEGACY_SCORE_VERSION, name: "Polifarmácia / medicamentos potencialmente inapropriados", dimension: "medicamentos", instruction: "Registre o escore agregado da avaliação previamente realizada.", sourceNote: "Faixas 0–1 / 2–3 / 4–7 preservadas do golden master; não inicia, suspende ou ajusta medicamentos automaticamente.", fields: [scoreField(7, "Informe o escore agregado de 0 a 7.")] },
-  { code: "stoppfall", version: LEGACY_SCORE_VERSION, name: "STOPPFall — classes de risco de queda", dimension: "medicamentos", instruction: "Registre a quantidade de classes de risco identificadas na revisão previamente realizada.", sourceNote: "Faixas 0 / 1–2 / 3–14 preservadas do golden master; qualquer mudança medicamentosa depende de decisão médica.", fields: [scoreField(14, "Informe o número de classes de risco identificadas.")] },
-  { code: "kps", version: LEGACY_SCORE_VERSION, name: "Karnofsky Performance Status", dimension: "prognostico", instruction: "Registre o KPS previamente avaliado.", sourceNote: "Faixas históricas do aplicativo preservadas.", fields: [{ id: "score", label: "KPS", number: { min: 10, max: 100, step: 10, unit: "%", help: "Informe um valor entre 10 e 100%." } }] },
-  { code: "lace", version: LEGACY_SCORE_VERSION, name: "LACE — risco de reinternação", dimension: "prognostico", instruction: "Registre o escore final do LACE previamente calculado.", sourceNote: "Faixas 0–4 / 5–9 / 10–19 preservadas do golden master.", fields: [scoreField(19, "Informe o escore final de 0 a 19.")] },
+  { code: "polifarmacia", version: LEGACY_SCORE_VERSION, name: "Polifarmácia / medicamentos potencialmente inapropriados", dimension: "medicamentos", instruction: "Faça uma reconciliação estruturada e registre o escore agregado do protocolo local atual.", applicationGuide: [
+    { title: "Revisão em sete pontos", items: ["Número total de medicamentos em uso e presença de polifarmácia.", "Indicação atual e objetivo de cada medicamento.", "Medicamento potencialmente inapropriado segundo critério validado adotado pelo serviço.", "Duplicidade terapêutica ou interação clinicamente relevante.", "Carga anticolinérgica ou sedativa e medicamentos associados a quedas.", "Complexidade dos horários, adesão e capacidade de manejo pelo paciente/cuidador.", "Possível evento adverso, hipotensão postural, sangramento, hipoglicemia, confusão ou queda relacionado ao tratamento."] },
+    { title: "Segurança", items: ["Use esta lista para revisar; atribua o total apenas segundo o protocolo local já adotado, pois os sete pontos não têm peso automático nesta tela.", "0–1: sem alerta maior; 2–3: atenção; 4–7: alerta alto.", "Não iniciar, suspender ou mudar doses automaticamente; toda decisão medicamentosa exige revisão médica e reconciliação com a tabela final."] },
+  ], sourceNote: "Faixas 0–1 / 2–3 / 4–7 preservadas do golden master. O guia organiza a revisão, mas não cria um novo algoritmo de pontuação.", fields: [scoreField(7, "Informe o escore agregado de 0 a 7 calculado conforme o protocolo local vigente.")] },
+  { code: "stoppfall", version: LEGACY_SCORE_VERSION, name: "STOPPFall — classes de risco de queda", dimension: "medicamentos", instruction: "Conte quantas das 14 classes STOPPFall estão presentes na lista reconciliada.", applicationGuide: [
+    { title: "Classes a conferir", items: ["Anticolinérgicos; diuréticos; alfa-bloqueadores usados como anti-hipertensivos; opioides.", "Antidepressivos; antipsicóticos; antiepilépticos; benzodiazepínicos; fármacos relacionados aos benzodiazepínicos.", "Anti-hipertensivos de ação central; alfa-bloqueadores para hiperplasia prostática; anti-histamínicos.", "Vasodilatadores usados em doenças cardíacas; fármacos para bexiga hiperativa ou incontinência de urgência."] },
+    { title: "Como registrar", items: ["Conte classes, não o número de comprimidos ou princípios ativos da mesma classe.", "0: nenhuma classe; 1–2: atenção; 3–14: alerta alto no protocolo atual.", "A presença de uma classe não determina retirada automática: revisar indicação, sintomas, quedas e risco de retirada com a equipe."] },
+  ], sourceNote: "Classes baseadas no consenso STOPPFall (PMID 33349863); faixas 0 / 1–2 / 3–14 preservadas do golden master.", fields: [scoreField(14, "Informe o número de classes de risco identificadas, de 0 a 14.")] },
+  { code: "kps", version: LEGACY_SCORE_VERSION, name: "Karnofsky Performance Status", dimension: "prognostico", instruction: "Escolha o nível que melhor descreve atividade, autocuidado e necessidade de assistência.", sourceNote: "Faixas históricas do aplicativo preservadas; use o nível predominante no período avaliado.", fields: [{ id: "score", label: "KPS — valor e significado", choices: KPS_CHOICES }] },
+  { code: "lace", version: LEGACY_SCORE_VERSION, name: "LACE — risco de reinternação", dimension: "prognostico", instruction: "Calcule os quatro componentes referentes à alta e registre o total.", applicationGuide: [
+    { title: "L — tempo de internação", items: ["1 dia = 1; 2 dias = 2; 3 dias = 3; 4–6 dias = 4; 7–13 dias = 5; 14 dias ou mais = 7."] },
+    { title: "A, C e E", items: ["A — admissão aguda pelo pronto atendimento: sim = 3; não = 0.", "C — comorbidade pelo Charlson: 0 = 0; 1 = 1; 2 = 2; 3 = 3; 4 ou mais = 5.", "E — visitas ao pronto atendimento nos seis meses anteriores: 0 a 4 pontos, com máximo de 4."] },
+    { title: "Leitura usada no prontuário", items: ["Some L + A + C + E: total de 0 a 19.", "0–4: baixo; 5–9: intermediário; 10–19: alto risco no protocolo atual."] },
+  ], sourceNote: "Componentes do índice LACE; faixas 0–4 / 5–9 / 10–19 preservadas do golden master.", fields: [scoreField(19, "Some L + A + C + E e informe o total de 0 a 19.")] },
   { code: "g8", version: LEGACY_SCORE_VERSION, name: "G8 — rastreio oncogeriátrico", dimension: "oncogeriatria", instruction: "Registre o escore total do G8 previamente aplicado.", sourceNote: "Corte histórico do aplicativo: ≤14 rastreio positivo; >14 rastreio negativo.", fields: [{ id: "score", label: "Pontuação G8", number: { min: 0, max: 17, step: 0.5, help: "Informe o escore de 0 a 17." } }] },
   { code: "ves13", version: LEGACY_SCORE_VERSION, name: "VES-13", dimension: "fragilidade", instruction: "Registre o escore total do VES-13 previamente aplicado.", sourceNote: "Corte ≥3 preservado do golden master.", fields: [scoreField(10, "Informe o total de 0 a 10.")] },
-  { code: "mna_sf", version: LEGACY_SCORE_VERSION, name: "MNA-SF — registro de pontuação", dimension: "nutricao", instruction: "Registre o total de uma MNA-SF já aplicada. Não confundir com a MNA completa do apêndice Freitas/Py.", sourceNote: "Faixas 0–7 / 8–11 / 12–14 preservadas do golden master.", fields: [scoreField(14, "Informe o total de 0 a 14.")] },
-  { code: "charlson", version: LEGACY_SCORE_VERSION, name: "Índice de Charlson", dimension: "prognostico", instruction: "Registre o índice final já calculado conforme o protocolo utilizado, incluindo o ajuste etário quando aplicável.", sourceNote: "As faixas de interpretação são regras locais históricas e devem ser integradas à funcionalidade, fragilidade e metas de cuidado.", fields: [scoreField(40, "Informe o índice final já calculado.")] },
-  { code: "fast", version: LEGACY_SCORE_VERSION, name: "FAST — Functional Assessment Staging", dimension: "cognicao", instruction: "Registre o estágio FAST previamente definido clinicamente.", sourceNote: "Estágios discretos 1–7f preservados do golden master.", fields: [{ id: "score", label: "Estágio FAST", choices: FAST_ALLOWED_VALUES.map((value) => ({ value, label: String(value).replace("6.1", "6a").replace("6.2", "6b").replace("6.3", "6c").replace("6.4", "6d").replace("6.5", "6e").replace("7.1", "7a").replace("7.2", "7b").replace("7.3", "7c").replace("7.4", "7d").replace("7.5", "7e").replace("7.6", "7f") })) }] },
-  { code: "pps", version: LEGACY_SCORE_VERSION, name: "Palliative Performance Scale — PPS", dimension: "prognostico", instruction: "Registre o PPS previamente avaliado.", sourceNote: "Níveis discretos de 10 a 100 preservados do golden master.", fields: [{ id: "score", label: "PPS", choices: PPS_ALLOWED_VALUES.map((value) => ({ value, label: `${value}%` })) }] },
-  { code: "esas", version: LEGACY_SCORE_VERSION, name: "ESAS — carga global de sintomas", dimension: "sintomas", instruction: "Registro rápido somente do total da ESAS já aplicada. Para decisões sobre sintomas específicos, revisar os nove itens originais da avaliação.", sourceNote: "Este modo rápido preserva somente a classificação global; não substitui os alertas por sintoma individual do formulário completo.", fields: [scoreField(90, "Informe o total de 0 a 90.")] },
+  { code: "mna_sf", version: LEGACY_SCORE_VERSION, name: "MNA-SF — registro de pontuação", dimension: "nutricao", instruction: "Aplique os seis componentes da MNA-SF e registre o total; use IMC ou circunferência da panturrilha conforme a versão validada.", applicationGuide: [
+    { title: "Seis componentes", items: ["Redução da ingestão nos últimos três meses.", "Perda de peso nos últimos três meses.", "Mobilidade.", "Estresse psicológico ou doença aguda nos últimos três meses.", "Problemas neuropsicológicos.", "IMC; quando não disponível, use a alternativa de circunferência da panturrilha prevista na versão aplicada."] },
+    { title: "Leitura usada no prontuário", items: ["0–7: desnutrição.", "8–11: risco de desnutrição.", "12–14: estado nutricional normal."] },
+  ], sourceNote: "Estrutura baseada na MNA-SF validada (PMID 19812868); faixas 0–7 / 8–11 / 12–14 preservadas do golden master. Respeitar a versão licenciada/validada adotada.", fields: [scoreField(14, "Some os seis componentes e informe o total de 0 a 14.")] },
+  { code: "charlson", version: LEGACY_SCORE_VERSION, name: "Índice de Charlson", dimension: "prognostico", instruction: "Some os pesos das comorbidades presentes, sem duplicar gravidades da mesma condição, e acrescente idade apenas se o protocolo escolhido usar o ajuste etário.", applicationGuide: [
+    { title: "Pesos clássicos das comorbidades", items: ["1 ponto: infarto, insuficiência cardíaca, doença vascular periférica, doença cerebrovascular, demência, doença pulmonar crônica, doença do tecido conjuntivo, úlcera, doença hepática leve e diabetes sem lesão de órgão-alvo.", "2 pontos: hemiplegia, doença renal moderada/grave, diabetes com lesão de órgão-alvo, tumor sem metástase, leucemia e linfoma.", "3 pontos: doença hepática moderada/grave.", "6 pontos: tumor sólido metastático e AIDS."] },
+    { title: "Ajuste etário clássico, se aplicável", items: ["Menos de 50 anos = 0; 50–59 = +1; 60–69 = +2; 70–79 = +3; 80 ou mais = +4.", "Não some formas leve e grave da mesma condição; use apenas o maior peso correspondente."] },
+    { title: "Leitura local do prontuário", items: ["0–2: baixa carga; 3–4: moderada; 5 ou mais: alta carga de comorbidades.", "Informe o índice final da versão escolhida e registre no texto clínico se incluiu idade."] },
+  ], sourceNote: "Pesos do índice clássico de Charlson; as faixas de interpretação são regras locais históricas e devem ser integradas à funcionalidade, fragilidade e metas de cuidado.", fields: [scoreField(40, "Informe o índice final calculado e documente no registro clínico se incluiu idade.")] },
+  { code: "fast", version: LEGACY_SCORE_VERSION, name: "FAST — Functional Assessment Staging", dimension: "cognicao", instruction: "Selecione o estágio funcional que melhor corresponde ao nível atual; o significado aparece ao lado de cada valor.", sourceNote: "Estágios discretos 1–7f preservados do golden master; a escolha exige correlação clínica e funcional.", fields: [{ id: "score", label: "Estágio FAST — valor e significado", choices: FAST_CHOICES }] },
+  { code: "pps", version: LEGACY_SCORE_VERSION, name: "Palliative Performance Scale — PPS", dimension: "prognostico", instruction: "Escolha a linha que melhor combina deambulação, atividade/doença, autocuidado, ingestão e nível de consciência.", sourceNote: "Níveis discretos de 10 a 100 preservados do golden master. Quando os domínios divergem, use julgamento clínico conforme o manual adotado.", fields: [{ id: "score", label: "PPS — valor e significado", choices: PPS_CHOICES }] },
+  { code: "esas", version: LEGACY_SCORE_VERSION, name: "ESAS — carga global de sintomas", dimension: "sintomas", instruction: "Peça ao paciente para graduar cada sintoma de 0 a 10 no período definido pelo serviço e some os nove itens.", applicationGuide: [
+    { title: "Nove sintomas (0 = ausente; 10 = pior intensidade imaginável)", items: ["Dor; cansaço/fadiga; náusea; depressão; ansiedade.", "Sonolência; apetite; sensação de bem-estar; falta de ar.", "Registre também cada item no texto clínico quando houver intensidade alta, mesmo que esta tela armazene apenas o total."] },
+    { title: "Total usado nesta tela", items: ["Some os nove itens: 0–90.", "0–9: baixa carga global; 10–29: moderada; 30–90: alta no protocolo histórico.", "O total não substitui a resposta a um sintoma grave isolado nem a avaliação de urgência."] },
+  ], sourceNote: "Este modo rápido preserva somente a classificação global; os nove sintomas devem ser revistos individualmente para decisões clínicas.", fields: [scoreField(90, "Some os nove itens de 0 a 10 e informe o total de 0 a 90.")] },
 ] as const;
 
 function requiredNumber(raw: Record<string, unknown>, id: string, min: number, max: number): number {
@@ -232,7 +316,10 @@ export function scoreComplementaryScale(
   } else if (code === "sentar_levantar_5x") result = numeric(raw, 180, CHAIR_STAND_5X_RANGES, "s");
   else if (code === "polifarmacia") result = numeric(raw, 7, POLYPHARMACY.ranges);
   else if (code === "stoppfall") result = numeric(raw, 14, STOPP_FALL.ranges);
-  else if (code === "kps") result = numeric(raw, 100, KPS.ranges, "%");
+  else if (code === "kps") {
+    const score = requiredNumber(raw, "score", 10, 100);
+    result = fromLegacy(scoreDiscreteNumeric({ raw: score, allowedValues: KPS_ALLOWED_VALUES, ranges: KPS.ranges, unit: "%" }));
+  }
   else if (code === "lace") result = numeric(raw, 19, LACE.ranges);
   else if (code === "g8") result = numeric(raw, 17, G8.ranges);
   else if (code === "ves13") result = numeric(raw, 10, VES13.ranges);

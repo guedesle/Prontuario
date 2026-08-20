@@ -28,6 +28,9 @@ test("relatório separa dado, resultado, interpretação, proposta, intervençã
   assert.ok(section.interventionSuggestions.every((item) => item.reviewStatus === "pending-medical-review"));
   assert.equal(section.evolution.baseline, 3);
   assert.equal(report.geriatricProblems[0]?.status, "RESOLVED");
+  assert.deepEqual(report.intrinsicCapacity.alteredDomains.map((domain) => domain.code), ["locomocao"]);
+  assert.match(renderAgaReportText(report), /CAPACIDADE INTRÍNSECA/);
+  assert.match(renderAgaReportText(report), /O que fazer no dia a dia/);
 });
 
 test("relatório distingue último valor conhecido quando escala não foi reaplicada", () => {
@@ -123,6 +126,34 @@ test("relatório familiar orienta revisão da carteira quando status é desconhe
   assert.equal(report.vaccinationPrevention.status, "UNKNOWN");
   assert.match(renderAgaReportText(report), /status vacinal desconhecido/i);
   assert.match(renderAgaReportText(report), /carteira de vacinação.*revisão/i);
+});
+
+test("relatório mantém a tabela reconciliada de medicamentos como seção final", () => {
+  const report = buildAgaReportModel({
+    patientId: "p1", consultationId: "c1", consultationStatus: "IN_REVIEW", patientName: "Teste",
+    longitudinalProblems: [], longitudinalAssessments: [],
+    medicationPlan: {
+      status: "READY",
+      message: "Esquema reconciliado; não representa nova prescrição.",
+      plan: {
+        patientName: "Teste",
+        rows: [{
+          id: "m1",
+          medicationText: "Medicamento teste 10 mg",
+          doseInstruction: "1 comprimido",
+          route: "oral",
+          continuous: true,
+          moments: { manha: true, almoco: false, tarde: false, noite: true, ao_deitar: false, se_necessario: false },
+        }],
+      },
+    },
+  });
+  const text = renderAgaReportText(report);
+
+  assert.match(text, /TABELA FINAL DE MEDICAMENTOS/);
+  assert.match(text, /Medicamento teste 10 mg/);
+  assert.match(text, /\[x\] Manhã/);
+  assert.ok(text.lastIndexOf("TABELA FINAL DE MEDICAMENTOS") > text.lastIndexOf("PLANO DE CUIDADO"));
 });
 
 test("relatório bloqueia mistura de pacientes", () => {

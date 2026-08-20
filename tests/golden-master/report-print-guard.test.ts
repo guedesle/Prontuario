@@ -17,3 +17,11 @@ test("CSS de impressão oculta o relatório pendente e mostra somente o bloqueio
   assert.match(stylesheet, /\.report-workspace\[data-clinical-review="pending"\] > \*\s*\{\s*display: none !important;/);
   assert.match(stylesheet, /\.report-workspace\[data-clinical-review="pending"\] > \.print-review-blocker\s*\{\s*display: block !important;/);
 });
+
+test("tabela final de medicamentos possui impressão isolada após revisão", () => {
+  assert.match(component, /Imprimir tabela de medicamentos/);
+  assert.match(component, /data-print-scope=\{printMedicationOnly \? "medications" : "report"\}/);
+  assert.match(component, /generated\.report\.medicationPlan\.status !== "READY"/);
+  assert.match(stylesheet, /data-print-scope="medications"/);
+  assert.match(stylesheet, /\.aga-report > \.medication-final-section/);
+});

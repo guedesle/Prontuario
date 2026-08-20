@@ -73,6 +73,14 @@ export function sanitizeFamilyReportModel(report: AgaReportModel): AgaReportMode
       interpretation: sanitizeFamilyNarrative(scale.interpretation),
       interventionSuggestions: scale.interventionSuggestions.filter((suggestion) => isFamilySafeCareInstruction(suggestion.text)),
     })),
+    intrinsicCapacity: {
+      ...report.intrinsicCapacity,
+      alteredDomains: report.intrinsicCapacity.alteredDomains.map((domain) => ({
+        ...domain,
+        actions: filterFamilySafeCareItems(domain.actions),
+        attentionSigns: filterFamilySafeCareItems(domain.attentionSigns),
+      })),
+    },
     carePlan: {
       now: filterFamilySafeCareItems(report.carePlan.now),
       mediumTerm: filterFamilySafeCareItems(report.carePlan.mediumTerm),

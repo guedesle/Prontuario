@@ -6,10 +6,15 @@ import { assertDocumentContextIntegrity } from "../../domain/document-context-in
 import { withDocumentSnapshotWriteRetry } from "../../domain/document-snapshot-versioning";
 import { sanitizeFamilyReportModel } from "../../domain/family-care-safety";
 import { parseObjectiveNote } from "../../domain/consultation-note-contract";
+import {
+  buildMedicationPlanSnapshotModel,
+  MedicationPlanSnapshotError,
+} from "../../domain/medication-plan-snapshot";
 import type { VaccinationReview } from "../../domain/vaccination-prevention";
 import { prisma } from "../db";
 import { requireAuthenticatedUser } from "../auth/require-user";
 import { createDocumentSnapshotInTransaction } from "./document-snapshot-transaction";
+import { workspaceContext } from "./medication-workspace";
 
 function answersRecord(value: unknown): Record<string, unknown> | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
@@ -160,6 +165,29 @@ export async function generateAgaReport(input: {
         })),
       });
 
+      const medicationWorkspace = (await workspaceContext(tx, consultation.id)).view;
+      let medicationPlan;
+      try {
+        const medicationSnapshot = buildMedicationPlanSnapshotModel({
+          consultationId: consultation.id,
+          patientName: consultation.patient.fullName,
+          workspace: medicationWorkspace,
+        });
+        medicationPlan = {
+          status: "READY" as const,
+          message: "Esquema ativo reconciliado nesta consulta. Esta tabela organiza o uso registrado e não representa nova prescrição.",
+          plan: medicationSnapshot.plan,
+        };
+      } catch (error) {
+        if (error instanceof MedicationPlanSnapshotError && error.code === "CONSULTATION_CONTEXT_MISMATCH") {
+          throw error;
+        }
+        medicationPlan = {
+          status: "REQUIRES_REVIEW" as const,
+          message: "Tabela não liberada: conclua a reconciliação, confirme o status histórico e os horários de todos os medicamentos.",
+        };
+      }
+
       const clinicalReport = buildAgaReportModel({
         patientId: consultation.patientId,
         consultationId: consultation.id,
@@ -168,6 +196,7 @@ export async function generateAgaReport(input: {
         longitudinalAssessments: assessments,
         longitudinalProblems: problems,
         vaccinationReview: vaccinationReviewFromObjective(consultation.objective),
+        medicationPlan,
       });
       const report = sanitizeFamilyReportModel(clinicalReport);
       const text = renderAgaReportText(report);
