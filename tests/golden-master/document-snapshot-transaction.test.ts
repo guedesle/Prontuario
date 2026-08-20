@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Prisma } from "../../src/generated/prisma/client.ts";
-import { createDocumentSnapshotInTransaction } from "../../src/server/clinical/persistence.ts";
+import { createDocumentSnapshotInTransaction } from "../../src/server/clinical/document-snapshot-transaction.ts";
 
 test("transaction-scoped snapshot derives patient, version and audit from server context", async () => {
   let snapshotData: Record<string, unknown> | undefined;
