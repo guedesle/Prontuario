@@ -1,9 +1,9 @@
-import { prisma } from "../db";
-import { requireAuthenticatedUser } from "../auth/require-user";
-import type { Prisma } from "../../generated/prisma/client";
-import type { MedicationMoment as DatabaseMedicationMoment } from "../../generated/prisma/enums";
-import { validateMedicationPlanItem, type MedicationMoment } from "../../domain/medication-plan";
-import { withDocumentSnapshotWriteRetry } from "../../domain/document-snapshot-versioning";
+import { prisma } from "../db.ts";
+import { requireAuthenticatedUser } from "../auth/require-user.ts";
+import type { Prisma } from "../../generated/prisma/client.ts";
+import type { MedicationMoment as DatabaseMedicationMoment } from "../../generated/prisma/enums.ts";
+import { validateMedicationPlanItem, type MedicationMoment } from "../../domain/medication-plan.ts";
+import { withDocumentSnapshotWriteRetry } from "../../domain/document-snapshot-versioning.ts";
 
 const MOMENT_TO_DATABASE: Readonly<Record<MedicationMoment, DatabaseMedicationMoment>> = {
   manha: "MORNING",
