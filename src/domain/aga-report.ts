@@ -1,4 +1,13 @@
 import { buildClinicalChangeSummary, type LongitudinalAssessment } from "./clinical-change-summary.ts";
+import {
+  buildIntrinsicCapacityGuidance,
+  type IntrinsicCapacityGuidance,
+} from "./intrinsic-capacity-guidance.ts";
+import {
+  MEDICATION_MOMENT_LABELS,
+  type MedicationMoment,
+  type MedicationPlanViewModel,
+} from "./medication-plan.ts";
 import { proposeProblemsFromAssessments } from "./problem-proposals.ts";
 import { splitProblems, type ClinicalProblem } from "./problems.ts";
 import { SCALE_CATALOG, scaleCatalogEntry } from "./scale-catalog.ts";
@@ -68,8 +77,14 @@ export interface AgaScaleReportSection {
   };
 }
 
+export interface AgaMedicationPlanSection {
+  status: "READY" | "REQUIRES_REVIEW" | "NOT_AVAILABLE";
+  message: string;
+  plan?: MedicationPlanViewModel;
+}
+
 export interface AgaReportModel {
-  schemaVersion: "1.2";
+  schemaVersion: "1.3";
   patientId: string;
   consultationId: string;
   consultationStatus: AgaReportConsultationStatus;
@@ -93,6 +108,7 @@ export interface AgaReportModel {
     };
   };
   vaccinationPrevention: VaccinationPreventionSection;
+  intrinsicCapacity: IntrinsicCapacityGuidance;
   carePlan: {
     now: string[];
     mediumTerm: string[];
@@ -101,6 +117,7 @@ export interface AgaReportModel {
     contact: string[];
     urgent: string[];
   };
+  medicationPlan: AgaMedicationPlanSection;
 }
 
 function displayCollectedValue(value: unknown): string | null {
@@ -130,6 +147,7 @@ export function buildAgaReportModel(input: {
   longitudinalAssessments: readonly LongitudinalAssessment[];
   longitudinalProblems: readonly ClinicalProblem[];
   vaccinationReview?: VaccinationReview;
+  medicationPlan?: AgaMedicationPlanSection;
 }): AgaReportModel {
   if (!input.patientId || !input.consultationId) {
     throw new Error("Paciente e consulta são obrigatórios para gerar o relatório AGA.");
@@ -155,7 +173,7 @@ export function buildAgaReportModel(input: {
     .map((card) => card.scaleId));
 
   return {
-    schemaVersion: "1.2",
+    schemaVersion: "1.3",
     patientId: input.patientId,
     consultationId: input.consultationId,
     consultationStatus: input.consultationStatus,
@@ -232,6 +250,12 @@ export function buildAgaReportModel(input: {
       counts: { ...summary.counts },
     },
     vaccinationPrevention: buildVaccinationPreventionSection(input.vaccinationReview),
+    intrinsicCapacity: buildIntrinsicCapacityGuidance(summary.cards.map((card) => ({
+      scaleId: card.scaleId,
+      scaleName: card.name,
+      color: card.current.color,
+      assessedInTargetConsultation: card.assessedInTargetConsultation,
+    }))),
     carePlan: {
       now: [...summary.combinedPlan.agora],
       mediumTerm: [...summary.combinedPlan.medio],
@@ -239,6 +263,10 @@ export function buildAgaReportModel(input: {
       referrals: [...summary.combinedPlan.encaminhamentos],
       contact: [...summary.combinedPlan.contato],
       urgent: [...summary.combinedPlan.urgencia],
+    },
+    medicationPlan: input.medicationPlan ?? {
+      status: "NOT_AVAILABLE",
+      message: "Tabela de medicamentos não vinculada a este modelo de relatório.",
     },
   };
 }
@@ -314,6 +342,28 @@ export function renderAgaReportText(model: AgaReportModel): string {
     );
   }
 
+  blocks.push(
+    "",
+    "CAPACIDADE INTRÍNSECA — ORIENTAÇÕES AO PACIENTE E À FAMÍLIA",
+    model.intrinsicCapacity.sourceLabel,
+  );
+  if (model.intrinsicCapacity.alteredDomains.length === 0) {
+    blocks.push("- Nenhum domínio foi marcado como alterado pelas avaliações aplicadas nesta consulta.");
+  } else {
+    for (const domain of model.intrinsicCapacity.alteredDomains) {
+      blocks.push(
+        "",
+        domain.label.toUpperCase(),
+        `Por que aparece aqui: alteração identificada em ${domain.triggeredBy.join(", ")}.`,
+        domain.whyItMatters,
+        "O que fazer no dia a dia:",
+        list(domain.actions),
+        "Quando avisar a equipe ou procurar ajuda:",
+        list(domain.attentionSigns),
+      );
+    }
+  }
+
   blocks.push("", "PLANO DE CUIDADO — SUGESTÕES PENDENTES DE REVISÃO MÉDICA");
   blocks.push(...carePlanBlock("Agora", model.carePlan.now));
   blocks.push(...carePlanBlock("Médio prazo", model.carePlan.mediumTerm));
@@ -323,5 +373,24 @@ export function renderAgaReportText(model: AgaReportModel): string {
   blocks.push(...carePlanBlock("Urgência", model.carePlan.urgent));
 
   blocks.push("", "ALERTAS VISÍVEIS", list(model.alerts.map((alert) => `[${alert.severity}] ${alert.message}`)));
+  blocks.push("", "TABELA FINAL DE MEDICAMENTOS", model.medicationPlan.message);
+  if (model.medicationPlan.status === "READY" && model.medicationPlan.plan) {
+    if (model.medicationPlan.plan.rows.length === 0) {
+      blocks.push("- Nenhum medicamento ativo reconciliado nesta consulta.");
+    }
+    for (const row of model.medicationPlan.plan.rows) {
+      const details = [row.doseInstruction, row.route, row.continuous ? "uso contínuo" : undefined]
+        .filter(Boolean)
+        .join(" · ");
+      blocks.push(
+        "",
+        `- ${row.medicationText}${details ? ` — ${details}` : ""}`,
+        Object.entries(row.moments)
+          .map(([moment, selected]) => `${selected ? "[x]" : "[ ]"} ${MEDICATION_MOMENT_LABELS[moment as MedicationMoment]}`)
+          .join("  "),
+      );
+      if (row.instructions) blocks.push(`  ${row.instructions}`);
+    }
+  }
   return blocks.join("\n");
 }

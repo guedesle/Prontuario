@@ -1,37 +1,43 @@
+import { PatientFinder } from "@/components/patients/patient-finder";
+import { requireAuthenticatedUser } from "@/server/auth/require-user";
+
 const modules = [
-  ["Paciente", "Identidade, contatos, cuidador e linha de base"],
-  ["Consulta", "AGA inicial e consultas subsequentes"],
-  ["Problemas", "Clínicos e geriátricos, com histórico de status"],
-  ["Evolução", "Escalas, tendências e comparação com baseline"],
-  ["Plano", "Intervenções sugeridas sujeitas à revisão médica"],
-  ["Saídas", "SOAP, relatório da família e medicamentos"],
+  ["Paciente", "Identidade segura, homônimos e continuidade longitudinal"],
+  ["AGA inicial", "Linha de base clínica, funcional e geriátrica"],
+  ["Escalas", "Avaliações aplicadas na própria consulta, com interpretação"],
+  ["Problemas", "Problemas clínicos e geriátricos acompanhados ao longo do tempo"],
+  ["Medicações", "Reconciliação por consulta e organização estruturada dos horários"],
+  ["SOAP", "Registro técnico para revisão e cópia ao prontuário"],
+  ["Revisão clínica", "Confirmação médica antes das saídas compartilháveis"],
+  ["Relatório final", "Orientações acessíveis e tabela final de medicamentos"],
 ];
 
-export default function Home() {
+export default async function Home() {
+  await requireAuthenticatedUser("patient.read");
+
   return (
     <main className="shell">
       <header className="hero">
-        <p className="eyebrow">Base técnica · migração em andamento</p>
+        <p className="eyebrow">Prática clínica · continuidade do cuidado</p>
         <h1>Prontuário Aprimorado</h1>
         <p>
-          Arquitetura longitudinal: Paciente → AGA inicial → Problemas →
-          Consultas subsequentes → Evolução → Plano → Documentos.
+          Paciente → AGA inicial → Escalas → Problemas clínicos e geriátricos →
+          Medicações → SOAP → Revisão clínica → Relatório final.
         </p>
       </header>
 
-      <p className="demo-link"><a href="/patients/new">Cadastrar paciente com verificação de duplicidade →</a></p>
-      <p className="demo-link"><a href="/demo">Abrir demonstração longitudinal sintética →</a></p>
+      <PatientFinder />
 
       <section className="notice">
         <strong>Segurança por padrão</strong>
         <span>
-          Autenticação, autorização e auditoria estão implementadas no scaffold,
-          mas dados reais só podem ser usados após migration, testes MySQL,
-          backup/restore e checklist de go-live concluídos.
+          A seleção do paciente precede o fluxo clínico. Documentos permanecem vinculados
+          à consulta correspondente, e sugestões automáticas dependem de revisão médica
+          antes de impressão ou exportação.
         </span>
       </section>
 
-      <section className="grid">
+      <section className="grid" aria-label="Etapas do fluxo clínico">
         {modules.map(([title, description]) => (
           <article className="card" key={title}>
             <h2>{title}</h2>
@@ -39,6 +45,8 @@ export default function Home() {
           </article>
         ))}
       </section>
+
+      <p className="demo-link"><a href="/demo">Abrir demonstração longitudinal sintética →</a></p>
     </main>
   );
 }

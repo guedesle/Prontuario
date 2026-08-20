@@ -63,6 +63,28 @@ test("FAST and PPS preserve discrete-version semantics", () => {
   assert.match(scoreComplementaryScale("fast", { score: 6.7 }).result.classification, /não permitido/i);
 });
 
+test("FAST, PPS and KPS expose the meaning beside every selectable value", () => {
+  for (const code of ["fast", "pps", "kps"] as const) {
+    const definition = COMPLEMENTARY_SCORE_SCALES.find((item) => item.code === code)!;
+    const choices = definition.fields[0]?.choices ?? [];
+    assert.ok(choices.length >= 10);
+    assert.ok(choices.every((choice) => choice.label.includes("—")));
+    assert.ok(choices.every((choice) => choice.label.length > String(choice.value).length + 5));
+  }
+  assert.match(scoreComplementaryScale("kps", { score: 75 }).result.classification, /não permitido/i);
+});
+
+test("requested quick-entry scales include an in-context application and scoring guide", () => {
+  for (const code of [
+    "frail_br", "dez_cs", "cornell", "stoppfall", "polifarmacia", "sarcf",
+    "mna_sf", "lace", "charlson", "esas",
+  ] as const) {
+    const definition = COMPLEMENTARY_SCORE_SCALES.find((item) => item.code === code)!;
+    assert.ok(definition.applicationGuide?.length, `${code} should include a guide`);
+    assert.ok(definition.applicationGuide?.every((section) => section.items.length > 0));
+  }
+});
+
 test("medication-related scales never encode an automatic prescription", () => {
   const poly = scoreComplementaryScale("polifarmacia", { score: 4 });
   const falls = scoreComplementaryScale("stoppfall", { score: 3 });

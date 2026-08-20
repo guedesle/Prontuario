@@ -169,6 +169,20 @@ export function ComplementaryScoreScales({ consultationId }: { consultationId: s
 
               <p className={styles.instruction}>{definition.instruction}</p>
 
+              {definition.applicationGuide?.length ? (
+                <details className={styles.applicationGuide} open>
+                  <summary>Guia para aplicar e pontuar nesta tela</summary>
+                  <div className={styles.guideGrid}>
+                    {definition.applicationGuide.map((section) => (
+                      <section key={section.title}>
+                        <h4>{section.title}</h4>
+                        <ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul>
+                      </section>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+
               <div className={styles.fields}>
                 {definition.fields.map((field) => (
                   <label key={field.id} className={styles.field}>

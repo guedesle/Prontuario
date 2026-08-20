@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AgaReportModel, AgaScaleReportSection, AgaScaleTrend } from "@/domain/aga-report";
 import { buildChangeSummaryDashboard } from "@/domain/change-summary-dashboard";
 import { ProblemColumns } from "@/components/problems/problem-columns";
 import { ScaleHistoryChart } from "@/components/reports/scale-history-chart";
+import { MEDICATION_MOMENTS, MEDICATION_MOMENT_LABELS } from "@/domain/medication-plan";
 
 interface GeneratedReportResponse {
   report: AgaReportModel;
@@ -68,6 +69,43 @@ function CareList({ title, items }: { title: string; items: readonly string[] })
   );
 }
 
+function MedicationPlanTable({ section }: { section: AgaReportModel["medicationPlan"] }) {
+  if (section.status !== "READY" || !section.plan) {
+    return <p className="medication-review-blocker">{section.message}</p>;
+  }
+  if (section.plan.rows.length === 0) {
+    return <p className="muted">Nenhum medicamento ativo reconciliado nesta consulta.</p>;
+  }
+  return (
+    <div className="clinical-table-wrap">
+      <table className="clinical-table medication-final-table" aria-label="Tabela final de medicamentos">
+        <thead>
+          <tr>
+            <th scope="col">Medicamento</th>
+            <th scope="col">Dose / via</th>
+            {MEDICATION_MOMENTS.map((moment) => <th scope="col" key={moment}>{MEDICATION_MOMENT_LABELS[moment]}</th>)}
+            <th scope="col">Observações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {section.plan.rows.map((row) => (
+            <tr key={row.id}>
+              <th scope="row">{row.medicationText}</th>
+              <td>{[row.doseInstruction, row.route, row.continuous ? "uso contínuo" : undefined].filter(Boolean).join(" · ") || "—"}</td>
+              {MEDICATION_MOMENTS.map((moment) => (
+                <td key={`${row.id}-${moment}`} aria-label={`${MEDICATION_MOMENT_LABELS[moment]}: ${row.moments[moment] ? "sim" : "não"}`}>
+                  {row.moments[moment] ? "✓" : "—"}
+                </td>
+              ))}
+              <td>{row.instructions ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ScaleTable({ scales }: { scales: AgaScaleReportSection[] }) {
   return (
     <div className="clinical-table-wrap">
@@ -123,6 +161,13 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
   const [loading, setLoading] = useState(false);
   const [showTechnical, setShowTechnical] = useState(false);
   const [clinicalReviewConfirmed, setClinicalReviewConfirmed] = useState(false);
+  const [printMedicationOnly, setPrintMedicationOnly] = useState(false);
+
+  useEffect(() => {
+    const resetPrintScope = () => setPrintMedicationOnly(false);
+    window.addEventListener("afterprint", resetPrintScope);
+    return () => window.removeEventListener("afterprint", resetPrintScope);
+  }, []);
 
   const groupedScales = useMemo(() => {
     if (!generated) return [];
@@ -177,10 +222,17 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
     window.print();
   }
 
+  function printMedicationPlan() {
+    if (!generated || !clinicalReviewConfirmed || generated.report.medicationPlan.status !== "READY") return;
+    setPrintMedicationOnly(true);
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.print()));
+  }
+
   return (
     <section
       className="report-workspace"
       data-clinical-review={clinicalReviewConfirmed ? "confirmed" : "pending"}
+      data-print-scope={printMedicationOnly ? "medications" : "report"}
     >
       <div className="report-toolbar no-print" aria-label="Ações do relatório">
         <div>
@@ -377,6 +429,43 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
               </div>
             </section>
 
+            <section className="report-section intrinsic-capacity-section" aria-labelledby="intrinsic-capacity-title">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Orientações ao paciente e à família</p>
+                  <h2 id="intrinsic-capacity-title">Capacidade intrínseca por domínio alterado</h2>
+                </div>
+                <p className="review-note">{generated.report.intrinsicCapacity.sourceLabel}</p>
+              </div>
+              {generated.report.intrinsicCapacity.alteredDomains.length ? (
+                <div className="intrinsic-domain-list">
+                  {generated.report.intrinsicCapacity.alteredDomains.map((domain) => (
+                    <article className="intrinsic-domain" key={domain.code}>
+                      <header>
+                        <div>
+                          <h3>{domain.label}</h3>
+                          <p>{domain.whyItMatters}</p>
+                        </div>
+                        <span>Alteração em {domain.triggeredBy.join(", ")}</span>
+                      </header>
+                      <div className="intrinsic-domain-columns">
+                        <section>
+                          <h4>O que fazer no dia a dia</h4>
+                          <ul>{domain.actions.map((action) => <li key={action}>{action}</li>)}</ul>
+                        </section>
+                        <section>
+                          <h4>Quando avisar a equipe ou procurar ajuda</h4>
+                          <ul>{domain.attentionSigns.map((sign) => <li key={sign}>{sign}</li>)}</ul>
+                        </section>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">Nenhum domínio foi marcado como alterado pelas avaliações aplicadas nesta consulta.</p>
+              )}
+            </section>
+
             {showTechnical ? (
               <section className="report-section technical-appendix">
                 <div className="section-title-row">
@@ -399,6 +488,28 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
                 ))}
               </section>
             ) : null}
+
+            <section className="report-section medication-final-section" aria-labelledby="medication-final-title">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">Conferência para paciente e família</p>
+                  <h2 id="medication-final-title">Tabela final de medicamentos</h2>
+                </div>
+                <div className="medication-final-actions">
+                  <p className="review-note">{generated.report.medicationPlan.message}</p>
+                  <button
+                    type="button"
+                    className="secondary-button no-print"
+                    onClick={printMedicationPlan}
+                    disabled={!clinicalReviewConfirmed || generated.report.medicationPlan.status !== "READY"}
+                  >
+                    Imprimir tabela de medicamentos
+                  </button>
+                </div>
+              </div>
+              <p className="medication-patient-name"><strong>Paciente:</strong> {generated.report.patientName}</p>
+              <MedicationPlanTable section={generated.report.medicationPlan} />
+            </section>
 
             <footer className="care-report-footer">
               <p>Documento de apoio à continuidade do cuidado. Interpretar em conjunto com avaliação clínica e prontuário completo.</p>

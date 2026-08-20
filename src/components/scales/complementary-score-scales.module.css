@@ -117,6 +117,51 @@
   line-height: 1.5;
 }
 
+.applicationGuide {
+  margin-top: 16px;
+  border: 1px solid #ddd0d3;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.applicationGuide summary {
+  padding: 13px 15px;
+  cursor: pointer;
+  color: #58484c;
+  font-weight: 800;
+}
+
+.applicationGuide[open] summary {
+  border-bottom: 1px solid #e7dfe1;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  padding: 15px;
+}
+
+.guideGrid section {
+  break-inside: avoid;
+}
+
+.guideGrid h4 {
+  margin: 0 0 7px;
+  color: #4f4044;
+  font-size: 14px;
+}
+
+.guideGrid ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: #665d60;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

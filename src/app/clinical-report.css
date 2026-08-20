@@ -484,6 +484,134 @@
   line-height: 1.45;
 }
 
+.intrinsic-capacity-section {
+  padding-top: 28px;
+  border-top: 2px solid var(--care-accent);
+}
+
+.intrinsic-domain-list {
+  display: grid;
+  gap: 16px;
+}
+
+.intrinsic-domain {
+  overflow: hidden;
+  border: 1px solid var(--care-line);
+  border-radius: 14px;
+  background: #fff;
+  break-inside: avoid;
+}
+
+.intrinsic-domain > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--care-line);
+  background: var(--care-soft);
+}
+
+.intrinsic-domain h3,
+.intrinsic-domain h4 {
+  margin: 0;
+  color: var(--care-accent-deep);
+}
+
+.intrinsic-domain header p {
+  max-width: 680px;
+  margin: 5px 0 0;
+  color: var(--care-muted);
+  line-height: 1.45;
+}
+
+.intrinsic-domain header span {
+  flex: 0 0 auto;
+  max-width: 280px;
+  padding: 5px 8px;
+  border: 1px solid #d8c6c9;
+  border-radius: 999px;
+  color: #684c52;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.intrinsic-domain-columns {
+  display: grid;
+  grid-template-columns: 1.25fr .75fr;
+  gap: 0;
+}
+
+.intrinsic-domain-columns section {
+  padding: 17px 18px;
+}
+
+.intrinsic-domain-columns section + section {
+  border-left: 1px solid var(--care-line);
+  background: #fffafa;
+}
+
+.intrinsic-domain-columns h4 {
+  font-size: 14px;
+}
+
+.intrinsic-domain-columns ul {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+  line-height: 1.48;
+}
+
+.medication-final-section {
+  padding-top: 28px;
+  border-top: 2px solid var(--care-accent);
+}
+
+.medication-final-actions {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.medication-final-actions button {
+  width: fit-content;
+}
+
+.medication-patient-name {
+  margin: 0 0 12px;
+  color: var(--care-ink);
+}
+
+.medication-review-blocker {
+  margin: 0;
+  padding: 14px 16px;
+  border-left: 4px solid var(--care-warn);
+  border-radius: 8px;
+  background: #fffaf0;
+  color: #6f5010;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.medication-final-table {
+  min-width: 980px;
+  font-size: 11px;
+}
+
+.medication-final-table th,
+.medication-final-table td {
+  padding: 10px 8px;
+}
+
+.medication-final-table thead th:nth-child(n + 3):nth-child(-n + 8),
+.medication-final-table tbody td:nth-child(n + 3):nth-child(-n + 8) {
+  width: 7%;
+  text-align: center;
+}
+
 .technical-appendix {
   padding-top: 26px;
   border-top: 1px dashed var(--care-line);
@@ -542,7 +670,8 @@
   }
 
   .report-metrics,
-  .care-plan-grid {
+  .care-plan-grid,
+  .intrinsic-domain-columns {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -559,12 +688,35 @@
   .technical-toggle {
     white-space: normal;
   }
+
+  .intrinsic-domain > header {
+    flex-direction: column;
+  }
+
+  .intrinsic-domain header span {
+    max-width: none;
+    text-align: left;
+  }
+
+  .medication-final-actions {
+    justify-items: start;
+  }
+
+  .medication-final-actions .review-note {
+    text-align: left;
+  }
 }
 
 @media (max-width: 560px) {
   .report-metrics,
-  .care-plan-grid {
+  .care-plan-grid,
+  .intrinsic-domain-columns {
     grid-template-columns: 1fr;
+  }
+
+  .intrinsic-domain-columns section + section {
+    border-top: 1px solid var(--care-line);
+    border-left: 0;
   }
 
   .care-report {
@@ -607,6 +759,21 @@
     color: #5b1f24;
     font-size: 14pt;
     font-weight: 700;
+  }
+
+  .report-workspace[data-print-scope="medications"] .aga-report > * {
+    display: none !important;
+  }
+
+  .report-workspace[data-print-scope="medications"] .aga-report > .medication-final-section {
+    display: block !important;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .report-workspace[data-print-scope="medications"] .medication-final-section .section-title-row {
+    display: flex !important;
   }
 
   .care-report {
@@ -661,6 +828,7 @@
 
   .care-dimension,
   .care-plan-block,
+  .intrinsic-domain,
   .problem-panel,
   .report-alerts {
     break-inside: avoid;
@@ -698,6 +866,24 @@
 
   .care-plan-block {
     padding: 4mm;
+  }
+
+  .intrinsic-domain-columns {
+    grid-template-columns: 1.25fr .75fr;
+  }
+
+  .intrinsic-domain-columns section {
+    padding: 3.5mm 4mm;
+  }
+
+  .medication-final-table {
+    min-width: 0;
+    font-size: 7.5pt;
+  }
+
+  .medication-final-table th,
+  .medication-final-table td {
+    padding: 1.6mm 1.2mm;
   }
 
   .care-report-footer {
