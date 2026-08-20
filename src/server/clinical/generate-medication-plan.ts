@@ -3,7 +3,7 @@ import { buildMedicationPlanSnapshotModel } from "../../domain/medication-plan-s
 import { withDocumentSnapshotWriteRetry } from "../../domain/document-snapshot-versioning";
 import { requireAuthenticatedUser } from "../auth/require-user";
 import { prisma } from "../db";
-import { createDocumentSnapshotInTransaction } from "./persistence";
+import { createDocumentSnapshotInTransaction } from "./document-snapshot-transaction";
 import { workspaceContext } from "./medication-workspace";
 
 export async function generateMedicationPlan(input: {
