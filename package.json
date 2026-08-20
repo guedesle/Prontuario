@@ -22,6 +22,7 @@
     "audit:soap-json": "node --experimental-strip-types scripts/audit-consultation-note-json.ts",
     "release:clinical:prestart": "node --experimental-strip-types scripts/check-clinical-readiness.ts",
     "release:clinical:smoke": "node --experimental-strip-types scripts/smoke-clinical-production.ts",
+    "release:hostinger:build": "prisma generate && prisma migrate deploy && next build --webpack",
     "validate:repo": "node scripts/validate-repo.mjs",
     "test:backup": "bash scripts/test-backup-roundtrip.sh"
   },
@@ -43,7 +44,7 @@
     "typescript": "^5.9.0"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": "22.x"
   },
   "allowScripts": {
     "@prisma/engines@7.9.1": true,
