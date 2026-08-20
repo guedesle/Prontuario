@@ -175,7 +175,7 @@ export async function generateAgaReport(input: {
         });
         medicationPlan = {
           status: "READY" as const,
-          message: "Esquema ativo reconciliado nesta consulta. Esta tabela organiza o uso registrado e não representa nova prescrição.",
+          message: "Tabela para organização do cuidado: não substitui receita, não representa nova prescrição e não autoriza iniciar, suspender, substituir ou alterar medicamentos, doses ou horários por conta própria.",
           plan: medicationSnapshot.plan,
         };
       } catch (error) {
