@@ -4,6 +4,10 @@ import type { Prisma } from "../../generated/prisma/client";
 import type { MedicationMoment as DatabaseMedicationMoment } from "../../generated/prisma/enums";
 import { validateMedicationPlanItem, type MedicationMoment } from "../../domain/medication-plan";
 import { withDocumentSnapshotWriteRetry } from "../../domain/document-snapshot-versioning";
+import {
+  createDocumentSnapshotInTransaction,
+  type DocumentSnapshotInput,
+} from "./document-snapshot-transaction";
 
 const MOMENT_TO_DATABASE: Readonly<Record<MedicationMoment, DatabaseMedicationMoment>> = {
   manha: "MORNING",
@@ -130,61 +134,13 @@ export async function createMedicationRegimen(input: {
   });
 }
 
-export async function createDocumentSnapshot(input: {
-  consultationId: string;
-  type: "SOAP" | "FAMILY_REPORT" | "MEDICATION_PLAN" | "AGA_REPORT";
-  content: Prisma.InputJsonValue;
-  contentSchemaVersion?: string;
-  requestId?: string;
-}) {
+export async function createDocumentSnapshot(input: DocumentSnapshotInput) {
   const { user } = await requireAuthenticatedUser("document.generate");
 
   return withDocumentSnapshotWriteRetry(() =>
-    prisma.$transaction(async (tx) => {
-      const consultation = await tx.consultation.findUnique({
-        where: { id: input.consultationId },
-        select: { id: true, patientId: true, status: true },
-      });
-
-      if (!consultation) {
-        throw new Error("Consulta não encontrada.");
-      }
-
-      const latest = await tx.documentSnapshot.findFirst({
-        where: {
-          consultationId: consultation.id,
-          patientId: consultation.patientId,
-          type: input.type,
-        },
-        orderBy: { version: "desc" },
-        select: { version: true },
-      });
-
-      const snapshot = await tx.documentSnapshot.create({
-        data: {
-          patientId: consultation.patientId,
-          consultationId: consultation.id,
-          type: input.type,
-          version: (latest?.version ?? 0) + 1,
-          content: input.content,
-          contentSchemaVersion: input.contentSchemaVersion ?? "1.0",
-          sourceConsultationStatus: consultation.status,
-          generatedById: user.id,
-        },
-      });
-
-      await tx.auditEvent.create({
-        data: {
-          userId: user.id,
-          entityType: "DocumentSnapshot",
-          entityId: snapshot.id,
-          action: "document.generate",
-          requestId: input.requestId,
-          outcome: "success",
-          reasonCode: consultation.status === "FINALIZED" ? "finalized-context" : "draft-context",
-        },
-      });
-      return snapshot;
-    }, { isolationLevel: "Serializable" }),
+    prisma.$transaction(
+      (tx) => createDocumentSnapshotInTransaction(tx, { ...input, generatedById: user.id }),
+      { isolationLevel: "Serializable" },
+    ),
   );
 }

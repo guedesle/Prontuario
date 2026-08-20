@@ -21,7 +21,7 @@ const MOMENT_TO_DATABASE: Readonly<Record<MedicationMoment, DatabaseMedicationMo
   Object.entries(DATABASE_TO_MOMENT).map(([database, moment]) => [moment, database]),
 ) as Readonly<Record<MedicationMoment, DatabaseMedicationMoment>>;
 
-async function workspaceContext(tx: Prisma.TransactionClient, consultationId: string) {
+export async function workspaceContext(tx: Prisma.TransactionClient, consultationId: string) {
   const consultation = await tx.consultation.findUnique({ where: { id: consultationId }, select: { id: true, patientId: true, status: true, occurredAt: true, createdAt: true } });
   if (!consultation) throw new MedicationWorkspaceError("CONSULTATION_NOT_FOUND", "Consulta não encontrada.");
   const consultations = await tx.consultation.findMany({ where: { patientId: consultation.patientId }, select: { id: true, patientId: true, occurredAt: true, createdAt: true } });
