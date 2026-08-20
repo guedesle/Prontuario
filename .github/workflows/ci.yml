@@ -39,10 +39,17 @@ jobs:
       TEST_DATABASE_URL: mysql://ci_user:ci_password@127.0.0.1:3306/prontuario_ci
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - name: PR diff whitespace check
+        shell: bash
+        run: |
+          BASE_REF="${{ github.base_ref || 'main' }}"
+          git diff --check "origin/${BASE_REF}...HEAD"
       - name: Repository safety check
         run: npm run validate:repo
       - name: Backup/restore encrypted roundtrip
