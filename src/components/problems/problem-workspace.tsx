@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { canSubmitProblemStatusChange, type ProblemStatus } from "@/domain/problem-status-review";
 import styles from "./problem-workspace.module.css";
 
-type ProblemStatus = "ACTIVE" | "STABLE" | "MONITORING" | "RESOLVED";
 type ProblemType = "CLINICAL" | "GERIATRIC";
 
 type Problem = {
@@ -48,17 +48,30 @@ function ProblemCard({
   onChangeStatus: (problemId: string, newStatus: ProblemStatus) => Promise<void>;
 }) {
   const [nextStatus, setNextStatus] = useState<ProblemStatus>(problem.status);
+  const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setNextStatus(problem.status), [problem.status]);
+  useEffect(() => {
+    setNextStatus(problem.status);
+    setReviewConfirmed(false);
+  }, [problem.status]);
+
+  const canSubmit = canSubmitProblemStatusChange({
+    editable,
+    saving,
+    currentStatus: problem.status,
+    nextStatus,
+    reviewConfirmed,
+  });
 
   async function updateStatus() {
-    if (!editable || saving || nextStatus === problem.status) return;
+    if (!canSubmit) return;
     setSaving(true);
     setError(null);
     try {
       await onChangeStatus(problem.id, nextStatus);
+      setReviewConfirmed(false);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Não foi possível atualizar o problema.");
     } finally {
@@ -77,11 +90,27 @@ function ProblemCard({
         <div className={styles.statusControls}>
           <label>
             Status
-            <select value={nextStatus} onChange={(event) => setNextStatus(event.target.value as ProblemStatus)}>
+            <select
+              value={nextStatus}
+              onChange={(event) => {
+                setNextStatus(event.target.value as ProblemStatus);
+                setReviewConfirmed(false);
+              }}
+            >
               {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
-          <button type="button" onClick={updateStatus} disabled={saving || nextStatus === problem.status}>
+          {nextStatus !== problem.status ? (
+            <label>
+              <input
+                type="checkbox"
+                checked={reviewConfirmed}
+                onChange={(event) => setReviewConfirmed(event.target.checked)}
+              />
+              Confirmo que revisei clinicamente esta alteração de status.
+            </label>
+          ) : null}
+          <button type="button" onClick={updateStatus} disabled={!canSubmit}>
             {saving ? "Salvando…" : "Atualizar status"}
           </button>
         </div>
