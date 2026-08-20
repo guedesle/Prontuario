@@ -4,6 +4,7 @@ import {
   scoreComplementaryScale,
   type ComplementaryScoreScaleCode,
 } from "@/domain/complementary-score-scales";
+import { complementaryScaleConsultationHorizonIds } from "@/domain/complementary-scale-timeline";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
 import { saveScaleAssessment } from "@/server/clinical/persistence";
 import { prisma } from "@/server/db";
@@ -68,8 +69,21 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     const { id } = await context.params;
     const consultation = await consultationContext(id);
     const codes = COMPLEMENTARY_SCORE_SCALES.map((definition) => definition.code);
+    const consultations = await prisma.consultation.findMany({
+      where: { patientId: consultation.patientId },
+      select: { id: true, patientId: true, occurredAt: true, createdAt: true },
+    });
+    const consultationIds = complementaryScaleConsultationHorizonIds({
+      patientId: consultation.patientId,
+      targetConsultationId: id,
+      consultations,
+    });
     const assessments = await prisma.scaleAssessment.findMany({
-      where: { patientId: consultation.patientId, scaleCode: { in: codes } },
+      where: {
+        patientId: consultation.patientId,
+        consultationId: { in: consultationIds },
+        scaleCode: { in: codes },
+      },
       orderBy: [{ appliedAt: "desc" }, { id: "desc" }],
       select: {
         id: true,
