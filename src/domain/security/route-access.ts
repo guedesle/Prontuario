@@ -17,7 +17,9 @@ function normalizedPath(pathname: string): string {
 export function isPublicRoute(pathname: string): boolean {
   const path = normalizedPath(pathname);
   return path === "/login"
+    || path === "/auth/google"
     || path === "/api/health"
+    || path === "/api/health/assets"
     || path === "/api/auth"
     || path.startsWith("/api/auth/")
     || path === "/favicon.ico"
