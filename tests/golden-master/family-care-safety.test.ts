@@ -11,12 +11,30 @@ test("family report removes pharmacologic and supplement conduct", () => {
     "Dosagem de vitamina D com reposição se deficiente.",
     "Considerar iniciar medicamento hipolipemiante.",
     "Reavaliar as doses conforme a função dos rins e do fígado.",
+    "Manter losartana 50 mg pela manhã.",
+    "Reduzir sertralina para 25 mg ao dia.",
+    "Continuar a medicação atual até nova avaliação.",
+    "Iniciar suplemento de cálcio conforme tolerância.",
     "Não suspender medicamentos por conta própria; converse com a equipe assistencial.",
   ]);
 
   assert.deepEqual(safe, [
     "Manter atividade física compatível com a capacidade funcional.",
     "Não suspender medicamentos por conta própria; converse com a equipe assistencial.",
+  ]);
+});
+
+test("family safety keeps explicit no-self-medication guidance while blocking treatment changes", () => {
+  const safe = filterFamilySafeCareItems([
+    "Não iniciar suplemento por conta própria; converse com a equipe assistencial.",
+    "Não manter medicamento sem orientação da equipe assistencial.",
+    "Aumentar donepezila para 10 mg à noite.",
+    "Ajustar a dose do medicamento conforme resposta clínica.",
+  ]);
+
+  assert.deepEqual(safe, [
+    "Não iniciar suplemento por conta própria; converse com a equipe assistencial.",
+    "Não manter medicamento sem orientação da equipe assistencial.",
   ]);
 });
 
@@ -30,7 +48,7 @@ test("family interpretation keeps meaning while removing medical workup sentence
 });
 
 test("family narrative falls back to a neutral explanation when every sentence is clinical conduct", () => {
-  const text = sanitizeFamilyNarrative("Prescrever vitamina D. Reavaliar as doses do medicamento.");
+  const text = sanitizeFamilyNarrative("Prescrever vitamina D. Reavaliar as doses do medicamento. Manter losartana 50 mg pela manhã.");
   assert.match(text ?? "", /discutida com a equipe assistencial/i);
-  assert.doesNotMatch(text ?? "", /vitamina d|dose do medicamento/i);
+  assert.doesNotMatch(text ?? "", /vitamina d|dose do medicamento|losartana/i);
 });

@@ -2,9 +2,12 @@ import type { AgaReportModel } from "./aga-report.ts";
 import type { InterventionPlan } from "./interventions.ts";
 
 const EXPLICIT_SELF_MEDICATION_SAFETY = [
-  /não\s+(?:suspender|interromper|iniciar|aumentar|reduzir|trocar|alterar).{0,60}(?:por conta própria|sem orientação)/i,
-  /não\s+faça\s+mudanças?.{0,40}(?:medicamento|remédio).{0,40}(?:por conta própria|sem orientação)/i,
+  /não\s+(?:suspender|interromper|iniciar|aumentar|reduzir|trocar|alterar|manter).{0,60}(?:por conta própria|sem orientação)/i,
+  /não\s+faça\s+mudanças?.{0,40}(?:medicamento|remédio|suplemento).{0,40}(?:por conta própria|sem orientação)/i,
 ];
+
+const MEDICATION_CONDUCT_VERBS = "(?:prescrever|iniciar|introduzir|manter|continuar|suspender|interromper|retirar|aumentar|reduzir|ajustar|titular|substituir|trocar|desprescrever|repor)";
+const MEDICATION_TERMS = "(?:medica(?:ção|cao|mento)s?|remédios?|fármacos?|suplementos?)";
 
 const MEDICAL_CONDUCT_PATTERNS = [
   /\bprescrev\w*/i,
@@ -16,6 +19,9 @@ const MEDICAL_CONDUCT_PATTERNS = [
   /\bdesprescri\w*/i,
   /\bajustar\s+(?:a\s+|as\s+)?dose/i,
   /\breavaliar\s+(?:a\s+|as\s+)?dose/i,
+  new RegExp(`\\b${MEDICATION_CONDUCT_VERBS}\\b.{0,60}\\b${MEDICATION_TERMS}\\b`, "i"),
+  new RegExp(`\\b${MEDICATION_CONDUCT_VERBS}\\b.{0,80}\\b\\d+(?:[.,]\\d+)?\\s*(?:mg|mcg|µg|g|ml|mL|UI|U)\\b`, "i"),
+  /\b(?:aumentar|reduzir|ajustar|titular|manter|continuar)\b.{0,50}\bdose\b/i,
   /\bsubstituir\s+(?:o\s+|a\s+|um\s+|uma\s+)?(?:medicamento|remédio)/i,
   /\btrocar\s+(?:o\s+|a\s+|um\s+|uma\s+)?(?:medicamento|remédio)/i,
   /\biniciar\s+(?:tratamento\s+farmacol[oó]gico|medica(?:ção|cao|mento)|remédio|suplemento)/i,
