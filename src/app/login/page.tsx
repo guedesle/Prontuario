@@ -1,10 +1,32 @@
-type LoginPageProps = {
-  searchParams?: Promise<{ error?: string }>;
-};
+"use client";
 
-export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const params = searchParams ? await searchParams : undefined;
-  const hasError = Boolean(params?.error);
+import { useState } from "react";
+import { authClient } from "@/lib/auth-client";
+
+export default function LoginPage() {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function signInWithGoogle() {
+    setPending(true);
+    setError(null);
+
+    try {
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/",
+        errorCallbackURL: "/login?error=google",
+      });
+
+      if (result.error) {
+        setError("Não foi possível autenticar com o Google. Tente novamente.");
+        setPending(false);
+      }
+    } catch {
+      setError("Não foi possível autenticar com o Google. Tente novamente.");
+      setPending(false);
+    }
+  }
 
   return (
     <main
@@ -54,23 +76,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <p style={{ maxWidth: 620, margin: "16px 0 24px", color: "#6e6264", fontSize: 18, lineHeight: 1.6 }}>
           Entre somente com uma conta Google previamente autorizada pela administração.
         </p>
-        <a
-          href="/auth/google"
-          style={{
-            display: "inline-block",
-            padding: "10px 16px",
-            borderRadius: 8,
-            background: "#896d72",
-            color: "#ffffff",
-            fontWeight: 700,
-            textDecoration: "none",
-          }}
-        >
-          Entrar com Google
-        </a>
-        {hasError ? (
+        <button type="button" onClick={signInWithGoogle} disabled={pending}>
+          {pending ? "Conectando…" : "Entrar com Google"}
+        </button>
+        {error ? (
           <p role="alert" style={{ marginTop: 18, color: "#8f2727", fontWeight: 700 }}>
-            Não foi possível iniciar a autenticação. Confirme a configuração do Google OAuth e tente novamente.
+            {error}
           </p>
         ) : null}
       </section>

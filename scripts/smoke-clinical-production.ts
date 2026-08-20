@@ -23,22 +23,42 @@ async function request(base: URL, path: string, redirect: RequestRedirect = "man
   return fetch(url, {
     method: "GET",
     redirect,
-    headers: { "user-agent": "prontuario-clinical-release-smoke/1.1" },
+    headers: { "user-agent": "prontuario-clinical-release-smoke/1.2" },
   });
 }
 
-function assertGoogleOAuthRedirect(response: Response) {
-  if (![302, 303, 307, 308].includes(response.status)) {
-    blocked(`/auth/google não iniciou redirecionamento OAuth: HTTP ${response.status}.`);
+async function startGoogleOAuth(base: URL) {
+  const url = new URL("/api/auth/sign-in/social", base);
+  const response = await fetch(url, {
+    method: "POST",
+    redirect: "manual",
+    headers: {
+      "content-type": "application/json",
+      "user-agent": "prontuario-clinical-release-smoke/1.2",
+    },
+    body: JSON.stringify({
+      provider: "google",
+      callbackURL: "/",
+      errorCallbackURL: "/login?error=google",
+    }),
+  });
+
+  if (response.status !== 200) {
+    blocked(`/api/auth/sign-in/social não iniciou OAuth Google: HTTP ${response.status}.`);
   }
 
-  const location = response.headers.get("location");
-  if (!location) blocked("/auth/google respondeu sem cabeçalho Location.");
+  const body = await response.json().catch(() => null) as {
+    redirect?: boolean;
+    url?: string;
+  } | null;
+  if (body?.redirect !== true || !body.url) {
+    blocked("/api/auth/sign-in/social não retornou URL de redirecionamento OAuth.");
+  }
 
   let target: URL;
-  try { target = new URL(location); } catch { blocked("/auth/google retornou Location inválido."); }
+  try { target = new URL(body.url); } catch { blocked("Better Auth retornou URL OAuth inválida."); }
   if (target.protocol !== "https:" || target.hostname !== "accounts.google.com") {
-    blocked(`/auth/google não redirecionou para o Google OAuth (${target.origin}).`);
+    blocked(`Better Auth não iniciou Google OAuth (${target.origin}).`);
   }
 }
 
@@ -71,12 +91,11 @@ try {
   const login = await request(base, "/login", "follow");
   if (login.status !== 200) blocked(`/login respondeu HTTP ${login.status}.`);
   const loginHtml = await login.text();
-  if (!loginHtml.includes('href="/auth/google"')) {
-    blocked("/login não contém o fallback server-side para iniciar autenticação Google.");
+  if (!loginHtml.includes("Entrar com Google")) {
+    blocked("/login não contém a ação de autenticação Google.");
   }
 
-  const oauthStart = await request(base, "/auth/google", "manual");
-  assertGoogleOAuthRedirect(oauthStart);
+  await startGoogleOAuth(base);
 
   for (const path of ["/patients", "/patients/new"]) {
     const protectedResponse = await request(base, path, "manual");
@@ -95,6 +114,6 @@ console.log(`- HTTPS acessível: ${base.origin}`);
 console.log(`- release confirmada: ${CLINICAL_RELEASE_ID}`);
 console.log("- /api/health confirmou banco ok");
 console.log("- CSS e JavaScript do Next.js presentes e entregues com HTTP 200");
-console.log("- /login contém fallback server-side de autenticação");
-console.log("- /auth/google iniciou Google OAuth");
+console.log("- /login contém ação de autenticação Google");
+console.log("- endpoint canônico do Better Auth iniciou Google OAuth");
 console.log("- rotas clínicas não estão abertas anonimamente");

@@ -18,8 +18,8 @@ Nenhum dado real de paciente deve entrar no sistema antes de **todos os P0** aba
 - [ ] `BETTER_AUTH_SECRET` aleatório, >=32 caracteres e exclusivo de produção;
 - [ ] `AUTH_ALLOWED_EMAILS` contém somente profissionais autorizados;
 - [ ] `AUTH_BOOTSTRAP_ADMIN_EMAILS` contém o administrador inicial e é subconjunto da allowlist;
-- [ ] `/login` renderiza o fallback server-side para `/auth/google` mesmo sem JavaScript;
-- [ ] `/auth/google` inicia redirecionamento HTTPS para `accounts.google.com`;
+- [ ] `/login` carrega CSS/JavaScript e oferece a ação `Entrar com Google`;
+- [ ] o endpoint canônico `POST /api/auth/sign-in/social` do Better Auth inicia Google OAuth;
 - [ ] usuário autorizado conclui login Google e acessa a área clínica;
 - [ ] usuário não autorizado foi testado e bloqueado;
 - [ ] usuário desativado perde acesso imediatamente;
