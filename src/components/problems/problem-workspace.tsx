@@ -101,13 +101,13 @@ function ProblemCard({
             </select>
           </label>
           {nextStatus !== problem.status ? (
-            <label>
+            <label className={styles.reviewConfirmation}>
               <input
                 type="checkbox"
                 checked={reviewConfirmed}
                 onChange={(event) => setReviewConfirmed(event.target.checked)}
               />
-              Confirmo que revisei clinicamente esta alteração de status.
+              <span>Confirmo que revisei clinicamente esta alteração de status.</span>
             </label>
           ) : null}
           <button type="button" onClick={updateStatus} disabled={!canSubmit}>
