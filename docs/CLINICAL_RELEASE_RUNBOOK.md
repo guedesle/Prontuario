@@ -28,17 +28,13 @@ O comando não imprime valores de segredos.
 
 ### Hostinger Node.js gerenciado
 
-Na hospedagem Node.js gerenciada da Hostinger, os comandos `npm` do aplicativo são executados pelo pipeline de build e não devem ser tratados como um gate manual via SSH. Para tornar o `PRESTART_OK` verificável no próprio host, configure o **Build command** do aplicativo para executar o script:
-
-```text
-release:hostinger:build
-```
-
-Esse script deve manter, nessa ordem, os quatro passos operacionais:
-1. `npm run prisma:generate`;
-2. `npx prisma migrate deploy`;
+Na hospedagem Node.js gerenciada da Hostinger, comandos `npm` do aplicativo são executados pelo pipeline de build e não devem ser tratados como um gate manual via SSH. O script padrão `build` do projeto é deliberadamente fail-closed e executa, nessa ordem:
+1. `prisma generate`;
+2. `prisma migrate deploy`;
 3. `npm run release:clinical:prestart`;
 4. `next build --webpack`.
+
+O script `release:hostinger:build` delega ao mesmo `build` guardado. Portanto, a configuração já existente da Hostinger com Build command `build` é suficiente e não precisa ser alterada para ativar o gate.
 
 O deployment só é elegível para promoção quando os logs do build mostram `CLINICAL_RELEASE=PRESTART_OK`. Se o prestart falhar, o build deve falhar fechado e a release permanece bloqueada.
 
@@ -52,7 +48,7 @@ npm run build
 npm start
 ```
 
-Na Hostinger, use o script `release:hostinger:build` descrito acima como comando de build do aplicativo.
+Na Hostinger, o próprio `npm run build` já inclui o `PRESTART` formal descrito acima.
 
 O Better Auth também executa a validação de ambiente ao iniciar em produção e falha fechado se a configuração mínima estiver insegura.
 
