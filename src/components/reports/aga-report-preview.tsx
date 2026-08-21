@@ -69,6 +69,24 @@ function CareList({ title, items }: { title: string; items: readonly string[] })
   );
 }
 
+function normalizeRoute(value?: string): string {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLocaleLowerCase("pt-BR");
+}
+
+function routeFlags(route?: string) {
+  const normalized = normalizeRoute(route);
+  return {
+    oral: /^(oral|vo|via oral)$/.test(normalized),
+    sne: /\bsne\b|sonda nasoenteral/.test(normalized),
+    gtt: /\bgtt\b|gastrostomi/.test(normalized),
+    other: normalized && !/^(oral|vo|via oral)$/.test(normalized) && !/\bsne\b|sonda nasoenteral/.test(normalized) && !/\bgtt\b|gastrostomi/.test(normalized) ? route : undefined,
+  };
+}
+
 function MedicationPlanTable({ section }: { section: AgaReportModel["medicationPlan"] }) {
   if (section.status !== "READY" || !section.plan) {
     return <p className="medication-review-blocker">{section.message}</p>;
@@ -81,25 +99,40 @@ function MedicationPlanTable({ section }: { section: AgaReportModel["medicationP
       <table className="clinical-table medication-final-table" aria-label="Tabela final de medicamentos">
         <thead>
           <tr>
-            <th scope="col">Medicamento</th>
-            <th scope="col">Dose / via</th>
+            <th scope="col">Medicamento e apresentação</th>
+            <th scope="col">Dose</th>
+            <th scope="col">Via</th>
             {MEDICATION_MOMENTS.map((moment) => <th scope="col" key={moment}>{MEDICATION_MOMENT_LABELS[moment]}</th>)}
+            <th scope="col">Tipo de uso</th>
             <th scope="col">Observações</th>
           </tr>
         </thead>
         <tbody>
-          {section.plan.rows.map((row) => (
-            <tr key={row.id}>
-              <th scope="row">{row.medicationText}</th>
-              <td>{[row.doseInstruction, row.route, row.continuous ? "uso contínuo" : undefined].filter(Boolean).join(" · ") || "—"}</td>
-              {MEDICATION_MOMENTS.map((moment) => (
-                <td key={`${row.id}-${moment}`} aria-label={`${MEDICATION_MOMENT_LABELS[moment]}: ${row.moments[moment] ? "sim" : "não"}`}>
-                  {row.moments[moment] ? "✓" : "—"}
+          {section.plan.rows.map((row) => {
+            const routes = routeFlags(row.route);
+            const usage = row.moments.se_necessario ? "Se necessário" : row.continuous ? "Uso contínuo" : "Temporário";
+            return (
+              <tr key={row.id}>
+                <th scope="row">{row.medicationText}</th>
+                <td>{row.doseInstruction || "—"}</td>
+                <td>
+                  <span className="medication-route-options" aria-label={`Via registrada: ${row.route ?? "não informada"}`}>
+                    <label><input type="checkbox" checked={routes.oral} readOnly tabIndex={-1} /> Oral</label>
+                    <label><input type="checkbox" checked={routes.sne} readOnly tabIndex={-1} /> SNE</label>
+                    <label><input type="checkbox" checked={routes.gtt} readOnly tabIndex={-1} /> GTT</label>
+                    {routes.other ? <small>Outra: {routes.other}</small> : null}
+                  </span>
                 </td>
-              ))}
-              <td>{row.instructions ?? "—"}</td>
-            </tr>
-          ))}
+                {MEDICATION_MOMENTS.map((moment) => (
+                  <td key={`${row.id}-${moment}`} aria-label={`${MEDICATION_MOMENT_LABELS[moment]}: ${row.moments[moment] ? "sim" : "não"}`}>
+                    {row.moments[moment] ? "✓" : "—"}
+                  </td>
+                ))}
+                <td>{usage}</td>
+                <td>{row.instructions ?? "—"}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -121,30 +154,20 @@ function ScaleTable({ scales }: { scales: AgaScaleReportSection[] }) {
         <tbody>
           {scales.map((scale) => (
             <tr key={`${scale.code}-${scale.version}`}>
-              <th scope="row">
-                <span className="scale-name">{scale.name}</span>
-              </th>
+              <th scope="row"><span className="scale-name">{scale.name}</span></th>
               <td>
                 <strong>{displayResult(scale)}</strong>
                 <span>{scale.result.classification ?? "Sem classificação registrada"}</span>
                 <span className="scale-assessment-status">
-                  {scale.assessedInTargetConsultation
-                    ? "Avaliado nesta consulta"
-                    : "Último valor conhecido — não avaliado nesta consulta"}
+                  {scale.assessedInTargetConsultation ? "Avaliado nesta consulta" : "Último valor conhecido — não avaliado nesta consulta"}
                 </span>
-                {!scale.assessedInTargetConsultation ? (
-                  <span>Última avaliação em {displayAssessmentDate(scale.lastKnown.appliedAt)}</span>
-                ) : null}
+                {!scale.assessedInTargetConsultation ? <span>Última avaliação em {displayAssessmentDate(scale.lastKnown.appliedAt)}</span> : null}
               </td>
               <td>
                 <span className="scale-assessment-status">Desde a última avaliação</span>
-                <span className={`trend-badge trend-${scale.evolution.trend}`}>
-                  {TREND_LABEL[scale.evolution.trend]}
-                </span>
+                <span className={`trend-badge trend-${scale.evolution.trend}`}>{TREND_LABEL[scale.evolution.trend]}</span>
                 <span className="scale-assessment-status">Desde a AGA inicial</span>
-                <span className={`trend-badge trend-${scale.evolution.vsBaseline}`}>
-                  {TREND_LABEL[scale.evolution.vsBaseline]}
-                </span>
+                <span className={`trend-badge trend-${scale.evolution.vsBaseline}`}>{TREND_LABEL[scale.evolution.vsBaseline]}</span>
               </td>
               <td>{scale.interpretation ?? "Sem interpretação registrada"}</td>
             </tr>
@@ -179,17 +202,10 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
     }
     return DIMENSION_ORDER
       .filter((dimension) => groups.has(dimension))
-      .map((dimension) => ({
-        dimension,
-        label: DIMENSION_LABELS[dimension] ?? dimension,
-        scales: groups.get(dimension) ?? [],
-      }));
+      .map((dimension) => ({ dimension, label: DIMENSION_LABELS[dimension] ?? dimension, scales: groups.get(dimension) ?? [] }));
   }, [generated]);
 
-  const dashboardCards = useMemo(
-    () => generated ? buildChangeSummaryDashboard(generated.report.changeSummary) : [],
-    [generated],
-  );
+  const dashboardCards = useMemo(() => generated ? buildChangeSummaryDashboard(generated.report.changeSummary) : [], [generated]);
 
   async function generate() {
     setLoading(true);
@@ -229,11 +245,7 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
   }
 
   return (
-    <section
-      className="report-workspace"
-      data-clinical-review={clinicalReviewConfirmed ? "confirmed" : "pending"}
-      data-print-scope={printMedicationOnly ? "medications" : "report"}
-    >
+    <section className="report-workspace" data-clinical-review={clinicalReviewConfirmed ? "confirmed" : "pending"} data-print-scope={printMedicationOnly ? "medications" : "report"}>
       <div className="report-toolbar no-print" aria-label="Ações do relatório">
         <div>
           <p className="eyebrow">Relatório compartilhado de cuidado</p>
@@ -241,37 +253,21 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
           <p className="muted">Gerar uma prévia cria um snapshot versionado, mas não finaliza a consulta.</p>
         </div>
         <div className="report-actions">
-          <button type="button" onClick={() => void generate()} disabled={loading}>
-            {loading ? "Gerando snapshot…" : generated ? "Atualizar prévia" : "Gerar prévia"}
-          </button>
-          <button type="button" className="secondary-button" onClick={printReport} disabled={!generated || !clinicalReviewConfirmed}>
-            Imprimir
-          </button>
-          <button type="button" className="secondary-button" onClick={exportText} disabled={!generated || !clinicalReviewConfirmed}>
-            Exportar texto
-          </button>
+          <button type="button" onClick={() => void generate()} disabled={loading}>{loading ? "Gerando snapshot…" : generated ? "Atualizar prévia" : "Gerar prévia"}</button>
+          <button type="button" className="secondary-button" onClick={printReport} disabled={!generated || !clinicalReviewConfirmed}>Imprimir</button>
+          <button type="button" className="secondary-button" onClick={exportText} disabled={!generated || !clinicalReviewConfirmed}>Exportar texto</button>
         </div>
       </div>
 
       {error ? <p className="field-error no-print" role="alert">{error}</p> : null}
-
-      <p className="print-review-blocker">
-        Relatório não liberado para impressão — revisão clínica pendente.
-      </p>
+      <p className="print-review-blocker">Relatório não liberado para impressão — revisão clínica pendente.</p>
 
       {generated ? (
         <>
           <div className="report-review-gate no-print">
             <label className="review-confirmation">
-              <input
-                type="checkbox"
-                checked={clinicalReviewConfirmed}
-                onChange={(event) => setClinicalReviewConfirmed(event.target.checked)}
-              />
-              <span>
-                <strong>Revisão clínica antes de compartilhar</strong>
-                <small>Confirmo que revisei problemas, resultados, alertas e sugestões deste relatório.</small>
-              </span>
+              <input type="checkbox" checked={clinicalReviewConfirmed} onChange={(event) => setClinicalReviewConfirmed(event.target.checked)} />
+              <span><strong>Revisão clínica antes de compartilhar</strong><small>Confirmo que revisei problemas, resultados, alertas e sugestões deste relatório.</small></span>
             </label>
             <label className="inline-check technical-toggle">
               <input type="checkbox" checked={showTechnical} onChange={(event) => setShowTechnical(event.target.checked)} />
@@ -291,57 +287,30 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
                 <div><dt>Consulta</dt><dd>{generated.report.consultationId}</dd></div>
                 <div><dt>Snapshot</dt><dd>v{generated.snapshot.version}</dd></div>
               </dl>
-              {generated.report.draftContext ? (
-                <strong className="draft-watermark">Consulta ainda não finalizada</strong>
-              ) : null}
+              {generated.report.draftContext ? <strong className="draft-watermark">Consulta ainda não finalizada</strong> : null}
             </header>
 
             <section className="change-summary-section">
               <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Evolução</p>
-                  <h2>O que mudou?</h2>
-                </div>
+                <div><p className="eyebrow">Evolução</p><h2>O que mudou?</h2></div>
                 <p className="summary-headline">{generated.report.changeSummary.headline}</p>
               </div>
-
               <div className="report-metrics" aria-label="Resumo de tendências">
-                {dashboardCards.map((card) => (
-                  <article
-                    key={card.key}
-                    data-tone={card.tone}
-                    title={card.explanation}
-                    aria-label={`${card.label}: ${card.value}`}
-                  >
-                    <strong>{card.value}</strong>
-                    <span>{card.label}</span>
-                  </article>
-                ))}
+                {dashboardCards.map((card) => <article key={card.key} data-tone={card.tone} title={card.explanation} aria-label={`${card.label}: ${card.value}`}><strong>{card.value}</strong><span>{card.label}</span></article>)}
               </div>
-
-              {generated.report.changeSummary.narrative.length > 0 ? (
-                <ul className="change-narrative">
-                  {generated.report.changeSummary.narrative.slice(0, 8).map((item) => <li key={item}>{item}</li>)}
-                </ul>
-              ) : <p className="muted">Ainda não há comparação longitudinal suficiente para destacar mudanças.</p>}
+              {generated.report.changeSummary.narrative.length > 0 ? <ul className="change-narrative">{generated.report.changeSummary.narrative.slice(0, 8).map((item) => <li key={item}>{item}</li>)}</ul> : <p className="muted">Ainda não há comparação longitudinal suficiente para destacar mudanças.</p>}
             </section>
 
             {generated.report.alerts.length > 0 ? (
               <section className="visible-alerts report-alerts" aria-labelledby="alertas-title">
-                <div>
-                  <p className="eyebrow">Segurança</p>
-                  <h2 id="alertas-title">Pontos que exigem atenção</h2>
-                </div>
+                <div><p className="eyebrow">Segurança</p><h2 id="alertas-title">Pontos que exigem atenção</h2></div>
                 <ul>{generated.report.alerts.map((alert, index) => <li key={`${alert.severity}-${index}`}>{alert.message}</li>)}</ul>
               </section>
             ) : null}
 
             <section className="report-section">
               <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Problemas longitudinais</p>
-                  <h2>Lista de problemas</h2>
-                </div>
+                <div><p className="eyebrow">Problemas longitudinais</p><h2>Lista de problemas</h2></div>
                 <p className="muted">Inclui problemas ativos e históricos preservados.</p>
               </div>
               <ProblemColumns problems={[...generated.report.clinicalProblems, ...generated.report.geriatricProblems]} />
@@ -349,74 +318,35 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
 
             <section className="report-section">
               <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Dimensões avaliadas</p>
-                  <h2>Resultados das escalas</h2>
-                </div>
+                <div><p className="eyebrow">Dimensões avaliadas</p><h2>Resultados das escalas</h2></div>
                 <p className="muted">{generated.report.assessedScales.length} instrumento(s) com resultado longitudinal disponível.</p>
               </div>
-
               <div className="dimension-list">
                 {groupedScales.length > 0 ? groupedScales.map((group) => (
                   <section className="care-dimension" key={group.dimension}>
-                    <header>
-                      <h3>{group.label}</h3>
-                      <span>{group.scales.length} avaliação(ões)</span>
-                    </header>
+                    <header><h3>{group.label}</h3><span>{group.scales.length} avaliação(ões)</span></header>
                     <ScaleTable scales={group.scales} />
-                    {group.scales.map((scale) => (
-                      <ScaleHistoryChart key={`chart-${scale.code}-${scale.version}`} scale={scale} />
-                    ))}
+                    {group.scales.map((scale) => <ScaleHistoryChart key={`chart-${scale.code}-${scale.version}`} scale={scale} />)}
                   </section>
                 )) : <p className="muted">Não avaliado nesta consulta.</p>}
               </div>
             </section>
 
-            <section
-              className="report-section vaccination-prevention-section"
-              aria-labelledby="vaccination-prevention-title"
-            >
+            <section className="report-section vaccination-prevention-section" aria-labelledby="vaccination-prevention-title">
               <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Cuidado preventivo</p>
-                  <h2 id="vaccination-prevention-title">Vacinas e prevenção</h2>
-                </div>
-                <p className="vaccination-status">
-                  {generated.report.vaccinationPrevention.statusLabel}
-                </p>
+                <div><p className="eyebrow">Cuidado preventivo</p><h2 id="vaccination-prevention-title">Vacinas e prevenção</h2></div>
+                <p className="vaccination-status">{generated.report.vaccinationPrevention.statusLabel}</p>
               </div>
-
               {generated.report.vaccinationPrevention.status === "PENDING" ? (
-                <div className="vaccination-pending-list">
-                  <h3>Vacinas registradas como pendentes</h3>
-                  <ul>
-                    {generated.report.vaccinationPrevention.pendingVaccines.map((vaccine) => (
-                      <li key={vaccine}>{vaccine}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : generated.report.vaccinationPrevention.status === "UNKNOWN" ? (
-                <p className="muted">As pendências não podem ser determinadas sem revisar a carteira.</p>
-              ) : (
-                <p className="muted">Nenhuma vacina foi registrada como pendente nesta consulta.</p>
-              )}
-
-              <ul className="vaccination-guidance">
-                {generated.report.vaccinationPrevention.guidance.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <p className="review-note">
-                Esta seção é informativa, não gera prescrição automática e permanece separada da tabela de medicamentos.
-              </p>
+                <div className="vaccination-pending-list"><h3>Vacinas registradas como pendentes</h3><ul>{generated.report.vaccinationPrevention.pendingVaccines.map((vaccine) => <li key={vaccine}>{vaccine}</li>)}</ul></div>
+              ) : generated.report.vaccinationPrevention.status === "UNKNOWN" ? <p className="muted">As pendências não podem ser determinadas sem revisar a carteira.</p> : <p className="muted">Nenhuma vacina foi registrada como pendente nesta consulta.</p>}
+              <ul className="vaccination-guidance">{generated.report.vaccinationPrevention.guidance.map((item) => <li key={item}>{item}</li>)}</ul>
+              <p className="review-note">Esta seção é informativa, não gera prescrição automática e permanece separada da tabela de medicamentos.</p>
             </section>
 
             <section className="report-section care-plan-section">
               <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Continuidade do cuidado</p>
-                  <h2>Plano de cuidado</h2>
-                </div>
+                <div><p className="eyebrow">Continuidade do cuidado</p><h2>Plano de cuidado</h2></div>
                 <p className="review-note">Sugestões derivadas das avaliações — exigem revisão médica antes do compartilhamento.</p>
               </div>
               <div className="care-plan-grid">
@@ -431,50 +361,27 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
 
             <section className="report-section intrinsic-capacity-section" aria-labelledby="intrinsic-capacity-title">
               <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Orientações ao paciente e à família</p>
-                  <h2 id="intrinsic-capacity-title">Capacidade intrínseca por domínio alterado</h2>
-                </div>
+                <div><p className="eyebrow">Orientações ao paciente e à família</p><h2 id="intrinsic-capacity-title">Capacidade intrínseca por domínio alterado</h2></div>
                 <p className="review-note">{generated.report.intrinsicCapacity.sourceLabel}</p>
               </div>
               {generated.report.intrinsicCapacity.alteredDomains.length ? (
                 <div className="intrinsic-domain-list">
                   {generated.report.intrinsicCapacity.alteredDomains.map((domain) => (
                     <article className="intrinsic-domain" key={domain.code}>
-                      <header>
-                        <div>
-                          <h3>{domain.label}</h3>
-                          <p>{domain.whyItMatters}</p>
-                        </div>
-                        <span>Alteração em {domain.triggeredBy.join(", ")}</span>
-                      </header>
+                      <header><div><h3>{domain.label}</h3><p>{domain.whyItMatters}</p></div><span>Alteração em {domain.triggeredBy.join(", ")}</span></header>
                       <div className="intrinsic-domain-columns">
-                        <section>
-                          <h4>O que fazer no dia a dia</h4>
-                          <ul>{domain.actions.map((action) => <li key={action}>{action}</li>)}</ul>
-                        </section>
-                        <section>
-                          <h4>Quando avisar a equipe ou procurar ajuda</h4>
-                          <ul>{domain.attentionSigns.map((sign) => <li key={sign}>{sign}</li>)}</ul>
-                        </section>
+                        <section><h4>O que fazer no dia a dia</h4><ul>{domain.actions.map((action) => <li key={action}>{action}</li>)}</ul></section>
+                        <section><h4>Quando avisar a equipe ou procurar ajuda</h4><ul>{domain.attentionSigns.map((sign) => <li key={sign}>{sign}</li>)}</ul></section>
                       </div>
                     </article>
                   ))}
                 </div>
-              ) : (
-                <p className="muted">Nenhum domínio foi marcado como alterado pelas avaliações aplicadas nesta consulta.</p>
-              )}
+              ) : <p className="muted">Nenhum domínio foi marcado como alterado pelas avaliações aplicadas nesta consulta.</p>}
             </section>
 
             {showTechnical ? (
               <section className="report-section technical-appendix">
-                <div className="section-title-row">
-                  <div>
-                    <p className="eyebrow">Apêndice</p>
-                    <h2>Rastreabilidade técnica</h2>
-                  </div>
-                  <p className="muted">Versão, fonte e dados registrados em cada instrumento.</p>
-                </div>
+                <div className="section-title-row"><div><p className="eyebrow">Apêndice</p><h2>Rastreabilidade técnica</h2></div><p className="muted">Versão, fonte e dados registrados em cada instrumento.</p></div>
                 {generated.report.assessedScales.map((scale) => (
                   <article className="technical-scale" key={`technical-${scale.code}-${scale.version}`}>
                     <h3>{scale.name}</h3>
@@ -491,24 +398,15 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
 
             <section className="report-section medication-final-section" aria-labelledby="medication-final-title">
               <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Conferência para paciente e família</p>
-                  <h2 id="medication-final-title">Tabela final de medicamentos</h2>
-                </div>
+                <div><p className="eyebrow">Conferência para paciente e família</p><h2 id="medication-final-title">Tabela final de medicamentos</h2></div>
                 <div className="medication-final-actions">
                   <p className="review-note">{generated.report.medicationPlan.message}</p>
-                  <button
-                    type="button"
-                    className="secondary-button no-print"
-                    onClick={printMedicationPlan}
-                    disabled={!clinicalReviewConfirmed || generated.report.medicationPlan.status !== "READY"}
-                  >
-                    Imprimir tabela de medicamentos
-                  </button>
+                  <button type="button" className="secondary-button no-print" onClick={printMedicationPlan} disabled={!clinicalReviewConfirmed || generated.report.medicationPlan.status !== "READY"}>Imprimir tabela de medicamentos</button>
                 </div>
               </div>
               <p className="medication-patient-name"><strong>Paciente:</strong> {generated.report.patientName}</p>
               <MedicationPlanTable section={generated.report.medicationPlan} />
+              <p className="review-note medication-safety-note">Esta tabela organiza o cuidado, não substitui a receita médica e não autoriza iniciar, suspender, substituir ou alterar medicamentos por conta própria.</p>
             </section>
 
             <footer className="care-report-footer">

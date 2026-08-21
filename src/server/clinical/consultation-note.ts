@@ -1,4 +1,6 @@
 import type { Prisma } from "../../generated/prisma/client.ts";
+import type { ClinicalColor } from "../../domain/clinical-engine.ts";
+import type { LongitudinalAssessment } from "../../domain/clinical-change-summary.ts";
 import {
   consultationNoteJsonToSoapDraft,
   soapDraftToConsultationNoteJson,
@@ -13,8 +15,14 @@ import {
   ConsultationNoteError,
   type ConsultationNoteView,
 } from "../../domain/consultation-note-view.ts";
+import { buildProfessionalPlanSuggestions } from "../../domain/professional-plan-suggestions.ts";
 import { requireAuthenticatedUser } from "../auth/require-user.ts";
 import { prisma } from "../db.ts";
+
+function clinicalColor(value: string | null): ClinicalColor | undefined {
+  if (value === "verde" || value === "amarelo" || value === "vermelho" || value === "cinza") return value;
+  return undefined;
+}
 
 async function noteContext(tx: Prisma.TransactionClient, consultationId: string) {
   const consultation = await tx.consultation.findUnique({
@@ -79,6 +87,38 @@ async function noteContext(tx: Prisma.TransactionClient, consultationId: string)
     })) satisfies ProblemTimelineRecord[],
   });
 
+  const currentAssessmentsRaw = await tx.scaleAssessment.findMany({
+    where: {
+      patientId: consultation.patientId,
+      consultationId: consultation.id,
+    },
+    orderBy: [{ appliedAt: "asc" }, { id: "asc" }],
+    select: {
+      patientId: true,
+      consultationId: true,
+      scaleCode: true,
+      scaleVersion: true,
+      scoreNumeric: true,
+      scoreText: true,
+      classification: true,
+      interpretation: true,
+      clinicalColor: true,
+      appliedAt: true,
+    },
+  });
+  const currentAssessments: LongitudinalAssessment[] = currentAssessmentsRaw.map((assessment) => ({
+    patientId: assessment.patientId,
+    consultationId: assessment.consultationId,
+    scaleCode: assessment.scaleCode,
+    scaleVersion: assessment.scaleVersion,
+    score: assessment.scoreNumeric === null ? null : Number(assessment.scoreNumeric),
+    scoreText: assessment.scoreText ?? undefined,
+    classification: assessment.classification ?? undefined,
+    interpretation: assessment.interpretation ?? undefined,
+    color: clinicalColor(assessment.clinicalColor),
+    appliedAt: assessment.appliedAt,
+  }));
+
   if (consultation.assessment !== null) {
     throw new ConsultationNoteError(
       "UNSUPPORTED_ASSESSMENT_JSON",
@@ -100,10 +140,22 @@ async function noteContext(tx: Prisma.TransactionClient, consultationId: string)
     );
   }
 
-  return { consultation, fields, problems };
+  return { consultation, fields, problems, currentAssessments };
 }
 
 function publicView(context: Awaited<ReturnType<typeof noteContext>>): ConsultationNoteView {
+  const planSuggestions = buildProfessionalPlanSuggestions({
+    targetConsultationId: context.consultation.id,
+    patientId: context.consultation.patientId,
+    problems: context.problems.map((problem) => ({
+      id: problem.id,
+      patientId: problem.patientId,
+      title: problem.title,
+      status: problem.status,
+    })),
+    assessments: context.currentAssessments,
+  });
+
   return {
     consultationId: context.consultation.id,
     consultationStatus: context.consultation.status,
@@ -115,6 +167,7 @@ function publicView(context: Awaited<ReturnType<typeof noteContext>>): Consultat
       status: problem.status,
       title: problem.title,
     })),
+    planSuggestions,
   };
 }
 

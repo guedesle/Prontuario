@@ -1,0 +1,436 @@
+.card {
+  margin: 24px 0;
+  padding: 22px;
+  border: 1px solid #e1d8da;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.heading h2 {
+  margin: 4px 0 6px;
+}
+
+.heading p {
+  margin: 0;
+  max-width: 780px;
+  color: #665d60;
+  line-height: 1.5;
+}
+
+.count,
+.appliedBadge {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #f2edef;
+  color: #654d53;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.licenseNotice,
+.locked,
+.warning,
+.caution {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border-left: 3px solid #886f75;
+  border-radius: 8px;
+  background: #f7f3f4;
+  color: #51484a;
+  line-height: 1.45;
+}
+
+.caution {
+  display: grid;
+  gap: 4px;
+}
+
+.domainGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.domainBox {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e4dcde;
+  border-radius: 12px;
+  background: #fcfbfb;
+}
+
+.domainBox legend {
+  padding: 0 6px;
+  color: #514348;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.checkRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: start;
+  padding: 8px 4px;
+  color: #453d40;
+  cursor: pointer;
+}
+
+.checkRow + .checkRow {
+  border-top: 1px solid #eee7e9;
+}
+
+.checkRow input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: #725960;
+}
+
+.checkRow input:focus-visible,
+.selectedBar button:focus-visible,
+.field input:focus-visible,
+.field select:focus-visible,
+.choiceCard input:focus-visible,
+.actions button:focus-visible {
+  outline: 3px solid rgba(114, 89, 96, .22);
+  outline-offset: 2px;
+}
+
+.checkRow span {
+  line-height: 1.35;
+}
+
+.checkRow strong {
+  color: #35664a;
+  font-size: 11px;
+}
+
+.selectedBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f7f3f4;
+}
+
+.selectedBar > span {
+  margin-right: 2px;
+  color: #66575b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.selectedBar button {
+  min-height: 38px;
+  padding: 7px 11px;
+  border: 1px solid #d7cbce;
+  border-radius: 999px;
+  background: #fff;
+  color: #58484c;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.selectedBar .activeTab {
+  border-color: #725960;
+  background: #725960;
+  color: #fff;
+}
+
+.empty {
+  margin: 18px 0 0;
+  color: #706568;
+}
+
+.workspace {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid #e4dcde;
+  border-radius: 14px;
+  background: #fcfbfb;
+}
+
+.workspaceHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.workspaceHeader > div:first-child > span {
+  color: #725960;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.workspaceHeader h3 {
+  margin: 4px 0 0;
+  font-size: 20px;
+}
+
+.appliedBadge {
+  display: grid;
+  gap: 2px;
+  border-radius: 10px;
+}
+
+.appliedBadge span {
+  font-weight: 500;
+}
+
+.instruction {
+  max-width: 800px;
+  margin: 12px 0 0;
+  color: #665d60;
+  line-height: 1.5;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border: 1px solid #e7dfe1;
+  border-radius: 12px;
+  background: #fff;
+  color: #453d40;
+  font-weight: 700;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid #cfc4c7;
+  border-radius: 10px;
+  background: #fff;
+  color: #363033;
+  font: inherit;
+}
+
+.field small {
+  color: #756a6d;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.numberRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.numberRow input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.numberRow span {
+  color: #6f6467;
+  font-size: 13px;
+}
+
+.guide,
+.source {
+  margin-top: 16px;
+  border: 1px solid #ddd0d3;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.guide summary,
+.source summary {
+  padding: 12px 14px;
+  cursor: pointer;
+  color: #58484c;
+  font-weight: 800;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  padding: 0 14px 14px;
+}
+
+.guideGrid h4 {
+  margin: 0 0 6px;
+  color: #4f4044;
+}
+
+.guideGrid ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #665d60;
+  line-height: 1.45;
+}
+
+.source p {
+  margin: 0;
+  padding: 0 14px 12px;
+  color: #6c6265;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sourceText {
+  color: #6c6265;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.optionList {
+  display: grid;
+  gap: 9px;
+  margin: 16px 0;
+}
+
+.choiceCard {
+  display: grid;
+  grid-template-columns: auto 34px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 11px 12px;
+  border: 1px solid #e0d7d9;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.choiceCard input {
+  margin-top: 3px;
+}
+
+.previous,
+.result {
+  display: grid;
+  gap: 5px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 10px;
+}
+
+.previous {
+  border: 1px solid #e4dcde;
+  background: #fff;
+}
+
+.previous p,
+.result p {
+  margin: 0;
+  color: #5f5558;
+  line-height: 1.5;
+}
+
+.result {
+  border-left: 4px solid #80666d;
+  background: #f4eff0;
+}
+
+.result > span {
+  color: #725960;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.error,
+.success {
+  margin: 12px 0;
+  font-weight: 650;
+}
+
+.error {
+  color: #8b1e2f;
+}
+
+.success {
+  color: #35664a;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.actions span {
+  color: #706568;
+  font-size: 12px;
+}
+
+.actions button {
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #725960;
+  color: #fff;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .card,
+  .workspace {
+    padding: 16px;
+  }
+
+  .heading,
+  .workspaceHeader,
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .count,
+  .appliedBadge {
+    align-self: flex-start;
+  }
+
+  .domainGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}
+
+@media print {
+  .card {
+    display: none;
+  }
+}

@@ -20,6 +20,7 @@ const view: ConsultationNoteView = {
   updatedAt: "2026-08-19T12:00:00.000Z",
   fields: { subjective: "Queixa sintética" },
   problems: [{ id: "problem-1", type: "CLINICAL", status: "ACTIVE", title: "Problema sintético" }],
+  planSuggestions: [],
 };
 
 function operations(overrides: Partial<Parameters<typeof consultationNoteHttpHandlers>[0]> = {}) {
