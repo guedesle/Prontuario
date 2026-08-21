@@ -101,7 +101,7 @@ export function buildClinicalScaleOptions(inputs: readonly ClinicalScaleOptionIn
     if (!previous || sourcePriority(input) > sourcePriority(previous)) byCode.set(input.code, input);
   }
 
-  const domainOrder = new Map(CLİNICAL_SCALE_DOMAIN_ORDER.map((domain, index) => [domain, index]));
+  const domainOrder = new Map(CLINICAL_SCALE_DOMAIN_ORDER.map((domain, index) => [domain, index]));
   return [...byCode.values()]
     .map((input) => ({
       ...input,
