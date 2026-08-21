@@ -40,7 +40,6 @@ const DIMENSION_DOMAIN: Record<string, ClinicalScaleDomain> = {
   medicamentos: "Medicamentos e risco de quedas",
   familia: "Família",
   suporte_social: "Rede e suporte social",
-  "suporte-social": "Rede e suporte social",
   sobrecarga_cuidador: "Sobrecarga do cuidador",
   sintomas: "Sintomas",
   oncogeriatria: "Oncogeriatria",
@@ -79,15 +78,11 @@ function normalizeDimension(value?: string | null): string {
 export function clinicalScaleDomain(code: string, dimension?: string | null): ClinicalScaleDomain {
   const override = CODE_DOMAIN[code];
   if (override) return override;
-  const normalized = normalizeDimension(dimension);
-  return DIMENSION_DOMAIN[normalized]
-    ?? DIMENSION_DOMAIN[normalized.replaceAll("_", "-")]
-    ?? "Funcionalidade";
+  return DIMENSION_DOMAIN[normalizeDimension(dimension)] ?? "Funcionalidade";
 }
 
 export function isScaleExposedInUnifiedWorkspace(input: Pick<ClinicalScaleOptionInput, "source" | "code">): boolean {
-  if (input.source === "core" && HIDDEN_DETAILED_COGNITIVE.has(input.code)) return false;
-  return true;
+  return !(input.source === "core" && HIDDEN_DETAILED_COGNITIVE.has(input.code));
 }
 
 function sourcePriority(input: ClinicalScaleOptionInput): number {
@@ -106,7 +101,7 @@ export function buildClinicalScaleOptions(inputs: readonly ClinicalScaleOptionIn
     if (!previous || sourcePriority(input) > sourcePriority(previous)) byCode.set(input.code, input);
   }
 
-  const order = new Map(CLİNICAL_SCALE_DOMAIN_ORDER_COMPAT().map((domain, index) => [domain, index]));
+  const domainOrder = new Map(CLİNICAL_SCALE_DOMAIN_ORDER_SAFE().map((domain, index) => [domain, index]));
   return [...byCode.values()]
     .map((input) => ({
       ...input,
@@ -114,13 +109,12 @@ export function buildClinicalScaleOptions(inputs: readonly ClinicalScaleOptionIn
       domain: clinicalScaleDomain(input.code, input.dimension),
     }))
     .sort((left, right) =>
-      (order.get(left.domain) ?? 999) - (order.get(right.domain) ?? 999)
+      (domainOrder.get(left.domain) ?? 999) - (domainOrder.get(right.domain) ?? 999)
       || left.name.localeCompare(right.name, "pt-BR"),
     );
 }
 
-// Kept as a function so callers/tests cannot mutate the canonical readonly tuple.
-export function CLİNICAL_SCALE_DOMAIN_ORDER_COMPAT(): readonly ClinicalScaleDomain[] {
+function CLİNICAL_SCALE_DOMAIN_ORDER_SAFE(): readonly ClinicalScaleDomain[] {
   return CLINICAL_SCALE_DOMAIN_ORDER;
 }
 
