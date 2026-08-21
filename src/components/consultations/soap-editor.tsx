@@ -7,15 +7,26 @@ import {
   summarizeSoapMedicationProvenance,
 } from "@/domain/soap-medication-provenance";
 import type { VaccinationReviewStatus } from "@/domain/vaccination-prevention";
+import suggestionStyles from "./professional-plan-suggestion.module.css";
 import styles from "./soap-editor.module.css";
 
 type Problem = { id: string; type: "CLINICAL" | "GERIATRIC"; status: "ACTIVE" | "STABLE" | "MONITORING" | "RESOLVED"; title: string };
+type PlanSuggestion = {
+  problemId: string;
+  problemTitle: string;
+  proposalKey: string;
+  actions: string[];
+  evidence: Array<{ scaleCode: string; scaleVersion: string; scoreText: string; classification?: string }>;
+  sources: Array<{ pmid: string; label: string }>;
+  requiresPhysicianReview: true;
+};
 type NoteView = {
   consultationId: string;
   consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED";
   updatedAt: string;
   fields: { subjective?: string; physicalExam?: string; vitalSigns?: string; anthropometry?: string; vaccinationReview?: { status: VaccinationReviewStatus; pendingVaccines?: readonly string[] }; planByProblem?: Record<string, readonly string[]> };
   problems: Problem[];
+  planSuggestions: PlanSuggestion[];
 };
 type MedicationItem = {
   medicationId: string;
@@ -61,15 +72,17 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{ kind: "error" | "success"; text: string } | null>(null);
 
-  async function load() {
+  async function load(options: { preserveDismissed?: boolean } = {}) {
     setLoading(true); setFeedback(null);
     try {
       const response = await fetch(`/api/consultations/${consultationId}/note`, { cache: "no-store" });
       const body = await response.json().catch(() => null) as (NoteView & { message?: string }) | null;
       if (!response.ok || !body) throw new Error(body?.message || "Não foi possível carregar o SOAP.");
       setView(body); setDraft(draftFromView(body)); setDirty(false);
+      if (!options.preserveDismissed) setDismissedSuggestions(new Set());
     } catch (error) { setFeedback({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível carregar o SOAP." }); }
     finally { setLoading(false); }
   }
@@ -98,9 +111,20 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
       const detail = (event as CustomEvent<{ consultationId?: string }>).detail;
       if (detail?.consultationId === consultationId) void loadMedications();
     }
+    function onScalesChanged(event: Event) {
+      const detail = (event as CustomEvent<{ consultationId?: string }>).detail;
+      if (detail?.consultationId !== consultationId) return;
+      if (dirty) { setFeedback({ kind: "error", text: "Uma escala foi atualizada enquanto o SOAP possui alterações não salvas. Salve ou recarregue o SOAP antes de atualizar sugestões." }); return; }
+      void load();
+    }
     window.addEventListener("clinical-problems-changed", onProblemsChanged);
     window.addEventListener("clinical-medications-changed", onMedicationsChanged);
-    return () => { window.removeEventListener("clinical-problems-changed", onProblemsChanged); window.removeEventListener("clinical-medications-changed", onMedicationsChanged); };
+    window.addEventListener("clinical-scales-changed", onScalesChanged);
+    return () => {
+      window.removeEventListener("clinical-problems-changed", onProblemsChanged);
+      window.removeEventListener("clinical-medications-changed", onMedicationsChanged);
+      window.removeEventListener("clinical-scales-changed", onScalesChanged);
+    };
   }, [consultationId, dirty]);
 
   const activeProblems = useMemo(() => (view?.problems ?? []).filter((problem) => problem.status !== "RESOLVED"), [view]);
@@ -109,6 +133,18 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
   function setField<K extends Exclude<keyof Draft, "planTextByProblem">>(key: K, value: Draft[K]) { setDraft((current) => current ? { ...current, [key]: value } : current); setDirty(true); setFeedback(null); }
   function setVaccinationStatus(status: VaccinationReviewStatus) { setDraft((current) => current ? { ...current, vaccinationStatus: status, pendingVaccinesText: status === "PENDING" ? current.pendingVaccinesText : "" } : current); setDirty(true); setFeedback(null); }
   function setProblemPlan(problemId: string, value: string) { setDraft((current) => current ? { ...current, planTextByProblem: { ...current.planTextByProblem, [problemId]: value } } : current); setDirty(true); setFeedback(null); }
+  function applySuggestion(suggestion: PlanSuggestion) {
+    if (!draft) return;
+    const existing = actionsFromText(draft.planTextByProblem[suggestion.problemId] ?? "");
+    const merged = [...existing];
+    for (const action of suggestion.actions) if (!merged.includes(action)) merged.push(action);
+    setProblemPlan(suggestion.problemId, merged.join("\n"));
+    setDismissedSuggestions((current) => new Set([...current, suggestion.problemId]));
+    setFeedback({ kind: "success", text: "Sugestão adicionada somente ao rascunho local do SOAP. Revise e edite antes de salvar." });
+  }
+  function dismissSuggestion(problemId: string) {
+    setDismissedSuggestions((current) => new Set([...current, problemId]));
+  }
 
   async function save() {
     if (!view || !draft || saving || view.consultationStatus === "FINALIZED") return;
@@ -150,7 +186,22 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
       <section className={styles.soapSection}><h3>S — Subjetivo</h3><label>Motivo da consulta, HDA e informações da paciente/acompanhante<textarea value={draft.subjective} disabled={finalized} onChange={(event) => setField("subjective", event.target.value)} rows={7} /></label></section>
       <section className={styles.soapSection}><h3>O — Objetivo</h3><label>Exame físico<textarea value={draft.physicalExam} disabled={finalized} onChange={(event) => setField("physicalExam", event.target.value)} rows={4} /></label><label>Sinais vitais<textarea value={draft.vitalSigns} disabled={finalized} onChange={(event) => setField("vitalSigns", event.target.value)} rows={3} /></label><label>Antropometria<textarea value={draft.anthropometry} disabled={finalized} onChange={(event) => setField("anthropometry", event.target.value)} rows={3} /></label><fieldset><legend>Vacinas e prevenção</legend><label>Status da revisão da carteira<select value={draft.vaccinationStatus} disabled={finalized} onChange={(event) => setVaccinationStatus(event.target.value as VaccinationReviewStatus)}><option value="UNKNOWN">Status desconhecido / carteira não revisada</option><option value="UP_TO_DATE">Sem pendências registradas</option><option value="PENDING">Há vacinas pendentes registradas</option></select></label>{draft.vaccinationStatus === "PENDING" ? <label>Vacinas pendentes — uma por linha<textarea value={draft.pendingVaccinesText} disabled={finalized} onChange={(event) => setField("pendingVaccinesText", event.target.value)} rows={4} /></label> : null}<p className={styles.muted}>O relatório familiar reproduz apenas o status revisado e orienta conferência da carteira. Não gera prescrição, produto, dose ou esquema automático.</p></fieldset><p className={styles.muted}>Medicações em uso entram automaticamente apenas na cópia do SOAP quando o status deriva de histórico explicitamente reconciliado; não são duplicadas neste JSON.</p></section>
       <section className={styles.soapSection}><h3>A — Avaliação</h3>{activeProblems.length === 0 ? <p className={styles.muted}>Sem problemas ativos registrados.</p> : <ol className={styles.problemList}>{activeProblems.map((problem) => <li key={problem.id}><strong>{problem.title}</strong><span>{problem.type === "GERIATRIC" ? "Problema geriátrico" : "Problema clínico"} · {problem.status}</span></li>)}</ol>}</section>
-      <section className={styles.soapSection}><h3>P — Plano por problema</h3>{activeProblems.length === 0 ? <p className={styles.muted}>Cadastre/confirme problemas para vincular condutas.</p> : activeProblems.map((problem) => <label key={problem.id} className={styles.planField}>{problem.title}<span>Uma ação por linha. Nada é aplicado automaticamente.</span><textarea value={draft.planTextByProblem[problem.id] ?? ""} disabled={finalized} onChange={(event) => setProblemPlan(problem.id, event.target.value)} rows={3} /></label>)}</section>
+      <section className={styles.soapSection}><h3>P — Plano por problema</h3>{activeProblems.length === 0 ? <p className={styles.muted}>Cadastre/confirme problemas para vincular condutas.</p> : activeProblems.map((problem) => {
+        const suggestion = view.planSuggestions.find((item) => item.problemId === problem.id);
+        const visibleSuggestion = suggestion && !dismissedSuggestions.has(problem.id) ? suggestion : null;
+        return <div key={problem.id} className={styles.planField}>
+          <strong>{problem.title}</strong>
+          <span>Uma ação por linha. Nada é aplicado automaticamente.</span>
+          {visibleSuggestion ? <aside className={suggestionStyles.card} aria-label={`Sugestão de plano para ${problem.title}`}>
+            <div className={suggestionStyles.header}><strong>Sugestão baseada na avaliação desta consulta</strong><span className={suggestionStyles.badge}>Rascunho · revisão médica</span></div>
+            <p className={suggestionStyles.evidence}>Origem: {visibleSuggestion.evidence.map((item) => `${item.scaleCode} ${item.scoreText}${item.classification ? ` — ${item.classification}` : ""}`).join("; ")}.</p>
+            <ul className={suggestionStyles.actionsList}>{visibleSuggestion.actions.map((action) => <li key={action}>{action}</li>)}</ul>
+            <p className={suggestionStyles.sources}>Fontes: {visibleSuggestion.sources.map((source) => `${source.label} (PMID ${source.pmid})`).join("; ")}.</p>
+            <div className={suggestionStyles.controls}><button type="button" disabled={finalized} onClick={() => applySuggestion(visibleSuggestion)}>Adicionar ao rascunho</button><button type="button" onClick={() => dismissSuggestion(problem.id)}>Ocultar sugestão</button></div>
+          </aside> : null}
+          <textarea aria-label={`Plano para ${problem.title}`} value={draft.planTextByProblem[problem.id] ?? ""} disabled={finalized} onChange={(event) => setProblemPlan(problem.id, event.target.value)} rows={4} />
+        </div>;
+      })}</section>
     </div>
   </section>;
 }
