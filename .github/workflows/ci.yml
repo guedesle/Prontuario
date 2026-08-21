@@ -36,6 +36,7 @@ jobs:
       GOOGLE_CLIENT_SECRET: ci-only-google-secret
       AUTH_ALLOWED_EMAILS: admin-ci@example.com,medica-ci@example.com
       AUTH_BOOTSTRAP_ADMIN_EMAILS: admin-ci@example.com
+      BACKUP_ENCRYPTION_KEY_B64: CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQk=
       TEST_DATABASE_URL: mysql://ci_user:ci_password@127.0.0.1:3306/prontuario_ci
     steps:
       - uses: actions/checkout@v4
