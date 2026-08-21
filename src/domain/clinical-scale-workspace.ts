@@ -78,7 +78,12 @@ function normalizeDimension(value?: string | null): string {
 export function clinicalScaleDomain(code: string, dimension?: string | null): ClinicalScaleDomain {
   const override = CODE_DOMAIN[code];
   if (override) return override;
-  return DIMENSION_DOMAIN[normalizeDimension(dimension)] ?? "Funcionalidade";
+
+  const normalizedDimension = normalizeDimension(dimension);
+  const mapped = DIMENSION_DOMAIN[normalizedDimension];
+  if (mapped) return mapped;
+
+  throw new Error(`Domínio clínico não mapeado para a escala ${code}: ${normalizedDimension || "sem dimensão"}.`);
 }
 
 export function isScaleExposedInUnifiedWorkspace(input: Pick<ClinicalScaleOptionInput, "source" | "code">): boolean {
