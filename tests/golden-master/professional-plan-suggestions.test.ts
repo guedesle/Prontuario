@@ -57,6 +57,33 @@ test("historical, future, other-patient and preserved results never justify a cu
   }
 });
 
+test("a preserved reapplication in the same consultation supersedes an earlier altered result", () => {
+  const suggestions = buildProfessionalPlanSuggestions({
+    targetConsultationId: "consultation-current",
+    patientId: "patient-1",
+    problems: [problem],
+    assessments: [
+      assessment({ color: "vermelho", appliedAt: "2026-08-20T12:00:00.000Z" }),
+      assessment({ score: 1, scoreText: "1/10", classification: "Rastreio preservado", color: "verde", appliedAt: "2026-08-20T12:30:00.000Z" }),
+    ],
+  });
+  assert.deepEqual(suggestions, []);
+});
+
+test("an altered reapplication in the same consultation supersedes an earlier preserved result", () => {
+  const suggestions = buildProfessionalPlanSuggestions({
+    targetConsultationId: "consultation-current",
+    patientId: "patient-1",
+    problems: [problem],
+    assessments: [
+      assessment({ score: 1, scoreText: "1/10", classification: "Rastreio preservado", color: "verde", appliedAt: "2026-08-20T12:00:00.000Z" }),
+      assessment({ color: "vermelho", appliedAt: "2026-08-20T12:30:00.000Z" }),
+    ],
+  });
+  assert.equal(suggestions.length, 1);
+  assert.equal(suggestions[0]?.evidence[0]?.scoreText, "5/10");
+});
+
 test("resolved problems and manual problems without a reviewed rule receive no automatic suggestion", () => {
   const resolved = buildProfessionalPlanSuggestions({
     targetConsultationId: "consultation-current",
