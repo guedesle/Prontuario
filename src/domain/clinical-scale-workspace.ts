@@ -101,7 +101,7 @@ export function buildClinicalScaleOptions(inputs: readonly ClinicalScaleOptionIn
     if (!previous || sourcePriority(input) > sourcePriority(previous)) byCode.set(input.code, input);
   }
 
-  const domainOrder = new Map(CLİNICAL_SCALE_DOMAIN_ORDER_SAFE().map((domain, index) => [domain, index]));
+  const domainOrder = new Map(CLİNICAL_SCALE_DOMAIN_ORDER.map((domain, index) => [domain, index]));
   return [...byCode.values()]
     .map((input) => ({
       ...input,
@@ -112,10 +112,6 @@ export function buildClinicalScaleOptions(inputs: readonly ClinicalScaleOptionIn
       (domainOrder.get(left.domain) ?? 999) - (domainOrder.get(right.domain) ?? 999)
       || left.name.localeCompare(right.name, "pt-BR"),
     );
-}
-
-function CLİNICAL_SCALE_DOMAIN_ORDER_SAFE(): readonly ClinicalScaleDomain[] {
-  return CLINICAL_SCALE_DOMAIN_ORDER;
 }
 
 export function groupClinicalScaleOptions(options: readonly ClinicalScaleOption[]): Array<{
