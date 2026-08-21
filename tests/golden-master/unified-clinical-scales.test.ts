@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   CLINICAL_SCALE_DOMAIN_ORDER,
   buildClinicalScaleOptions,
+  clinicalScaleDomain,
   groupClinicalScaleOptions,
 } from "../../src/domain/clinical-scale-workspace.ts";
 
@@ -53,6 +54,39 @@ test("workspace deduplicates codes and maps family, social, caregiver, vitality 
   assert.equal(byCode.get("kps"), "Prognóstico e cuidados paliativos");
   assert.equal(options.filter((item) => item.code === "ecog").length, 1);
   assert.ok(groupClinicalScaleOptions(options).every((group) => group.options.length > 0));
+});
+
+test("workspace fails closed for an unmapped clinical domain instead of silently using functionality", () => {
+  assert.throws(
+    () => clinicalScaleDomain("future_scale", "new_dimension"),
+    /Domínio clínico não mapeado para a escala future_scale: new_dimension/,
+  );
+  assert.throws(
+    () => clinicalScaleDomain("future_scale"),
+    /Domínio clínico não mapeado para a escala future_scale: sem dimensão/,
+  );
+});
+
+test("all approved dimension labels resolve explicitly", () => {
+  const expected = new Map([
+    ["cognicao", "Cognição"],
+    ["funcionalidade", "Funcionalidade"],
+    ["humor", "Capacidade psicológica e humor"],
+    ["mobilidade", "Locomoção e desempenho físico"],
+    ["fragilidade", "Fragilidade"],
+    ["nutricao", "Vitalidade e nutrição"],
+    ["medicamentos", "Medicamentos e risco de quedas"],
+    ["familia", "Família"],
+    ["suporte_social", "Rede e suporte social"],
+    ["sobrecarga_cuidador", "Sobrecarga do cuidador"],
+    ["sintomas", "Sintomas"],
+    ["oncogeriatria", "Oncogeriatria"],
+    ["prognostico", "Prognóstico e cuidados paliativos"],
+  ]);
+
+  for (const [dimension, domain] of expected) {
+    assert.equal(clinicalScaleDomain(`test-${dimension}`, dimension), domain);
+  }
 });
 
 test("consultation page renders one scale workspace instead of three independent panels", () => {
