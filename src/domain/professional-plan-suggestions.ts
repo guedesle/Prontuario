@@ -110,17 +110,29 @@ function displayScore(assessment: LongitudinalAssessment): string {
   return assessment.scoreText ?? (assessment.score === null ? "sem escore" : String(assessment.score));
 }
 
+function latestCurrentAssessments(input: {
+  targetConsultationId: string;
+  patientId: string;
+  assessments: readonly LongitudinalAssessment[];
+}): LongitudinalAssessment[] {
+  const latestByScale = new Map<string, LongitudinalAssessment>();
+  for (const assessment of input.assessments) {
+    if (assessment.patientId !== input.patientId || assessment.consultationId !== input.targetConsultationId) continue;
+    const previous = latestByScale.get(assessment.scaleCode);
+    if (!previous || new Date(assessment.appliedAt).getTime() >= new Date(previous.appliedAt).getTime()) {
+      latestByScale.set(assessment.scaleCode, assessment);
+    }
+  }
+  return [...latestByScale.values()];
+}
+
 export function buildProfessionalPlanSuggestions(input: {
   targetConsultationId: string;
   patientId: string;
   problems: readonly SuggestionProblem[];
   assessments: readonly LongitudinalAssessment[];
 }): ProfessionalPlanSuggestion[] {
-  const currentAssessments = input.assessments.filter((assessment) =>
-    assessment.patientId === input.patientId
-    && assessment.consultationId === input.targetConsultationId
-    && altered(assessment),
-  );
+  const currentAssessments = latestCurrentAssessments(input).filter(altered);
   if (currentAssessments.length === 0) return [];
 
   const proposals = proposeProblemsFromAssessments(currentAssessments);
