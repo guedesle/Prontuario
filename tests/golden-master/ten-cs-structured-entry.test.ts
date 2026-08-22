@@ -19,7 +19,7 @@ test("10-CS estruturado substitui o campo único por componentes clínicos", () 
     "recall3",
     "educationAdjustment",
   ]);
-  assert.equal(TEN_CS_STRUCTURED_DEFINITION.applicationGuide, undefined);
+  assert.equal("applicationGuide" in TEN_CS_STRUCTURED_DEFINITION, false);
 });
 
 test("10-CS soma orientação, fluência e evocação e aplica ajuste educacional", () => {
