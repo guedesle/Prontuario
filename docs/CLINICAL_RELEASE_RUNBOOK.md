@@ -34,7 +34,7 @@ Na hospedagem Node.js gerenciada da Hostinger, comandos `npm` do aplicativo são
 3. `npm run release:clinical:prestart`;
 4. `next build --webpack`.
 
-O script `release:hostinger:build` delega ao mesmo `build` guardado. Portanto, a configuração já existente da Hostinger com Build command `build` é suficiente e não precisa ser alterada para ativar o gate.
+O script `release:hostinger:build` delega ao mesmo `build` guardado. Portanto, a configuração já existente da Hostinger com Build command `build` ou com o alias `release:hostinger:build` usa o mesmo gate e não precisa ser trocada apenas por nomenclatura.
 
 O deployment só é elegível para promoção quando os logs do build mostram `CLINICAL_RELEASE=PRESTART_OK`. Se o prestart falhar, o build deve falhar fechado e a release permanece bloqueada.
 
@@ -64,9 +64,20 @@ Resultado esperado: `CLINICAL_RELEASE=SMOKE_OK`.
 
 O smoke comprova:
 - HTTPS acessível;
-- `/api/health` HTTP 200 e banco `ok`;
+- `/api/health` HTTP 200, banco `ok` e `releaseId` correspondente ao código que está sendo validado;
+- CSS e JavaScript do build entregues publicamente;
+- `/api/health/auth` pronto;
 - `/login` acessível;
+- bootstrap do Google OAuth com `state` e cookie de correlação;
 - `/patients` e `/patients/new` não retornam conteúdo clínico para sessão anônima.
+
+Todos os requests do smoke possuem timeout explícito e falham fechados em erro de DNS, TLS ou rede.
+
+### Associação CI → release → produção
+
+Quando `Production Clinical Smoke` é disparado pela conclusão da CI da `main`, o workflow deve fazer checkout de `github.event.workflow_run.head_sha`, e não do `main` que existir alguns segundos depois. Assim, o `CLINICAL_RELEASE_ID` usado pelo smoke pertence ao mesmo commit cuja CI foi aprovada.
+
+O workflow pode aguardar o redeploy automático da Hostinger por aproximadamente 15 minutos. Cada tentativa continua exigindo o mesmo `releaseId`; ele não aceita silenciosamente uma versão anterior nem muda o alvo quando outro merge entra em `main`.
 
 ## 4. Backup operacional obrigatório
 
