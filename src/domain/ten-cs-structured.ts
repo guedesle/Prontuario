@@ -15,27 +15,7 @@ export const TEN_CS_STRUCTURED_DEFINITION = {
   name: "10-CS — 10-Point Cognitive Screener",
   dimension: "cognicao",
   instruction:
-    "Preencha orientação temporal, fluência verbal e evocação. O servidor soma os componentes e aplica automaticamente o ajuste educacional do 10-CS-Edu, limitado a 10 pontos.",
-  applicationGuide: [
-    {
-      title: "Aplicação breve",
-      items: [
-        "A etapa de aprendizado das três palavras não pontua; use a versão adotada pelo serviço e não registre as palavras neste prontuário.",
-        "Orientação temporal: ano, mês e dia do mês valem 1 ponto cada quando corretos.",
-        "Fluência verbal: nomeação de animais em 60 segundos, convertida para 0 a 4 pontos.",
-        "Evocação tardia: 1 ponto para cada uma das três palavras lembradas sem pista.",
-      ],
-    },
-    {
-      title: "Ajuste educacional",
-      items: [
-        "Sem escolaridade formal: +2 pontos.",
-        "1 a 3 anos de escolaridade: +1 ponto.",
-        "4 anos ou mais: sem ajuste.",
-        "O resultado ajustado é limitado ao máximo de 10 pontos.",
-      ],
-    },
-  ],
+    "Preencha orientação temporal, fluência verbal e evocação. A etapa de aprendizado das três palavras não pontua e não deve ser registrada aqui. O servidor soma os componentes, aplica automaticamente o ajuste educacional do 10-CS-Edu e limita o resultado a 10 pontos.",
   sourceNote:
     "Apolinario D et al. Int J Geriatr Psychiatry. 2016;31:4-12. DOI 10.1002/gps.4282. O resultado é rastreio cognitivo e não estabelece diagnóstico isoladamente.",
   fields: [
