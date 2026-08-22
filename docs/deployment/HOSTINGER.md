@@ -15,11 +15,12 @@ Publicar `natimn4-dev/Prontuario` como aplicação Next.js/Node.js gerenciada pe
    - Framework: **Next.js**
    - Node.js: **22.x**
    - Package manager: **npm**
-   - Build command: `npm run release:hostinger:build`
+   - Build command canônico: `npm run build`
+   - Alias equivalente, se já configurado: `npm run release:hostinger:build`
    - Start command: `npm start`
 7. Ative redeploy automático da branch `main`, se disponível no plano.
 
-O comando `release:hostinger:build` executa `prisma generate`, `prisma migrate deploy` e somente depois `next build`. Se a migration falhar, o deploy deve falhar em vez de publicar aplicação e banco fora de sincronia.
+Não é necessário trocar uma configuração existente entre os dois comandos de build acima: `release:hostinger:build` delega ao mesmo `npm run build`. O build guardado executa `prisma generate`, `prisma migrate deploy`, o gate `release:clinical:prestart` e somente depois `next build --webpack`. Se migration ou prestart falhar, o deploy deve falhar em vez de publicar aplicação e banco fora de sincronia.
 
 ## Variáveis de ambiente obrigatórias no hPanel
 
@@ -70,9 +71,11 @@ O endpoint público de health check deve responder HTTP 200 e incluir:
 
 - `status: "ok"`
 - `database: "ok"`
-- `releaseId: "2026-08-19-freitas-validated-clinical-v1"`
+- `releaseId: "2026-08-22-longitudinal-multidimensional-v1"`
 
-Em seguida execute, em ambiente com as variáveis de produção carregadas:
+O `releaseId` é deliberadamente servido com `Cache-Control: no-store`; uma CDN ou proxy não deve reutilizar um identificador antigo para declarar a implantação como atual.
+
+Em seguida execute:
 
 `npm run release:clinical:smoke`
 
@@ -80,7 +83,9 @@ Resultado esperado:
 
 `CLINICAL_RELEASE=SMOKE_OK`
 
-O smoke verifica HTTPS, health/banco, login e bloqueio anônimo das rotas clínicas.
+O smoke verifica HTTPS, health/banco, entrega dos assets Next.js, prontidão do OAuth, início seguro do fluxo Google e bloqueio anônimo das rotas clínicas. No GitHub Actions, quando disparado pela conclusão da CI da `main`, ele faz checkout do **SHA exato que disparou aquela CI** e compara a produção contra o `releaseId` desse mesmo código. Isso impede que merges subsequentes façam o smoke validar acidentalmente outra release.
+
+O workflow aguarda o redeploy por até aproximadamente 15 minutos antes de falhar fechado, acomodando o tempo de build/promoção da Hostinger sem transformar atraso de publicação em falso diagnóstico de regressão.
 
 ## Gate clínico antes de dados reais
 
@@ -95,7 +100,7 @@ Antes do primeiro paciente real:
 
 ## Automação esperada
 
-Após a primeira conexão Hostinger ↔ GitHub, pushes futuros em `main` podem disparar redeploy automático conforme a configuração/plano da Hostinger. O GitHub mantém CI e `Production Clinical Smoke`; o health check com `releaseId` evita considerar uma versão antiga como implantação bem-sucedida.
+Após a primeira conexão Hostinger ↔ GitHub, pushes futuros em `main` podem disparar redeploy automático conforme a configuração/plano da Hostinger. O GitHub mantém CI e `Production Clinical Smoke`; o health check com `releaseId` e o checkout do SHA exato evitam considerar uma versão antiga — ou uma versão diferente — como implantação bem-sucedida.
 
 ## Rollback
 
