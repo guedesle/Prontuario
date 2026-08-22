@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   usesContinuousMeasurementEntry,
   withStructuredScaleEntry,
+  type StructuredEntryDefinition,
 } from "../../src/domain/structured-scale-entry.ts";
 
 test("discrete numeric score becomes a selection list without changing the numeric rule", () => {
@@ -34,7 +35,7 @@ test("fractional discrete scores are exposed as exact selectable values", () => 
 test("continuous physical measurements remain exact numeric measurements", () => {
   for (const code of ["preensao", "velocidade_marcha", "sentar_levantar_5x"]) {
     assert.equal(usesContinuousMeasurementEntry(code), true);
-    const original = {
+    const original: StructuredEntryDefinition = {
       code,
       fields: [{ id: "score", label: "Medida", number: { min: 0, max: 100, step: 0.01, unit: "un" } }],
     };
