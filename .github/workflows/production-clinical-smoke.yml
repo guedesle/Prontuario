@@ -18,26 +18,32 @@ jobs:
   smoke:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       APP_URL: https://prontuario.nataliamendesgeriatra.com
+      TARGET_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout exact release under validation
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Show release target
+        run: echo "Validating production against commit ${TARGET_SHA}"
       - name: Wait for deployment and verify clinical perimeter
         shell: bash
         run: |
           set -uo pipefail
-          for attempt in $(seq 1 12); do
-            echo "Production smoke attempt ${attempt}/12"
+          for attempt in $(seq 1 30); do
+            echo "Production smoke attempt ${attempt}/30 for ${TARGET_SHA}"
             if npm run release:clinical:smoke; then
               exit 0
             fi
-            if [ "$attempt" -lt 12 ]; then
+            if [ "$attempt" -lt 30 ]; then
               sleep 30
             fi
           done
-          echo "Production did not satisfy the clinical smoke gate after 12 attempts." >&2
+          echo "Production did not satisfy the clinical smoke gate after 30 attempts." >&2
           exit 1
