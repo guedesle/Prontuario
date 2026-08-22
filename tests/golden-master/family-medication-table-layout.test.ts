@@ -8,7 +8,7 @@ test("family report keeps medication table as final report section with isolated
   const footerIndex = source.indexOf("care-report-footer");
   assert.ok(medicationIndex > 0);
   assert.ok(footerIndex > medicationIndex);
-  assert.match(source, /Imprimir tabela de medicamentos/);
+  assert.match(source, /Imprimir tabela de medicações/);
   assert.match(source, /data-print-scope/);
   assert.match(source, /printMedicationOnly/);
 });
