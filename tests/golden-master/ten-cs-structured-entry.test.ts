@@ -8,8 +8,9 @@ import {
 } from "../../src/domain/ten-cs-structured.ts";
 
 test("10-CS estruturado substitui o campo único por componentes clínicos", () => {
-  assert.equal(TEN_CS_STRUCTURED_DEFINITION.fields.some((field) => field.id === "score"), false);
-  assert.deepEqual(TEN_CS_STRUCTURED_DEFINITION.fields.map((field) => field.id), [
+  const fieldIds: string[] = TEN_CS_STRUCTURED_DEFINITION.fields.map((field) => field.id);
+  assert.equal(fieldIds.includes("score"), false);
+  assert.deepEqual(fieldIds, [
     "orientationYear",
     "orientationMonth",
     "orientationDate",
