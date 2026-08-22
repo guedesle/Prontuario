@@ -16,6 +16,9 @@ export type StructuredEntryDefinition = {
   code: string;
   fields: readonly StructuredEntryField[];
 };
+export type StructuredEntryResult<T extends StructuredEntryDefinition> = Omit<T, "fields"> & {
+  fields: readonly StructuredEntryField[];
+};
 
 const CONTINUOUS_MEASUREMENT_CODES = new Set([
   "preensao",
@@ -59,10 +62,12 @@ function numericChoices(rule: StructuredEntryNumericRule): StructuredEntryChoice
  * MEEM, MoCA e ISI não passam por este adaptador: seus registros rápidos são anexados
  * separadamente no endpoint e permanecem score-only por regra de licenciamento/UX.
  */
-export function withStructuredScaleEntry<T extends StructuredEntryDefinition>(definition: T): T {
-  if (CONTINUOUS_MEASUREMENT_CODES.has(definition.code)) return definition;
+export function withStructuredScaleEntry<T extends StructuredEntryDefinition>(definition: T): StructuredEntryResult<T> {
+  if (CONTINUOUS_MEASUREMENT_CODES.has(definition.code)) {
+    return definition as StructuredEntryResult<T>;
+  }
 
-  const fields = definition.fields.map((field) => {
+  const fields: readonly StructuredEntryField[] = definition.fields.map((field) => {
     if (!field.number || field.choices) return field;
     return {
       ...field,
@@ -70,7 +75,7 @@ export function withStructuredScaleEntry<T extends StructuredEntryDefinition>(de
     };
   });
 
-  return { ...definition, fields } as T;
+  return { ...definition, fields };
 }
 
 export function usesContinuousMeasurementEntry(code: string): boolean {
