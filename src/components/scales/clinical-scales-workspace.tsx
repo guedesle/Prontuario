@@ -11,7 +11,7 @@ import styles from "./clinical-scales-workspace.module.css";
 
 type Choice = { value: number | string; label: string };
 type NumericRule = { min: number; max: number; step: number; unit?: string; help?: string };
-type CoreQuestion = { id: string; label: string; choices?: readonly Choice[]; number?: NumericRule };
+type CoreQuestion = { id: string; label: string; choices?: readonly Choice[]; number?: NumericRule; display?: "checkbox" };
 type CoreDefinition = {
   code: string;
   version: string;
@@ -22,7 +22,7 @@ type CoreDefinition = {
   questions: readonly CoreQuestion[];
 };
 type ApplicationGuide = readonly { title: string; items: readonly string[] }[];
-type ComplementaryField = { id: string; label: string; choices?: readonly Choice[]; number?: NumericRule };
+type ComplementaryField = { id: string; label: string; choices?: readonly Choice[]; number?: NumericRule; display?: "checkbox" };
 type ComplementaryDefinition = {
   code: string;
   version: string;
@@ -113,6 +113,20 @@ function fieldInput(
   disabled: boolean,
   onChange: (value: string) => void,
 ) {
+  if (field.display === "checkbox") {
+    const checked = value === "1";
+    return (
+      <label className={styles.checkboxChoice}>
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.checked ? "1" : "0")}
+        />
+        <span>{checked ? "Presente" : "Ausente"}</span>
+      </label>
+    );
+  }
   if (field.choices) {
     if (field.choices.length <= INLINE_CHOICE_LIMIT) {
       return (
@@ -300,7 +314,7 @@ export function ClinicalScalesWorkspace({ consultationId }: { consultationId: st
   function preparedAnswers(fields: readonly (CoreQuestion | ComplementaryField)[]): Record<string, number | string> {
     const output: Record<string, number | string> = {};
     for (const field of fields) {
-      const raw = answers[field.id] ?? "";
+      const raw = answers[field.id] ?? (field.display === "checkbox" ? "0" : "");
       if (raw === "") throw new Error(`Preencha ${field.label} antes de salvar.`);
       output[field.id] = parseFieldValue(raw, field);
     }
@@ -375,13 +389,13 @@ export function ClinicalScalesWorkspace({ consultationId }: { consultationId: st
   function renderComplementary(definition: ComplementaryDefinition) {
     return <>
       <p className={styles.instruction}>{definition.instruction}</p>
-      {definition.applicationGuide?.length ? <details className={styles.guide} open>
+      {definition.applicationGuide?.length ? <details className={styles.guide}>
         <summary>Como aplicar e interpretar</summary>
         <div className={styles.guideGrid}>{definition.applicationGuide.map((section) => <section key={section.title}><h4>{section.title}</h4><ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul></section>)}</div>
       </details> : null}
       <div className={styles.fields}>{definition.fields.map((field) => (
         <div className={styles.field} key={field.id}><span className={styles.fieldLabel}>{field.label}</span>
-          {fieldInput(field, answers[field.id] ?? "", finalized || saving, (value) => setAnswer(field.id, value))}
+          {fieldInput(field, answers[field.id] ?? (field.display === "checkbox" ? "0" : ""), finalized || saving, (value) => setAnswer(field.id, value))}
           {field.number?.help ? <small>{field.number.help}</small> : null}
         </div>
       ))}</div>
