@@ -1,0 +1,78 @@
+export type StructuredEntryChoice = { value: number | string; label: string };
+export type StructuredEntryNumericRule = {
+  min: number;
+  max: number;
+  step: number;
+  unit?: string;
+  help?: string;
+};
+export type StructuredEntryField = {
+  id: string;
+  label: string;
+  number?: StructuredEntryNumericRule;
+  choices?: readonly StructuredEntryChoice[];
+};
+export type StructuredEntryDefinition = {
+  code: string;
+  fields: readonly StructuredEntryField[];
+};
+
+const CONTINUOUS_MEASUREMENT_CODES = new Set([
+  "preensao",
+  "velocidade_marcha",
+  "sentar_levantar_5x",
+]);
+
+function decimalPlaces(value: number): number {
+  const text = String(value);
+  const index = text.indexOf(".");
+  return index === -1 ? 0 : text.length - index - 1;
+}
+
+function numericChoices(rule: StructuredEntryNumericRule): StructuredEntryChoice[] {
+  const precision = decimalPlaces(rule.step);
+  const count = Math.floor(((rule.max - rule.min) / rule.step) + 1e-9);
+  const choices: StructuredEntryChoice[] = [];
+
+  for (let index = 0; index <= count; index += 1) {
+    const raw = rule.min + (index * rule.step);
+    const value = Number(raw.toFixed(precision));
+    const label = `${value}${rule.unit ? ` ${rule.unit}` : ""}`;
+    choices.push({ value, label });
+  }
+
+  const last = choices.at(-1)?.value;
+  if (typeof last === "number" && Math.abs(last - rule.max) > 1e-9) {
+    choices.push({ value: rule.max, label: `${rule.max}${rule.unit ? ` ${rule.unit}` : ""}` });
+  }
+
+  return choices;
+}
+
+/**
+ * Converte escores numéricos discretos em listas de seleção para a interface clínica.
+ *
+ * A regra não altera o algoritmo de pontuação: o valor selecionado continua chegando
+ * ao servidor como número. Medidas físicas contínuas permanecem numéricas porque o
+ * valor bruto (kg, m/s, segundos) é o próprio dado clínico longitudinal.
+ *
+ * MEEM, MoCA e ISI não passam por este adaptador: seus registros rápidos são anexados
+ * separadamente no endpoint e permanecem score-only por regra de licenciamento/UX.
+ */
+export function withStructuredScaleEntry<T extends StructuredEntryDefinition>(definition: T): T {
+  if (CONTINUOUS_MEASUREMENT_CODES.has(definition.code)) return definition;
+
+  const fields = definition.fields.map((field) => {
+    if (!field.number || field.choices) return field;
+    return {
+      ...field,
+      choices: numericChoices(field.number),
+    };
+  });
+
+  return { ...definition, fields } as T;
+}
+
+export function usesContinuousMeasurementEntry(code: string): boolean {
+  return CONTINUOUS_MEASUREMENT_CODES.has(code);
+}
