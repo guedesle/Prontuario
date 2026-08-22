@@ -82,5 +82,6 @@ test("endpoint complementar publica e pontua a definição estruturada do 10-CS"
   const route = readFileSync("src/app/api/consultations/[id]/scales/complementary/route.ts", "utf8");
   assert.match(route, /TEN_CS_STRUCTURED_DEFINITION/);
   assert.match(route, /scoreTenCsStructured/);
-  assert.match(route, /item\.code === TEN_CS_STRUCTURED_CODE \? TEN_CS_STRUCTURED_DEFINITION : item/);
+  assert.match(route, /item\.code === TEN_CS_STRUCTURED_CODE/);
+  assert.match(route, /return TEN_CS_STRUCTURED_DEFINITION/);
 });
