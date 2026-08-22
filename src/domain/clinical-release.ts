@@ -1,1 +1,1 @@
-export const CLINICAL_RELEASE_ID = "2026-08-22-longitudinal-multidimensional-deploy-v2" as const;
+export const CLINICAL_RELEASE_ID = "2026-08-22-scales-10cs-structured-v1" as const;
