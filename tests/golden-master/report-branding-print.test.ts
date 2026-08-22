@@ -41,8 +41,8 @@ test("relatório e tabela de medicações preservam ações de impressão separa
 test("impressão isolada da tabela recebe logo superior e assinatura própria", () => {
   assert.match(report, /medication-print-brand/);
   assert.match(report, /<PhysicianSignature medicationOnly \/>/);
-  assert.match(branding, /data-print-scope="medications"[^}]*\.medication-print-brand/);
-  assert.match(branding, /data-print-scope="medications"[^}]*\.medication-only-signature/);
+  assert.match(branding, /\.report-workspace\[data-print-scope="medications"\] \.medication-print-brand\s*\{/);
+  assert.match(branding, /\.report-workspace\[data-print-scope="medications"\] \.medication-only-signature\s*\{/);
 });
 
 test("CSS de branding é carregado depois do CSS clínico", () => {
