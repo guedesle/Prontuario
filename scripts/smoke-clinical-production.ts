@@ -30,7 +30,7 @@ async function request(base: URL, path: string, redirect: RequestRedirect = "man
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       "cache-control": "no-cache",
-      "user-agent": "prontuario-clinical-release-smoke/1.4",
+      "user-agent": "prontuario-clinical-release-smoke/1.5",
     },
   });
 }
@@ -45,7 +45,7 @@ async function startGoogleOAuth(base: URL) {
     headers: {
       "cache-control": "no-cache",
       "content-type": "application/json",
-      "user-agent": "prontuario-clinical-release-smoke/1.4",
+      "user-agent": "prontuario-clinical-release-smoke/1.5",
     },
     body: JSON.stringify({
       provider: "google",
@@ -80,6 +80,10 @@ const base = productionBaseUrl();
 try {
   const health = await request(base, "/api/health", "follow");
   if (health.status !== 200) blocked(`/api/health respondeu HTTP ${health.status}.`);
+  const healthCacheControl = health.headers.get("cache-control")?.toLowerCase() ?? "";
+  if (!healthCacheControl.includes("no-store")) {
+    blocked("/api/health não confirmou Cache-Control: no-store; a release pode estar sendo validada por resposta intermediária antiga.");
+  }
   const healthBody = await health.json().catch(() => null) as { status?: string; database?: string; releaseId?: string } | null;
   if (healthBody?.status !== "ok" || healthBody.database !== "ok") blocked("/api/health não confirmou aplicação e banco em estado ok.");
   if (healthBody.releaseId !== CLINICAL_RELEASE_ID) {
@@ -130,7 +134,7 @@ try {
 console.log("CLINICAL_RELEASE=SMOKE_OK");
 console.log(`- HTTPS acessível: ${base.origin}`);
 console.log(`- release confirmada: ${CLINICAL_RELEASE_ID}`);
-console.log("- /api/health confirmou banco ok");
+console.log("- /api/health confirmou banco ok e resposta não cacheável");
 console.log("- /api/health/auth confirmou prontidão estática do OAuth");
 console.log("- CSS e JavaScript do Next.js presentes e entregues com HTTP 200");
 console.log("- /login contém ação de autenticação Google");
