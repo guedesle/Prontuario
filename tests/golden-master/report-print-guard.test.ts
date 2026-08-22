@@ -23,7 +23,7 @@ test("CSS de impressão oculta o relatório pendente e mostra somente o bloqueio
 });
 
 test("tabela final de medicamentos possui impressão isolada após revisão", () => {
-  assert.match(component, /Imprimir tabela de medicamentos/);
+  assert.match(component, /Imprimir tabela de medicações/);
   assert.match(component, /data-print-scope=\{printMedicationOnly \? "medications" : "report"\}/);
   assert.match(component, /generated\.report\.medicationPlan\.status !== "READY"/);
   assert.match(stylesheet, /data-print-scope="medications"/);

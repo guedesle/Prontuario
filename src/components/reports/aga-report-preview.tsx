@@ -53,6 +53,8 @@ const TREND_LABEL: Record<AgaScaleTrend, string> = {
   "insufficient-data": "Dados insuficientes",
 };
 
+const BRAND_LOGO_PATH = "/brand/natalia-mendes-logo.svg";
+
 function displayResult(scale: AgaScaleReportSection): string {
   return scale.result.scoreText ?? (scale.result.score === null ? "—" : String(scale.result.score));
 }
@@ -68,6 +70,26 @@ function CareList({ title, items }: { title: string; items: readonly string[] })
       <h3>{title}</h3>
       <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
     </section>
+  );
+}
+
+function PhysicianSignature({ medicationOnly = false }: { medicationOnly?: boolean }) {
+  return (
+    <div className={`professional-signature${medicationOnly ? " medication-only-signature" : ""}`} aria-label="Identificação profissional e espaço para assinatura">
+      <strong>Dra. Natalia Mendes</strong>
+      <span>CRM-BA: 27416 · RQE: 24673</span>
+      <span className="signature-line" aria-hidden="true" />
+    </div>
+  );
+}
+
+function BrandLogo({ className = "" }: { className?: string }) {
+  return (
+    <img
+      className={`report-brand-logo${className ? ` ${className}` : ""}`}
+      src={BRAND_LOGO_PATH}
+      alt="Natalia Mendes — Médica Geriatra"
+    />
   );
 }
 
@@ -256,7 +278,7 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
         </div>
         <div className="report-actions">
           <button type="button" onClick={() => void generate()} disabled={loading}>{loading ? "Gerando snapshot…" : generated ? "Atualizar prévia" : "Gerar prévia"}</button>
-          <button type="button" className="secondary-button" onClick={printReport} disabled={!generated || !clinicalReviewConfirmed}>Imprimir</button>
+          <button type="button" className="secondary-button" onClick={printReport} disabled={!generated || !clinicalReviewConfirmed}>Imprimir relatório</button>
           <button type="button" className="secondary-button" onClick={exportText} disabled={!generated || !clinicalReviewConfirmed}>Exportar texto</button>
         </div>
       </div>
@@ -279,10 +301,11 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
 
           <article className="aga-report care-report">
             <header className="care-report-header">
-              <div>
+              <div className="report-title-block">
+                <BrandLogo />
                 <p className="eyebrow">Avaliação Geriátrica Ampla</p>
-                <h1>Relatório longitudinal de cuidado</h1>
-                <p className="report-purpose">Síntese clínica para apoiar paciente, família, cuidadores e equipe assistencial.</p>
+                <h1>Relatório Longitudinal de Saúde e Funcionalidade</h1>
+                <p className="report-purpose">Síntese longitudinal para apoiar paciente, família, cuidadores e equipe assistencial.</p>
               </div>
               <dl className="report-identity">
                 <div><dt>Paciente</dt><dd>{generated.report.patientName}</dd></div>
@@ -407,22 +430,25 @@ export function AgaReportPreview({ consultationId }: { consultationId: string })
             ) : null}
 
             <section className="report-section medication-final-section" aria-labelledby="medication-final-title">
+              <div className="medication-print-brand" aria-hidden="true"><BrandLogo /></div>
               <div className="section-title-row">
-                <div><p className="eyebrow">Conferência para paciente e família</p><h2 id="medication-final-title">Tabela final de medicamentos</h2></div>
+                <div><p className="eyebrow">Conferência para paciente e família</p><h2 id="medication-final-title">Tabela de medicações</h2></div>
                 <div className="medication-final-actions">
                   <p className="review-note">{generated.report.medicationPlan.message}</p>
-                  <button type="button" className="secondary-button no-print" onClick={printMedicationPlan} disabled={!clinicalReviewConfirmed || generated.report.medicationPlan.status !== "READY"}>Imprimir tabela de medicamentos</button>
+                  <button type="button" className="secondary-button no-print" onClick={printMedicationPlan} disabled={!clinicalReviewConfirmed || generated.report.medicationPlan.status !== "READY"}>Imprimir tabela de medicações</button>
                 </div>
               </div>
               <p className="medication-patient-name"><strong>Paciente:</strong> {generated.report.patientName}</p>
               <MedicationPlanTable section={generated.report.medicationPlan} />
               <p className="review-note medication-safety-note">Esta tabela organiza o cuidado, não substitui a receita médica e não autoriza iniciar, suspender, substituir ou alterar medicamentos por conta própria.</p>
+              <PhysicianSignature medicationOnly />
             </section>
 
+            <p className="report-document-note">Documento de apoio à continuidade do cuidado. Interpretar em conjunto com avaliação clínica e prontuário completo.</p>
             <footer className="care-report-footer">
-              <p>Documento de apoio à continuidade do cuidado. Interpretar em conjunto com avaliação clínica e prontuário completo.</p>
-              <p>Snapshot {generated.snapshot.version} · schema {generated.report.schemaVersion}</p>
+              <PhysicianSignature />
             </footer>
+            <p className="document-meta no-print">Snapshot {generated.snapshot.version} · schema {generated.report.schemaVersion}</p>
           </article>
         </>
       ) : null}
