@@ -102,6 +102,7 @@
 .field > select:focus-visible,
 .numberRow input:focus-visible,
 .inlineChoice input:focus-visible,
+.checkboxChoice input:focus-visible,
 .choiceCard input:focus-visible,
 .actions button:focus-visible {
   outline: 3px solid rgba(114, 89, 96, .22);
@@ -315,6 +316,46 @@
 }
 
 .inlineChoice input:disabled + span {
+  opacity: .6;
+}
+
+.checkboxChoice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #e0d7d9;
+  border-radius: 10px;
+  background: #fff;
+  color: #4d4346;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.checkboxChoice:hover {
+  border-color: #bcaeb2;
+  background: #fdfbfc;
+}
+
+.checkboxChoice:has(input:checked) {
+  border-color: #80666d;
+  background: #f7f2f3;
+}
+
+.checkboxChoice input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: #725960;
+}
+
+.checkboxChoice input:disabled + span {
   opacity: .6;
 }
 
