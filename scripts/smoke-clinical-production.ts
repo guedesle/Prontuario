@@ -1,6 +1,8 @@
 import { CLINICAL_RELEASE_ID } from "../src/domain/clinical-release.ts";
 import { validateGoogleOAuthBootstrap } from "../src/domain/oauth-bootstrap-smoke.ts";
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 function blocked(message: string): never {
   console.error("CLINICAL_RELEASE=BLOCKED");
   console.error(`- ${message}`);
@@ -24,7 +26,12 @@ async function request(base: URL, path: string, redirect: RequestRedirect = "man
   return fetch(url, {
     method: "GET",
     redirect,
-    headers: { "user-agent": "prontuario-clinical-release-smoke/1.3" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    headers: {
+      "cache-control": "no-cache",
+      "user-agent": "prontuario-clinical-release-smoke/1.4",
+    },
   });
 }
 
@@ -33,9 +40,12 @@ async function startGoogleOAuth(base: URL) {
   const response = await fetch(url, {
     method: "POST",
     redirect: "manual",
+    cache: "no-store",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
+      "cache-control": "no-cache",
       "content-type": "application/json",
-      "user-agent": "prontuario-clinical-release-smoke/1.3",
+      "user-agent": "prontuario-clinical-release-smoke/1.4",
     },
     body: JSON.stringify({
       provider: "google",
@@ -114,7 +124,7 @@ try {
   }
 } catch (error) {
   if (error instanceof Error && error.message.includes("CLINICAL_RELEASE")) throw error;
-  blocked("Falha de rede/DNS/TLS durante o smoke test do domínio de produção.");
+  blocked("Falha de rede/DNS/TLS ou timeout durante o smoke test do domínio de produção.");
 }
 
 console.log("CLINICAL_RELEASE=SMOKE_OK");
