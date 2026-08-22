@@ -29,10 +29,12 @@ test("health release identifier cannot be served from an intermediary cache", ()
   assert.match(health, /Cache-Control/);
   assert.match(health, /no-store/);
   assert.match(health, /releaseId: CLINICAL_RELEASE_ID/);
+  assert.match(smoke, /healthCacheControl/);
+  assert.match(smoke, /includes\("no-store"\)/);
 });
 
 test("Hostinger runbook tracks the current clinical release and exact-SHA smoke", () => {
-  assert.match(hostingerDocs, /2026-08-22-longitudinal-multidimensional-v1/);
+  assert.match(hostingerDocs, /2026-08-22-longitudinal-multidimensional-deploy-v2/);
   assert.match(hostingerDocs, /SHA exato/);
   assert.match(hostingerDocs, /aproximadamente 15 minutos/);
 });
