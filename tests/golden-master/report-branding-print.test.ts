@@ -15,10 +15,16 @@ test("relatório usa o título e a identificação profissional aprovados", () =
   assert.match(report, /signature-line/);
 });
 
-test("logo oficial aparece no topo e não é repetida na assinatura", () => {
+test("logo oficial aparece no topo e a assinatura contém apenas identificação profissional", () => {
   assert.match(report, /\/brand\/natalia-mendes-logo\.svg/);
   assert.match(report, /<BrandLogo \/>/);
-  assert.doesNotMatch(report, /professional-signature[^]*BrandLogo/);
+  const signatureComponent = report.slice(
+    report.indexOf("function PhysicianSignature"),
+    report.indexOf("function BrandLogo"),
+  );
+  assert.doesNotMatch(signatureComponent, /BrandLogo|report-brand-logo/);
+  assert.match(signatureComponent, /Dra\. Natalia Mendes/);
+  assert.match(signatureComponent, /CRM-BA: 27416 · RQE: 24673/);
   assert.match(logo, /Natalia Mendes Médica Geriatra/);
 });
 
@@ -40,8 +46,8 @@ test("impressão isolada da tabela recebe logo superior e assinatura própria", 
 });
 
 test("CSS de branding é carregado depois do CSS clínico", () => {
-  const clinicalIndex = layout.indexOf('import "\.\/clinical-report\.css";'.replace("\\", ""));
-  const brandingIndex = layout.indexOf('import "\.\/report-branding\.css";'.replace("\\", ""));
+  const clinicalIndex = layout.indexOf('import "./clinical-report.css";');
+  const brandingIndex = layout.indexOf('import "./report-branding.css";');
   assert.ok(clinicalIndex >= 0);
   assert.ok(brandingIndex > clinicalIndex);
 });
