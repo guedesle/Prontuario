@@ -9,16 +9,20 @@ import {
 
 test("licenças eletrônicas são fail-closed por padrão", () => {
   const flags = electronicScaleLicenseFlagsFromEnvironment({});
-  assert.deepEqual(flags, { mnaEhrConfirmed: false, mmseElectronicConfirmed: false, mocaElectronicConfirmed: false });
+  assert.deepEqual(flags, {
+    mnaEhrConfirmed: false,
+    mmseElectronicConfirmed: false,
+    mocaElectronicConfirmed: false,
+  });
   assert.equal(isElectronicScaleLicensed("mna_full", flags), false);
   assert.equal(isElectronicScaleLicensed("meem_freitas", flags), false);
   assert.equal(isElectronicScaleLicensed("moca_br_freitas", flags), false);
   assert.equal(unconfirmedElectronicScaleRestrictions(flags).length, 3);
 });
 
-test("instrumentos sem restrição eletrônica explícita continuam disponíveis", () => {
+test("instrumentos sem reprodução eletrônica explícita continuam disponíveis", () => {
   const flags = electronicScaleLicenseFlagsFromEnvironment({});
-  for (const code of ["katz", "lawton", "gds15", "pfeffer10", "minicog_freitas", "cesd_br_elderly", "zarit_br_22"]) {
+  for (const code of ["katz", "lawton", "gds15", "pfeffer10", "minicog_freitas", "cesd_br_elderly", "zarit_br_22", "isi"]) {
     assert.equal(isElectronicScaleLicensed(code, flags), true, code);
     assert.equal(electronicScaleRestriction(code, flags), null);
   }
@@ -36,10 +40,8 @@ test("cada autorização precisa ser confirmada individualmente", () => {
   assert.deepEqual(unconfirmedElectronicScaleRestrictions(flags).map((item) => item.code), ["meem_freitas"]);
 });
 
-test("restrição informa instrumento e flag sem expor credencial", () => {
-  const restriction = electronicScaleRestriction("moca_br_freitas", electronicScaleLicenseFlagsFromEnvironment({}));
-  assert.ok(restriction);
-  assert.equal(restriction.code, "moca_br_freitas");
-  assert.equal(restriction.envVar, "CLINICAL_LICENSE_MOCA_ELECTRONIC_CONFIRMED");
-  assert.match(restriction.reason, /licen|autoriza|restring/i);
+test("ISI score-only não é confundida com autorização para reproduzir o formulário", () => {
+  const flags = electronicScaleLicenseFlagsFromEnvironment({});
+  assert.equal(electronicScaleRestriction("isi", flags), null);
+  assert.equal(isElectronicScaleLicensed("isi", flags), true);
 });

@@ -2,6 +2,7 @@ export const CLINICAL_SCALE_DOMAIN_ORDER = [
   "Cognição",
   "Funcionalidade",
   "Capacidade psicológica e humor",
+  "Sono",
   "Locomoção e desempenho físico",
   "Fragilidade",
   "Vitalidade e nutrição",
@@ -23,6 +24,8 @@ export interface ClinicalScaleOptionInput {
   name: string;
   dimension?: string | null;
   appliedInCurrentConsultation?: boolean;
+  disabled?: boolean;
+  statusNote?: string;
 }
 
 export interface ClinicalScaleOption extends ClinicalScaleOptionInput {
@@ -34,6 +37,7 @@ const DIMENSION_DOMAIN: Record<string, ClinicalScaleDomain> = {
   cognicao: "Cognição",
   funcionalidade: "Funcionalidade",
   humor: "Capacidade psicológica e humor",
+  sono: "Sono",
   mobilidade: "Locomoção e desempenho físico",
   fragilidade: "Fragilidade",
   nutricao: "Vitalidade e nutrição",
@@ -47,6 +51,7 @@ const DIMENSION_DOMAIN: Record<string, ClinicalScaleDomain> = {
 };
 
 const CODE_DOMAIN: Record<string, ClinicalScaleDomain> = {
+  isi: "Sono",
   apgar_familiar: "Família",
   family_apgar_br_elderly: "Família",
   mos_sss_br_19: "Rede e suporte social",
@@ -91,6 +96,7 @@ export function isScaleExposedInUnifiedWorkspace(input: Pick<ClinicalScaleOption
 }
 
 function sourcePriority(input: ClinicalScaleOptionInput): number {
+  if (input.disabled) return 0;
   if ((input.code === "meem" || input.code === "moca") && input.source === "complementary") return 100;
   if (input.source === "core") return 30;
   if (input.source === "complementary") return 20;
