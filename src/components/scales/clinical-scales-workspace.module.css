@@ -98,8 +98,11 @@
 
 .checkRow input:focus-visible,
 .selectedBar button:focus-visible,
-.field input:focus-visible,
-.field select:focus-visible,
+.field > input:focus-visible,
+.field > select:focus-visible,
+.numberRow input:focus-visible,
+.inlineChoice input:focus-visible,
+.checkboxChoice input:focus-visible,
 .choiceCard input:focus-visible,
 .actions button:focus-visible {
   outline: 3px solid rgba(114, 89, 96, .22);
@@ -244,8 +247,13 @@
   font-weight: 700;
 }
 
-.field input,
-.field select {
+.fieldLabel {
+  line-height: 1.35;
+}
+
+.field > input,
+.field > select,
+.numberRow input {
   width: 100%;
   box-sizing: border-box;
   min-height: 44px;
@@ -261,6 +269,94 @@
   color: #756a6d;
   font-weight: 400;
   line-height: 1.4;
+}
+
+.inlineChoices {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.inlineChoice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #e0d7d9;
+  border-radius: 10px;
+  background: #fff;
+  color: #4d4346;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.inlineChoice:hover {
+  border-color: #bcaeb2;
+  background: #fdfbfc;
+}
+
+.inlineChoice:has(input:checked) {
+  border-color: #80666d;
+  background: #f7f2f3;
+}
+
+.inlineChoice input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 1px 0 0;
+  padding: 0;
+  border: 0;
+  accent-color: #725960;
+}
+
+.inlineChoice input:disabled + span {
+  opacity: .6;
+}
+
+.checkboxChoice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #e0d7d9;
+  border-radius: 10px;
+  background: #fff;
+  color: #4d4346;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+
+.checkboxChoice:hover {
+  border-color: #bcaeb2;
+  background: #fdfbfc;
+}
+
+.checkboxChoice:has(input:checked) {
+  border-color: #80666d;
+  background: #f7f2f3;
+}
+
+.checkboxChoice input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: #725960;
+}
+
+.checkboxChoice input:disabled + span {
+  opacity: .6;
 }
 
 .numberRow {
@@ -444,7 +540,8 @@
     align-self: flex-start;
   }
 
-  .domainGrid {
+  .domainGrid,
+  .fields {
     grid-template-columns: 1fr;
   }
 
