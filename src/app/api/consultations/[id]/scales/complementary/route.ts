@@ -15,6 +15,11 @@ import {
   ISI_QUICK_DEFINITION,
   scoreIsi,
 } from "@/domain/isi";
+import {
+  TEN_CS_STRUCTURED_CODE,
+  TEN_CS_STRUCTURED_DEFINITION,
+  scoreTenCsStructured,
+} from "@/domain/ten-cs-structured";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
 import { saveScaleAssessment } from "@/server/clinical/persistence";
 import { prisma } from "@/server/db";
@@ -22,7 +27,9 @@ import { prisma } from "@/server/db";
 const QUICK_CODES = new Set<CognitiveQuickCode>(COGNITIVE_QUICK_DEFINITIONS.map((item) => item.code));
 type RequestScaleCode = ComplementaryScoreScaleCode | typeof ISI_CODE;
 const DEFINITIONS = [
-  ...COMPLEMENTARY_SCORE_SCALES.filter((item) => !QUICK_CODES.has(item.code as CognitiveQuickCode)),
+  ...COMPLEMENTARY_SCORE_SCALES
+    .filter((item) => !QUICK_CODES.has(item.code as CognitiveQuickCode))
+    .map((item) => item.code === TEN_CS_STRUCTURED_CODE ? TEN_CS_STRUCTURED_DEFINITION : item),
   ...COGNITIVE_QUICK_DEFINITIONS,
   ISI_QUICK_DEFINITION,
 ];
@@ -58,7 +65,7 @@ function validateAgainstDefinition(scaleCode: RequestScaleCode, answers: Record<
 
   for (const field of fields) {
     const value = answers[field.id];
-    if (field.number) {
+    if ("number" in field && field.number) {
       if (typeof value !== "number" || !Number.isFinite(value) || value < field.number.min || value > field.number.max) {
         throw new Error(`Valor inválido para ${field.id}.`);
       }
@@ -73,7 +80,7 @@ function failure(error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN";
   if (code === "CONSULTATION_NOT_FOUND") return NextResponse.json({ code, message: "Consulta não encontrada." }, { status: 404 });
   if (code === "INVALID_REQUEST" || code === "UNSUPPORTED_SCALE") return NextResponse.json({ code, message: "Requisição de escala complementar inválida." }, { status: 400 });
-  if (error instanceof Error && /Valor inválido|Escala complementar|interpretar|Escolaridade|Pontuação|campo não permitido|ISI_/i.test(error.message)) {
+  if (error instanceof Error && /Valor inválido|Escala complementar|interpretar|Escolaridade|Pontuação|campo não permitido|ISI_|10-CS/i.test(error.message)) {
     return NextResponse.json({ code: "INVALID_SCALE_ANSWERS", message: error.message }, { status: 400 });
   }
   return NextResponse.json({ code: "COMPLEMENTARY_SCALE_FAILED", message: "Não foi possível processar a escala complementar." }, { status: 500 });
@@ -139,11 +146,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const { scaleCode, answers } = parseBody(await request.json());
     validateAgainstDefinition(scaleCode, answers);
-    const scored = scaleCode === ISI_CODE
-      ? scoreIsi(answers)
-      : QUICK_CODES.has(scaleCode as CognitiveQuickCode)
-        ? scoreCognitiveQuickEntry(scaleCode as CognitiveQuickCode, answers)
-        : scoreComplementaryScale(scaleCode as ComplementaryScoreScaleCode, answers);
+    const scored = scaleCode === TEN_CS_STRUCTURED_CODE
+      ? scoreTenCsStructured(answers)
+      : scaleCode === ISI_CODE
+        ? scoreIsi(answers)
+        : QUICK_CODES.has(scaleCode as CognitiveQuickCode)
+          ? scoreCognitiveQuickEntry(scaleCode as CognitiveQuickCode, answers)
+          : scoreComplementaryScale(scaleCode as ComplementaryScoreScaleCode, answers);
     const assessment = await saveScaleAssessment({
       consultationId: id,
       scaleCode,
