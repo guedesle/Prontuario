@@ -79,6 +79,7 @@ type ResultPayload = {
 type Answers = Record<string, string>;
 
 const EMPTY_PREFILLS: OncogeriatricPrefills = { meem: null, mnaSf: null, ecog: null };
+const INLINE_CHOICE_LIMIT = 6;
 
 function asDisplayValue(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
@@ -113,6 +114,28 @@ function fieldInput(
   onChange: (value: string) => void,
 ) {
   if (field.choices) {
+    if (field.choices.length <= INLINE_CHOICE_LIMIT) {
+      return (
+        <div className={styles.inlineChoices} role="radiogroup" aria-label={field.label}>
+          {field.choices.map((choice) => {
+            const choiceValue = String(choice.value);
+            return (
+              <label className={styles.inlineChoice} key={choiceValue}>
+                <input
+                  type="radio"
+                  name={`clinical-field-${field.id}`}
+                  value={choiceValue}
+                  checked={value === choiceValue}
+                  disabled={disabled}
+                  onChange={(event) => onChange(event.target.value)}
+                />
+                <span>{choice.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      );
+    }
     return (
       <select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
         <option value="">Selecione</option>
@@ -340,10 +363,10 @@ export function ClinicalScalesWorkspace({ consultationId }: { consultationId: st
     return <>
       <p className={styles.instruction}>{definition.instruction}</p>
       <div className={styles.fields}>{definition.questions.map((question) => (
-        <label className={styles.field} key={question.id}>{question.label}
+        <div className={styles.field} key={question.id}><span className={styles.fieldLabel}>{question.label}</span>
           {fieldInput(question, answers[question.id] ?? "", finalized || saving, (value) => setAnswer(question.id, value))}
           {question.number?.help ? <small>{question.number.help}</small> : null}
-        </label>
+        </div>
       ))}</div>
       <details className={styles.source}><summary>Fonte e versão clínica</summary><p>{definition.sourceNote}</p><p>Versão: {definition.version}</p></details>
     </>;
@@ -357,10 +380,10 @@ export function ClinicalScalesWorkspace({ consultationId }: { consultationId: st
         <div className={styles.guideGrid}>{definition.applicationGuide.map((section) => <section key={section.title}><h4>{section.title}</h4><ul>{section.items.map((item) => <li key={item}>{item}</li>)}</ul></section>)}</div>
       </details> : null}
       <div className={styles.fields}>{definition.fields.map((field) => (
-        <label className={styles.field} key={field.id}>{field.label}
+        <div className={styles.field} key={field.id}><span className={styles.fieldLabel}>{field.label}</span>
           {fieldInput(field, answers[field.id] ?? "", finalized || saving, (value) => setAnswer(field.id, value))}
           {field.number?.help ? <small>{field.number.help}</small> : null}
-        </label>
+        </div>
       ))}</div>
       <details className={styles.source}><summary>Fonte e versão clínica</summary><p>{definition.sourceNote}</p><p>Versão: {definition.version}</p></details>
     </>;
