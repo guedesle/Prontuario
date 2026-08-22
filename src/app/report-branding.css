@@ -1,0 +1,118 @@
+/* Approved physician branding for patient-facing printable documents. */
+.report-brand-logo {
+  display: block;
+  width: min(210px, 52vw);
+  height: auto;
+  margin: 0 0 18px;
+  object-fit: contain;
+  object-position: left top;
+}
+
+.report-title-block {
+  min-width: 0;
+}
+
+.professional-signature {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: min(320px, 100%);
+  margin: 34px 0 0 auto;
+  color: var(--care-ink);
+  text-align: center;
+  break-inside: avoid;
+}
+
+.professional-signature strong {
+  font-size: 13px;
+}
+
+.professional-signature span:not(.signature-line) {
+  font-size: 11px;
+}
+
+.signature-line {
+  display: block;
+  width: 100%;
+  margin-top: 28px;
+  border-top: 1px solid #716669;
+}
+
+.report-document-note {
+  margin: 34px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--care-line);
+  color: var(--care-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.document-meta {
+  margin: 8px 0 0;
+  color: var(--care-muted);
+  font-size: 10px;
+  text-align: right;
+}
+
+.medication-print-brand,
+.medication-only-signature {
+  display: none;
+}
+
+@media print {
+  .care-report-header .report-brand-logo {
+    width: 46mm;
+    margin: 0 0 5mm;
+  }
+
+  .professional-signature {
+    width: 78mm;
+    margin-top: 9mm;
+  }
+
+  .professional-signature strong {
+    font-size: 10pt;
+  }
+
+  .professional-signature span:not(.signature-line) {
+    font-size: 9pt;
+  }
+
+  .signature-line {
+    margin-top: 9mm;
+    border-color: #555;
+  }
+
+  .report-document-note {
+    margin-top: 7mm;
+    padding-top: 3mm;
+    font-size: 8.5pt;
+  }
+
+  .document-meta {
+    display: none !important;
+  }
+
+  .report-workspace[data-print-scope="medications"] .medication-print-brand {
+    display: block !important;
+    margin-bottom: 5mm;
+  }
+
+  .report-workspace[data-print-scope="medications"] .medication-print-brand .report-brand-logo {
+    width: 46mm;
+    margin: 0;
+  }
+
+  .report-workspace[data-print-scope="medications"] .medication-only-signature {
+    display: grid !important;
+    margin: 9mm auto 0;
+  }
+
+  .report-workspace[data-print-scope="medications"] .medication-final-section .medication-safety-note {
+    text-align: left;
+  }
+
+  .report-workspace[data-print-scope="medications"] .medication-final-section .section-title-row {
+    align-items: flex-start;
+  }
+}
