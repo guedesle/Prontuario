@@ -15,6 +15,7 @@ import {
   ISI_QUICK_DEFINITION,
   scoreIsi,
 } from "@/domain/isi";
+import { withStructuredScaleEntry } from "@/domain/structured-scale-entry";
 import {
   TEN_CS_STRUCTURED_CODE,
   TEN_CS_STRUCTURED_DEFINITION,
@@ -29,7 +30,8 @@ type RequestScaleCode = ComplementaryScoreScaleCode | typeof ISI_CODE;
 const DEFINITIONS = [
   ...COMPLEMENTARY_SCORE_SCALES
     .filter((item) => !QUICK_CODES.has(item.code as CognitiveQuickCode))
-    .map((item) => item.code === TEN_CS_STRUCTURED_CODE ? TEN_CS_STRUCTURED_DEFINITION : item),
+    .map((item) => item.code === TEN_CS_STRUCTURED_CODE ? TEN_CS_STRUCTURED_DEFINITION : item)
+    .map((item) => withStructuredScaleEntry(item)),
   ...COGNITIVE_QUICK_DEFINITIONS,
   ISI_QUICK_DEFINITION,
 ];
