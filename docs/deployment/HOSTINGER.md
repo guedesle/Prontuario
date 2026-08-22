@@ -71,7 +71,7 @@ O endpoint público de health check deve responder HTTP 200 e incluir:
 
 - `status: "ok"`
 - `database: "ok"`
-- `releaseId: "2026-08-22-longitudinal-multidimensional-deploy-v2"`
+- `releaseId: "2026-08-22-scales-10cs-structured-v1"`
 
 O `releaseId` é deliberadamente servido com `Cache-Control: no-store`; uma CDN ou proxy não deve reutilizar um identificador antigo para declarar a implantação como atual. O smoke também exige esse header antes de aceitar a resposta de health.
 
