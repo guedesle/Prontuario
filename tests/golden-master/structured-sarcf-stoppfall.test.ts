@@ -56,3 +56,17 @@ test("workspace usa alternativas abertas para escolhas curtas e mantém listas l
   assert.match(workspace, /type="radio"/);
   assert.match(workspace, /<select value=/);
 });
+
+test("STOPPFall usa checkbox real e checkbox não marcado é enviado como ausente", () => {
+  const workspace = readFileSync("src/components/scales/clinical-scales-workspace.tsx", "utf8");
+  assert.match(workspace, /field\.display === "checkbox"/);
+  assert.match(workspace, /type="checkbox"/);
+  assert.match(workspace, /event\.target\.checked \? "1" : "0"/);
+  assert.match(workspace, /field\.display === "checkbox" \? "0" : ""/);
+});
+
+test("guia complementar inicia recolhido para manter a consulta compacta", () => {
+  const workspace = readFileSync("src/components/scales/clinical-scales-workspace.tsx", "utf8");
+  assert.match(workspace, /<details className=\{styles\.guide\}>/);
+  assert.doesNotMatch(workspace, /<details className=\{styles\.guide\} open>/);
+});
