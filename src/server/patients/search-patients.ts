@@ -1,6 +1,7 @@
 import {
   assertPatientSearchQuery,
   PATIENT_SEARCH_CANDIDATE_MULTIPLIER,
+  PATIENT_SEARCH_FALLBACK_PAGE_SIZE,
   PATIENT_SEARCH_LIMIT,
   patientNameMatchesSearch,
   patientSearchTerms,
@@ -17,7 +18,7 @@ export async function searchPatientsForSelection(
   const normalizedQuery = assertPatientSearchQuery(query);
   const terms = patientSearchTerms(normalizedQuery);
 
-  const patients = await prisma.patient.findMany({
+  const indexedCandidates = await prisma.patient.findMany({
     where: {
       OR: [
         {
@@ -45,11 +46,106 @@ export async function searchPatientsForSelection(
       fullName: true,
       birthDate: true,
       needsIdentityReview: true,
+      consultations: {
+        where: {
+          status: {
+            in: ["DRAFT", "IN_REVIEW"],
+          },
+        },
+        orderBy: [
+          { occurredAt: "desc" },
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          occurredAt: true,
+        },
+      },
     },
   });
 
-  return patients
-    .filter((patient) => patientNameMatchesSearch(patient.fullName, normalizedQuery))
+  const matched = new Map<string, (typeof indexedCandidates)[number]>();
+  for (const patient of indexedCandidates) {
+    if (patientNameMatchesSearch(patient.fullName, normalizedQuery)) {
+      matched.set(patient.id, patient);
+    }
+  }
+
+  // Fallback determinístico para registros históricos cujo campo normalizado ou
+  // collation do banco não acompanhe a regra atual de acentos/caixa. O scan é
+  // paginado, lê somente os dados mínimos de seleção e só roda quando a busca
+  // indexada não preencheu o limite final.
+  let skip = 0;
+  while (matched.size < PATIENT_SEARCH_LIMIT) {
+    const page = await prisma.patient.findMany({
+      orderBy: [
+        { normalizedFullName: "asc" },
+        { birthDate: "asc" },
+        { id: "asc" },
+      ],
+      skip,
+      take: PATIENT_SEARCH_FALLBACK_PAGE_SIZE,
+      select: {
+        id: true,
+        fullName: true,
+        birthDate: true,
+        needsIdentityReview: true,
+        consultations: {
+          where: {
+            status: {
+              in: ["DRAFT", "IN_REVIEW"],
+            },
+          },
+          orderBy: [
+            { occurredAt: "desc" },
+            { createdAt: "desc" },
+            { id: "desc" },
+          ],
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            occurredAt: true,
+          },
+        },
+      },
+    });
+
+    if (page.length === 0) break;
+    for (const patient of page) {
+      if (matched.has(patient.id)) continue;
+      if (patientNameMatchesSearch(patient.fullName, normalizedQuery)) {
+        matched.set(patient.id, patient);
+        if (matched.size >= PATIENT_SEARCH_LIMIT) break;
+      }
+    }
+
+    skip += page.length;
+    if (page.length < PATIENT_SEARCH_FALLBACK_PAGE_SIZE) break;
+  }
+
+  return [...matched.values()]
     .slice(0, PATIENT_SEARCH_LIMIT)
-    .map(toPatientSelectionResult);
+    .map((patient) => {
+      const consultation = patient.consultations[0];
+      const activeConsultation = consultation
+        && (consultation.status === "DRAFT" || consultation.status === "IN_REVIEW")
+        ? {
+            id: consultation.id,
+            status: consultation.status,
+            occurredAt: consultation.occurredAt,
+          }
+        : null;
+
+      return toPatientSelectionResult({
+        id: patient.id,
+        fullName: patient.fullName,
+        birthDate: patient.birthDate,
+        needsIdentityReview: patient.needsIdentityReview,
+        activeConsultation,
+      });
+    });
 }

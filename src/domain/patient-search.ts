@@ -3,6 +3,7 @@ import { normalizePersonName } from "./patient-identity.ts";
 export const PATIENT_SEARCH_MIN_LENGTH = 2;
 export const PATIENT_SEARCH_LIMIT = 8;
 export const PATIENT_SEARCH_CANDIDATE_MULTIPLIER = 4;
+export const PATIENT_SEARCH_FALLBACK_PAGE_SIZE = 100;
 
 export class PatientSearchValidationError extends Error {
   constructor(message: string) {
@@ -11,11 +12,18 @@ export class PatientSearchValidationError extends Error {
   }
 }
 
+export interface PatientSelectionConsultation {
+  id: string;
+  status: "DRAFT" | "IN_REVIEW";
+  occurredAt?: Date | string | null;
+}
+
 export interface PatientSelectionCandidate {
   id: string;
   fullName: string;
   birthDate?: Date | string | null;
   needsIdentityReview: boolean;
+  activeConsultation?: PatientSelectionConsultation | null;
 }
 
 export interface PatientSelectionResult {
@@ -23,6 +31,10 @@ export interface PatientSelectionResult {
   fullName: string;
   birthDate: string | null;
   needsIdentityReview: boolean;
+  activeConsultationId: string | null;
+  activeConsultationStatus: PatientSelectionConsultation["status"] | null;
+  activeConsultationDate: string | null;
+  destinationPath: string;
 }
 
 export function normalizePatientSearchQuery(value: string): string {
@@ -60,21 +72,27 @@ export function patientNameMatchesSearch(fullName: string, normalizedQuery: stri
   return terms.length > 0 && terms.every((term) => normalizedName.includes(term));
 }
 
+function toIsoDate(value?: Date | string | null): string | null {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
 export function toPatientSelectionResult(
   patient: PatientSelectionCandidate,
 ): PatientSelectionResult {
-  let birthDate: string | null = null;
-  if (patient.birthDate) {
-    const parsed = patient.birthDate instanceof Date
-      ? patient.birthDate
-      : new Date(patient.birthDate);
-    if (!Number.isNaN(parsed.getTime())) birthDate = parsed.toISOString().slice(0, 10);
-  }
+  const activeConsultation = patient.activeConsultation ?? null;
 
   return {
     id: patient.id,
     fullName: patient.fullName.trim().replace(/\s+/g, " "),
-    birthDate,
+    birthDate: toIsoDate(patient.birthDate),
     needsIdentityReview: patient.needsIdentityReview,
+    activeConsultationId: activeConsultation?.id ?? null,
+    activeConsultationStatus: activeConsultation?.status ?? null,
+    activeConsultationDate: toIsoDate(activeConsultation?.occurredAt),
+    destinationPath: activeConsultation
+      ? `/consultations/${activeConsultation.id}`
+      : `/patients/${patient.id}`,
   };
 }

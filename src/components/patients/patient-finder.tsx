@@ -8,11 +8,27 @@ interface PatientSearchResult {
   fullName: string;
   birthDate: string | null;
   needsIdentityReview: boolean;
+  activeConsultationId: string | null;
+  activeConsultationStatus: "DRAFT" | "IN_REVIEW" | null;
+  activeConsultationDate: string | null;
+  destinationPath: string;
 }
 
 interface PatientSearchResponse {
   results?: PatientSearchResult[];
   message?: string;
+}
+
+function displayDate(value: string | null): string {
+  if (!value) return "não registrada";
+  const [year, month, day] = value.split("-");
+  return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
+function consultationStatusLabel(status: PatientSearchResult["activeConsultationStatus"]): string {
+  if (status === "IN_REVIEW") return "Em revisão";
+  if (status === "DRAFT") return "Em preenchimento";
+  return "Sem consulta em andamento";
 }
 
 export function PatientFinder() {
@@ -112,19 +128,42 @@ export function PatientFinder() {
           </p>
         ) : null}
         {results.length ? (
-          <ul className={styles.results} aria-label="Pacientes encontrados">
-            {results.map((patient) => (
-              <li className={styles.resultItem} key={patient.id}>
-                <a className={styles.resultLink} href={`/patients/${patient.id}`}>
-                  <span className={styles.resultName}>{patient.fullName}</span>
-                  <span className={styles.resultMeta}>
-                    Nascimento: {patient.birthDate ?? "não registrado"}
-                    {patient.needsIdentityReview ? " · homônimo/identidade pendente de revisão" : ""}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
+          <div className={styles.resultRegion}>
+            <p className={styles.resultRegionLabel}>
+              {results.length === 1 ? "Paciente localizado" : `${results.length} pacientes localizados`}
+            </p>
+            <ul className={styles.results} aria-label="Pacientes encontrados">
+              {results.map((patient) => {
+                const hasActiveConsultation = Boolean(patient.activeConsultationId);
+                return (
+                  <li className={styles.resultItem} key={patient.id}>
+                    <a className={styles.resultLink} href={patient.destinationPath}>
+                      <span className={styles.resultIdentity}>
+                        <span className={styles.resultName}>{patient.fullName}</span>
+                        <span className={styles.resultMeta}>
+                          Nascimento: {displayDate(patient.birthDate)}
+                          {patient.needsIdentityReview ? " · homônimo/identidade pendente de revisão" : ""}
+                        </span>
+                      </span>
+                      <span className={styles.resultConsultation}>
+                        <span className={styles.resultStatus} data-active={hasActiveConsultation ? "true" : "false"}>
+                          {consultationStatusLabel(patient.activeConsultationStatus)}
+                        </span>
+                        {patient.activeConsultationDate ? (
+                          <span className={styles.resultConsultationDate}>
+                            Consulta de {displayDate(patient.activeConsultationDate)}
+                          </span>
+                        ) : null}
+                        <span className={styles.resultAction}>
+                          {hasActiveConsultation ? "Continuar consulta" : "Abrir paciente"} →
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         ) : null}
       </div>
     </section>
