@@ -3,6 +3,7 @@ import { normalizePersonName } from "./patient-identity.ts";
 export const PATIENT_SEARCH_MIN_LENGTH = 2;
 export const PATIENT_SEARCH_LIMIT = 8;
 export const PATIENT_SEARCH_CANDIDATE_MULTIPLIER = 4;
+export const PATIENT_SEARCH_FALLBACK_PAGE_SIZE = 100;
 
 export class PatientSearchValidationError extends Error {
   constructor(message: string) {
