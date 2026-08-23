@@ -1,6 +1,7 @@
 import {
   assertPatientSearchQuery,
   PATIENT_SEARCH_CANDIDATE_MULTIPLIER,
+  PATIENT_SEARCH_FALLBACK_PAGE_SIZE,
   PATIENT_SEARCH_LIMIT,
   patientNameMatchesSearch,
   patientSearchTerms,
@@ -10,6 +11,37 @@ import {
 import { requireAuthenticatedUser } from "../auth/require-user";
 import { prisma } from "../db";
 
+const patientSelection = {
+  id: true,
+  fullName: true,
+  birthDate: true,
+  needsIdentityReview: true,
+  consultations: {
+    where: {
+      status: {
+        in: ["DRAFT", "IN_REVIEW"] as const,
+      },
+    },
+    orderBy: [
+      { occurredAt: "desc" as const },
+      { createdAt: "desc" as const },
+      { id: "desc" as const },
+    ],
+    take: 1,
+    select: {
+      id: true,
+      status: true,
+      occurredAt: true,
+    },
+  },
+} as const;
+
+const patientOrdering = [
+  { normalizedFullName: "asc" as const },
+  { birthDate: "asc" as const },
+  { id: "asc" as const },
+] as const;
+
 export async function searchPatientsForSelection(
   query: string,
 ): Promise<PatientSelectionResult[]> {
@@ -17,7 +49,7 @@ export async function searchPatientsForSelection(
   const normalizedQuery = assertPatientSearchQuery(query);
   const terms = patientSearchTerms(normalizedQuery);
 
-  const patients = await prisma.patient.findMany({
+  const indexedCandidates = await prisma.patient.findMany({
     where: {
       OR: [
         {
@@ -34,40 +66,45 @@ export async function searchPatientsForSelection(
         },
       ],
     },
-    orderBy: [
-      { normalizedFullName: "asc" },
-      { birthDate: "asc" },
-      { id: "asc" },
-    ],
+    orderBy: patientOrdering,
     take: PATIENT_SEARCH_LIMIT * PATIENT_SEARCH_CANDIDATE_MULTIPLIER,
-    select: {
-      id: true,
-      fullName: true,
-      birthDate: true,
-      needsIdentityReview: true,
-      consultations: {
-        where: {
-          status: {
-            in: ["DRAFT", "IN_REVIEW"],
-          },
-        },
-        orderBy: [
-          { occurredAt: "desc" },
-          { createdAt: "desc" },
-          { id: "desc" },
-        ],
-        take: 1,
-        select: {
-          id: true,
-          status: true,
-          occurredAt: true,
-        },
-      },
-    },
+    select: patientSelection,
   });
 
-  return patients
-    .filter((patient) => patientNameMatchesSearch(patient.fullName, normalizedQuery))
+  const matched = new Map<string, (typeof indexedCandidates)[number]>();
+  for (const patient of indexedCandidates) {
+    if (patientNameMatchesSearch(patient.fullName, normalizedQuery)) {
+      matched.set(patient.id, patient);
+    }
+  }
+
+  // Fallback determinístico para registros históricos cujo campo normalizado ou
+  // collation do banco não acompanhe a regra atual de acentos/caixa. O scan é
+  // paginado, lê somente os dados mínimos de seleção e só roda quando a busca
+  // indexada não preencheu o limite final.
+  let skip = 0;
+  while (matched.size < PATIENT_SEARCH_LIMIT) {
+    const page = await prisma.patient.findMany({
+      orderBy: patientOrdering,
+      skip,
+      take: PATIENT_SEARCH_FALLBACK_PAGE_SIZE,
+      select: patientSelection,
+    });
+
+    if (page.length === 0) break;
+    for (const patient of page) {
+      if (matched.has(patient.id)) continue;
+      if (patientNameMatchesSearch(patient.fullName, normalizedQuery)) {
+        matched.set(patient.id, patient);
+        if (matched.size >= PATIENT_SEARCH_LIMIT) break;
+      }
+    }
+
+    skip += page.length;
+    if (page.length < PATIENT_SEARCH_FALLBACK_PAGE_SIZE) break;
+  }
+
+  return [...matched.values()]
     .slice(0, PATIENT_SEARCH_LIMIT)
     .map((patient) => toPatientSelectionResult({
       id: patient.id,
