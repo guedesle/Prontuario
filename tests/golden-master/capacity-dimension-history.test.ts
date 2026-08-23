@@ -157,17 +157,17 @@ test("instrumentos ou versões diferentes não criam falsa tendência longitudin
   assert.equal(differentVersion.inflectionPoints.length, 0);
 });
 
-test("missing interrompe comparabilidade e nunca vira estabilidade ou localiza artificialmente uma mudança posterior", () => {
+test("consulta sem avaliação de capacidade permanece no eixo como missing explícito e interrompe comparabilidade", () => {
   const history = buildCapacityDimensionHistory({
     patientId: "p1",
     consultations,
     assessments: [
       { patientId: "p1", consultationId: "c1", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "verde", appliedAt: "2026-01-10" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "frail_br", clinicalColor: "amarelo", appliedAt: "2026-04-10" },
       { patientId: "p1", consultationId: "c3", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "vermelho", appliedAt: "2026-08-21" },
     ],
   });
 
+  assert.deepEqual(history.consultations.map((item) => item.id), ["c1", "c2", "c3"]);
   const functionality = dimension(history, "funcionalidade");
   assert.equal(functionality.cells[0]?.status, "preserved");
   assert.equal(functionality.cells[1]?.status, "not-assessed");
@@ -233,6 +233,7 @@ test("consulta alvo vazia permanece explicitamente não avaliada no relatório",
   });
 
   assert.deepEqual(history.consultations.map((item) => item.id), ["c1", "c2", "c3"]);
+  assert.equal(history.consultations.at(-1)?.isTarget, true);
   assert.ok(history.dimensions.every((item) => item.cells.at(-1)?.status === "not-assessed"));
 });
 
