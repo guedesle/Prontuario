@@ -129,11 +129,23 @@ export async function searchPatientsForSelection(
 
   return [...matched.values()]
     .slice(0, PATIENT_SEARCH_LIMIT)
-    .map((patient) => toPatientSelectionResult({
-      id: patient.id,
-      fullName: patient.fullName,
-      birthDate: patient.birthDate,
-      needsIdentityReview: patient.needsIdentityReview,
-      activeConsultation: patient.consultations[0] ?? null,
-    }));
+    .map((patient) => {
+      const consultation = patient.consultations[0];
+      const activeConsultation = consultation
+        && (consultation.status === "DRAFT" || consultation.status === "IN_REVIEW")
+        ? {
+            id: consultation.id,
+            status: consultation.status,
+            occurredAt: consultation.occurredAt,
+          }
+        : null;
+
+      return toPatientSelectionResult({
+        id: patient.id,
+        fullName: patient.fullName,
+        birthDate: patient.birthDate,
+        needsIdentityReview: patient.needsIdentityReview,
+        activeConsultation,
+      });
+    });
 }
