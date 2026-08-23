@@ -1,17 +1,23 @@
 import type { ClinicalColor } from "./clinical-engine.ts";
+import {
+  INTRINSIC_CAPACITY_MODEL_VERSION,
+  evidenceRolePriority,
+  isCapacityScale,
+  methodologyForScaleInDomain,
+  scaleDomains,
+  type CapacityDimensionCode,
+  type CapacityEvidenceRole,
+  type ConstructMappingStrength,
+  type DomainEvidenceBasis,
+} from "./intrinsic-capacity-methodology.ts";
 import { scaleCatalogEntry } from "./scale-catalog.ts";
 
-export type CapacityDimensionCode =
-  | "funcionalidade"
-  | "locomocao"
-  | "cognicao"
-  | "psicologico"
-  | "vitalidade"
-  | "sensorial";
+export type { CapacityDimensionCode } from "./intrinsic-capacity-methodology.ts";
 
 export type CapacityDimensionStatus =
   | "not-assessed"
   | "recorded"
+  | "indeterminate"
   | "preserved"
   | "attention"
   | "altered";
@@ -29,13 +35,21 @@ export interface CapacityTimelineConsultation {
 }
 
 export interface CapacityTimelineAssessment {
+  id?: string;
   patientId: string;
   consultationId: string;
   scaleCode: string;
+  scaleVersion?: string | null;
+  scoreNumeric?: number | null;
+  scoreText?: string | null;
+  classification?: string | null;
+  interpretation?: string | null;
   clinicalColor?: ClinicalColor | null;
   appliedAt: Date | string;
   consultationOccurredAt?: Date | string;
   consultationCreatedAt?: Date | string;
+  sourceCitation?: string | null;
+  definitionHash?: string | null;
 }
 
 /**
@@ -53,14 +67,31 @@ export interface CapacityTimelineMilestone {
 }
 
 export interface CapacityDimensionCellAssessment {
+  assessmentId?: string;
   scaleCode: string;
   scaleName: string;
+  scaleVersion: string;
+  scoreNumeric?: number | null;
+  scoreText?: string | null;
+  classification?: string | null;
+  interpretation?: string | null;
   clinicalColor: ClinicalColor | null;
+  role: CapacityEvidenceRole;
+  mappingStrength: ConstructMappingStrength;
+  basis: DomainEvidenceBasis;
+  canClassifyDomain: boolean;
+  selectedForDomainState: boolean;
+  rationale: string;
+  sourceCitation?: string | null;
+  definitionHash?: string | null;
 }
 
 export interface CapacityDimensionCell {
   consultationId: string;
   status: CapacityDimensionStatus;
+  statusReason: string;
+  evidenceBasis?: DomainEvidenceBasis;
+  comparabilityKey?: string;
   assessments: CapacityDimensionCellAssessment[];
 }
 
@@ -80,6 +111,7 @@ export interface CapacityInflectionPoint {
   fromStatus: CapacityComparableStatus;
   toStatus: CapacityComparableStatus;
   direction: "worsened" | "improved";
+  comparabilityKey: string;
   milestones: Array<{
     title: string;
     note?: string;
@@ -89,7 +121,9 @@ export interface CapacityInflectionPoint {
 
 export interface CapacityDimensionHistory {
   patientId: string;
+  methodologyVersion: typeof INTRINSIC_CAPACITY_MODEL_VERSION;
   frameworkLabel: string;
+  methodologyNote: string;
   consultations: Array<{
     id: string;
     occurredAt: string;
@@ -105,7 +139,7 @@ export const CAPACITY_DIMENSIONS: readonly {
   label: string;
   framework: CapacityDimensionRow["framework"];
 }[] = [
-  { code: "funcionalidade", label: "Capacidade funcional", framework: "functional-capacity" },
+  { code: "funcionalidade", label: "Independência funcional", framework: "functional-capacity" },
   { code: "locomocao", label: "Locomoção", framework: "intrinsic-capacity" },
   { code: "cognicao", label: "Cognição", framework: "intrinsic-capacity" },
   { code: "psicologico", label: "Capacidade psicológica", framework: "intrinsic-capacity" },
@@ -113,73 +147,106 @@ export const CAPACITY_DIMENSIONS: readonly {
   { code: "sensorial", label: "Capacidade sensorial", framework: "intrinsic-capacity" },
 ] as const;
 
-/**
- * Mapeia instrumentos persistidos para capacidade funcional e para os cinco
- * domínios de capacidade intrínseca. O gráfico nunca soma ou normaliza escores
- * de instrumentos diferentes; ele representa apenas o estado registrado em
- * cada domínio/consulta.
- */
-const SCALE_CAPACITY_DOMAINS: Readonly<Record<string, readonly CapacityDimensionCode[]>> = {
-  katz: ["funcionalidade"],
-  lawton: ["funcionalidade"],
-  barthel: ["funcionalidade"],
-  pfeffer: ["funcionalidade", "cognicao"],
-  pfeffer10: ["funcionalidade", "cognicao"],
-  ecog: ["funcionalidade"],
-  kps: ["funcionalidade"],
-
-  sppb: ["locomocao"],
-  poma: ["locomocao"],
-  sarcf: ["locomocao"],
-  preensao: ["locomocao"],
-  velocidade_marcha: ["locomocao"],
-  sentar_levantar_5x: ["locomocao"],
-  frail_br: ["locomocao", "vitalidade"],
-
-  moca: ["cognicao"],
-  meem: ["cognicao"],
-  dez_cs: ["cognicao"],
-  cam: ["cognicao"],
-  fast: ["cognicao"],
-  minicog_freitas: ["cognicao"],
-  clock_shulman: ["cognicao"],
-  moca_br_freitas: ["cognicao"],
-  iqcode_br_26: ["cognicao"],
-
-  gds15: ["psicologico"],
-  cornell: ["psicologico"],
-  cesd_br_elderly: ["psicologico"],
-  isi: ["psicologico"],
-
-  mna_sf: ["vitalidade"],
-
-  audicao: ["sensorial"],
-  hearing: ["sensorial"],
-  visao: ["sensorial"],
-  vision: ["sensorial"],
-};
-
 function timestamp(value: Date | string | undefined, fallback = 0): number {
   if (value === undefined) return fallback;
   const result = new Date(value).getTime();
   return Number.isFinite(result) ? result : fallback;
 }
 
-function colorPriority(color: ClinicalColor | null): number {
-  if (color === "vermelho") return 4;
-  if (color === "amarelo") return 3;
-  if (color === "cinza" || color === null) return 2;
-  return 1;
+function mappedColorStatus(color: ClinicalColor | null): CapacityComparableStatus | "recorded" {
+  if (color === "vermelho") return "altered";
+  if (color === "amarelo") return "attention";
+  if (color === "verde") return "preserved";
+  return "recorded";
 }
 
-function statusFromAssessments(assessments: CapacityDimensionCellAssessment[]): CapacityDimensionStatus {
-  if (assessments.length === 0) return "not-assessed";
-  const worst = assessments.reduce<ClinicalColor | null>((current, item) =>
-    colorPriority(item.clinicalColor) > colorPriority(current) ? item.clinicalColor : current, "verde");
-  if (worst === "vermelho") return "altered";
-  if (worst === "amarelo") return "attention";
-  if (worst === "verde") return "preserved";
-  return "recorded";
+function statusFromAssessments(assessments: CapacityDimensionCellAssessment[]): {
+  status: CapacityDimensionStatus;
+  statusReason: string;
+  evidenceBasis?: DomainEvidenceBasis;
+  comparabilityKey?: string;
+  selectedScaleCodes: Set<string>;
+} {
+  if (assessments.length === 0) {
+    return {
+      status: "not-assessed",
+      statusReason: "Nenhum instrumento metodologicamente mapeado foi registrado nesta consulta.",
+      selectedScaleCodes: new Set<string>(),
+    };
+  }
+
+  const eligible = assessments.filter((item) => item.canClassifyDomain);
+  if (eligible.length === 0) {
+    return {
+      status: "recorded",
+      statusReason: "Há informação clínica relacionada, mas nenhum instrumento desta consulta possui regra v1 para definir o estado do domínio.",
+      evidenceBasis: "context",
+      selectedScaleCodes: new Set<string>(),
+    };
+  }
+
+  const highestPriority = Math.max(...eligible.map((item) => evidenceRolePriority(item.role)));
+  const selected = eligible.filter((item) => evidenceRolePriority(item.role) === highestPriority);
+  const selectedScaleCodes = new Set(selected.map((item) => item.scaleCode));
+  const selectedStatuses = new Set(selected.map((item) => mappedColorStatus(item.clinicalColor)));
+  const evidenceBasis = selected[0]?.basis;
+
+  if (selectedStatuses.size > 1) {
+    return {
+      status: "indeterminate",
+      statusReason: `Instrumentos de mesma prioridade metodológica apresentaram resultados discordantes: ${selected.map((item) => item.scaleName).join(", ")}.`,
+      evidenceBasis,
+      selectedScaleCodes,
+    };
+  }
+
+  const onlyStatus = [...selectedStatuses][0] ?? "recorded";
+  if (onlyStatus === "recorded") {
+    return {
+      status: "recorded",
+      statusReason: "O instrumento foi registrado, mas sua classificação persistida não permite estado categórico comparável.",
+      evidenceBasis,
+      selectedScaleCodes,
+    };
+  }
+
+  const allScreening = selected.every((item) => item.role === "screening");
+  if (allScreening) {
+    if (onlyStatus === "preserved") {
+      return {
+        status: "recorded",
+        statusReason: "Rastreio sem sinal de redução; resultado negativo não é usado para afirmar preservação de todo o domínio.",
+        evidenceBasis: "screening",
+        selectedScaleCodes,
+      };
+    }
+    return {
+      status: "attention",
+      statusReason: "Rastreio positivo: sinal de atenção que requer avaliação complementar; não confirma redução do domínio.",
+      evidenceBasis: "screening",
+      comparabilityKey: selected.length === 1
+        ? `${selected[0]!.scaleCode}@${selected[0]!.scaleVersion}`
+        : undefined,
+      selectedScaleCodes,
+    };
+  }
+
+  const comparabilityKey = selected.length === 1
+    ? `${selected[0]!.scaleCode}@${selected[0]!.scaleVersion}`
+    : undefined;
+  const basisLabel = evidenceBasis === "proxy"
+    ? "indicador proxy operacional"
+    : "instrumento com regra metodológica aplicável";
+
+  return {
+    status: onlyStatus,
+    statusReason: selected.length === 1
+      ? `Estado derivado de ${selected[0]!.scaleName} (${basisLabel}), preservando resultado, versão e regra de origem.`
+      : `Estado convergente entre instrumentos de mesma prioridade (${selected.map((item) => item.scaleName).join(", ")}); sem chave única de comparabilidade longitudinal.`,
+    evidenceBasis,
+    comparabilityKey,
+    selectedScaleCodes,
+  };
 }
 
 function isComparableStatus(status: CapacityDimensionStatus): status is CapacityComparableStatus {
@@ -195,7 +262,7 @@ function comparableRank(status: CapacityComparableStatus): number {
 function effectiveAssessments(assessments: readonly CapacityTimelineAssessment[]): CapacityTimelineAssessment[] {
   const latest = new Map<string, CapacityTimelineAssessment>();
   for (const assessment of assessments) {
-    if (!(assessment.scaleCode in SCALE_CAPACITY_DOMAINS)) continue;
+    if (!isCapacityScale(assessment.scaleCode)) continue;
     const key = `${assessment.consultationId}:${assessment.scaleCode}`;
     const previous = latest.get(key);
     if (!previous || timestamp(assessment.appliedAt) >= timestamp(previous.appliedAt)) latest.set(key, assessment);
@@ -254,10 +321,19 @@ function buildInflectionPoints(
   const points: CapacityInflectionPoint[] = [];
 
   for (const dimension of dimensions) {
-    let previous: { consultationId: string; status: CapacityComparableStatus } | undefined;
+    let previous: {
+      consultationId: string;
+      status: CapacityComparableStatus;
+      comparabilityKey: string;
+    } | undefined;
+
     for (const cell of dimension.cells) {
-      if (!isComparableStatus(cell.status)) continue;
-      if (previous && previous.status !== cell.status) {
+      if (!isComparableStatus(cell.status) || !cell.comparabilityKey) {
+        previous = undefined;
+        continue;
+      }
+
+      if (previous && previous.comparabilityKey === cell.comparabilityKey && previous.status !== cell.status) {
         const currentRank = comparableRank(cell.status);
         const previousRank = comparableRank(previous.status);
         const consultation = consultationById.get(cell.consultationId);
@@ -271,6 +347,7 @@ function buildInflectionPoints(
             fromStatus: previous.status,
             toStatus: cell.status,
             direction: currentRank < previousRank ? "worsened" : "improved",
+            comparabilityKey: cell.comparabilityKey,
             milestones: (milestoneByConsultation.get(cell.consultationId) ?? []).slice(0, 3).map((item) => ({
               title: item.title,
               note: item.note || undefined,
@@ -279,7 +356,12 @@ function buildInflectionPoints(
           });
         }
       }
-      previous = { consultationId: cell.consultationId, status: cell.status };
+
+      previous = {
+        consultationId: cell.consultationId,
+        status: cell.status,
+        comparabilityKey: cell.comparabilityKey,
+      };
     }
   }
 
@@ -337,16 +419,47 @@ export function buildCapacityDimensionHistory(input: {
     ...dimension,
     cells: consultations.map((consultation) => {
       const assessments = (byConsultation.get(consultation.id) ?? [])
-        .filter((assessment) => (SCALE_CAPACITY_DOMAINS[assessment.scaleCode] ?? []).includes(dimension.code))
-        .map((assessment): CapacityDimensionCellAssessment => ({
-          scaleCode: assessment.scaleCode,
-          scaleName: scaleCatalogEntry(assessment.scaleCode).name,
-          clinicalColor: assessment.clinicalColor ?? null,
-        }))
+        .filter((assessment) => scaleDomains(assessment.scaleCode).includes(dimension.code))
+        .map((assessment): CapacityDimensionCellAssessment => {
+          const catalog = scaleCatalogEntry(assessment.scaleCode);
+          const methodology = methodologyForScaleInDomain(assessment.scaleCode, dimension.code);
+          if (!methodology) {
+            throw new Error(`Instrumento ${assessment.scaleCode} sem regra metodológica para ${dimension.code}.`);
+          }
+          return {
+            assessmentId: assessment.id,
+            scaleCode: assessment.scaleCode,
+            scaleName: catalog.name,
+            scaleVersion: assessment.scaleVersion ?? catalog.version,
+            scoreNumeric: assessment.scoreNumeric,
+            scoreText: assessment.scoreText,
+            classification: assessment.classification,
+            interpretation: assessment.interpretation,
+            clinicalColor: assessment.clinicalColor ?? null,
+            role: methodology.role,
+            mappingStrength: methodology.mappingStrength,
+            basis: methodology.basis,
+            canClassifyDomain: methodology.canClassifyDomain,
+            selectedForDomainState: false,
+            rationale: methodology.rationale,
+            sourceCitation: assessment.sourceCitation ?? catalog.source,
+            definitionHash: assessment.definitionHash,
+          };
+        })
         .sort((left, right) => left.scaleName.localeCompare(right.scaleName, "pt-BR"));
+
+      const derived = statusFromAssessments(assessments);
+      for (const assessment of assessments) {
+        assessment.selectedForDomainState = derived.selectedScaleCodes.has(assessment.scaleCode)
+          && assessment.canClassifyDomain;
+      }
+
       return {
         consultationId: consultation.id,
-        status: statusFromAssessments(assessments),
+        status: derived.status,
+        statusReason: derived.statusReason,
+        evidenceBasis: derived.evidenceBasis,
+        comparabilityKey: derived.comparabilityKey,
         assessments,
       };
     }),
@@ -360,7 +473,9 @@ export function buildCapacityDimensionHistory(input: {
 
   return {
     patientId: input.patientId,
-    frameworkLabel: "Capacidade funcional + capacidade intrínseca (OMS: locomoção, cognição, capacidade psicológica, vitalidade e sensorial)",
+    methodologyVersion: INTRINSIC_CAPACITY_MODEL_VERSION,
+    frameworkLabel: "Independência funcional + capacidade intrínseca (OMS: locomoção, cognição, capacidade psicológica, vitalidade e sensorial)",
+    methodologyNote: "Representação categórica auditável; não é escore composto. Linhas só conectam avaliações comparáveis do mesmo instrumento e versão. Vitalidade v1 usa MNA-SF como indicador nutricional proxy, não como equivalente ao construto fisiológico completo.",
     consultations,
     dimensions,
     inflectionPoints,
