@@ -11,37 +11,6 @@ import {
 import { requireAuthenticatedUser } from "../auth/require-user";
 import { prisma } from "../db";
 
-const patientSelection = {
-  id: true,
-  fullName: true,
-  birthDate: true,
-  needsIdentityReview: true,
-  consultations: {
-    where: {
-      status: {
-        in: ["DRAFT", "IN_REVIEW"] as const,
-      },
-    },
-    orderBy: [
-      { occurredAt: "desc" as const },
-      { createdAt: "desc" as const },
-      { id: "desc" as const },
-    ],
-    take: 1,
-    select: {
-      id: true,
-      status: true,
-      occurredAt: true,
-    },
-  },
-} as const;
-
-const patientOrdering = [
-  { normalizedFullName: "asc" as const },
-  { birthDate: "asc" as const },
-  { id: "asc" as const },
-] as const;
-
 export async function searchPatientsForSelection(
   query: string,
 ): Promise<PatientSelectionResult[]> {
@@ -66,9 +35,36 @@ export async function searchPatientsForSelection(
         },
       ],
     },
-    orderBy: patientOrdering,
+    orderBy: [
+      { normalizedFullName: "asc" },
+      { birthDate: "asc" },
+      { id: "asc" },
+    ],
     take: PATIENT_SEARCH_LIMIT * PATIENT_SEARCH_CANDIDATE_MULTIPLIER,
-    select: patientSelection,
+    select: {
+      id: true,
+      fullName: true,
+      birthDate: true,
+      needsIdentityReview: true,
+      consultations: {
+        where: {
+          status: {
+            in: ["DRAFT", "IN_REVIEW"],
+          },
+        },
+        orderBy: [
+          { occurredAt: "desc" },
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          occurredAt: true,
+        },
+      },
+    },
   });
 
   const matched = new Map<string, (typeof indexedCandidates)[number]>();
@@ -85,10 +81,37 @@ export async function searchPatientsForSelection(
   let skip = 0;
   while (matched.size < PATIENT_SEARCH_LIMIT) {
     const page = await prisma.patient.findMany({
-      orderBy: patientOrdering,
+      orderBy: [
+        { normalizedFullName: "asc" },
+        { birthDate: "asc" },
+        { id: "asc" },
+      ],
       skip,
       take: PATIENT_SEARCH_FALLBACK_PAGE_SIZE,
-      select: patientSelection,
+      select: {
+        id: true,
+        fullName: true,
+        birthDate: true,
+        needsIdentityReview: true,
+        consultations: {
+          where: {
+            status: {
+              in: ["DRAFT", "IN_REVIEW"],
+            },
+          },
+          orderBy: [
+            { occurredAt: "desc" },
+            { createdAt: "desc" },
+            { id: "desc" },
+          ],
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            occurredAt: true,
+          },
+        },
+      },
     });
 
     if (page.length === 0) break;
