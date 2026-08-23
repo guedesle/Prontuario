@@ -123,7 +123,8 @@
 }
 
 .seriesPoint,
-.inflectionPoint {
+.inflectionPoint,
+.indeterminatePoint {
   fill: #fff;
   stroke: #806166;
   stroke-width: 2.5;
@@ -134,29 +135,40 @@
   stroke-width: 3.5;
 }
 
+.indeterminatePoint {
+  fill: #f8f5f6;
+  stroke-dasharray: 2 1;
+}
+
 .chart g[data-dimension="funcionalidade"] .seriesLine,
 .chart g[data-dimension="funcionalidade"] .seriesPoint,
-.chart g[data-dimension="funcionalidade"] .inflectionPoint { stroke: #76545d; }
+.chart g[data-dimension="funcionalidade"] .inflectionPoint,
+.chart g[data-dimension="funcionalidade"] .indeterminatePoint { stroke: #76545d; }
 
 .chart g[data-dimension="locomocao"] .seriesLine,
 .chart g[data-dimension="locomocao"] .seriesPoint,
-.chart g[data-dimension="locomocao"] .inflectionPoint { stroke: #9a7440; }
+.chart g[data-dimension="locomocao"] .inflectionPoint,
+.chart g[data-dimension="locomocao"] .indeterminatePoint { stroke: #9a7440; }
 
 .chart g[data-dimension="cognicao"] .seriesLine,
 .chart g[data-dimension="cognicao"] .seriesPoint,
-.chart g[data-dimension="cognicao"] .inflectionPoint { stroke: #4f7189; }
+.chart g[data-dimension="cognicao"] .inflectionPoint,
+.chart g[data-dimension="cognicao"] .indeterminatePoint { stroke: #4f7189; }
 
 .chart g[data-dimension="psicologico"] .seriesLine,
 .chart g[data-dimension="psicologico"] .seriesPoint,
-.chart g[data-dimension="psicologico"] .inflectionPoint { stroke: #996277; }
+.chart g[data-dimension="psicologico"] .inflectionPoint,
+.chart g[data-dimension="psicologico"] .indeterminatePoint { stroke: #996277; }
 
 .chart g[data-dimension="vitalidade"] .seriesLine,
 .chart g[data-dimension="vitalidade"] .seriesPoint,
-.chart g[data-dimension="vitalidade"] .inflectionPoint { stroke: #5f8068; }
+.chart g[data-dimension="vitalidade"] .inflectionPoint,
+.chart g[data-dimension="vitalidade"] .indeterminatePoint { stroke: #5f8068; }
 
 .chart g[data-dimension="sensorial"] .seriesLine,
 .chart g[data-dimension="sensorial"] .seriesPoint,
-.chart g[data-dimension="sensorial"] .inflectionPoint { stroke: #6d6b82; }
+.chart g[data-dimension="sensorial"] .inflectionPoint,
+.chart g[data-dimension="sensorial"] .indeterminatePoint { stroke: #6d6b82; }
 
 .statusLegend {
   margin-top: 12px;
@@ -173,6 +185,7 @@
 .statusLegend i[data-status="preserved"] { background: #edf6f0; border-color: #8fbea0; }
 .statusLegend i[data-status="attention"] { background: #fff2b8; border-color: #d4bd64; }
 .statusLegend i[data-status="altered"] { background: #f3caca; border-color: #c98888; }
+.statusLegend i[data-status="indeterminate"] { border-radius: 2px; transform: rotate(45deg); border-style: dashed; }
 .statusLegend i[data-status="missing"] { border-style: dashed; }
 
 .inflectionSection {
