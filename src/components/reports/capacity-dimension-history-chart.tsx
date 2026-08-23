@@ -8,10 +8,11 @@ import styles from "./capacity-dimension-history-chart.module.css";
 
 const STATUS_LABEL: Record<CapacityDimensionStatus, string> = {
   "not-assessed": "Não avaliada",
-  recorded: "Registrada sem classificação",
-  preserved: "Preservada",
-  attention: "Atenção",
-  altered: "Alterada",
+  recorded: "Registrada sem estado de domínio",
+  indeterminate: "Indeterminada / discordante",
+  preserved: "Sem redução detectada",
+  attention: "Sinal de atenção",
+  altered: "Redução identificada",
 };
 
 const STATUS_Y: Record<CapacityComparableStatus, number> = {
@@ -33,27 +34,67 @@ function isComparable(status: CapacityDimensionStatus): status is CapacityCompar
   return status === "preserved" || status === "attention" || status === "altered";
 }
 
+function assessmentDetail(item: CapacityDimensionRow["cells"][number]["assessments"][number]): string {
+  const score = item.scoreText ? `; resultado ${item.scoreText}` : "";
+  const classification = item.classification ? `; classificação ${item.classification}` : "";
+  const selected = item.selectedForDomainState ? "; usado no estado do domínio" : "; complementar/contextual";
+  const proxy = item.basis === "proxy" ? "; indicador proxy" : "";
+  return `${item.scaleName} (${item.scaleVersion})${score}${classification}${selected}${proxy}`;
+}
+
 function lineSegments(
   dimension: CapacityDimensionRow,
   xByConsultation: ReadonlyMap<string, number>,
-): Array<Array<{ x: number; y: number; consultationId: string; status: CapacityComparableStatus; instruments: string[] }>> {
-  const segments: Array<Array<{ x: number; y: number; consultationId: string; status: CapacityComparableStatus; instruments: string[] }>> = [];
-  let current: Array<{ x: number; y: number; consultationId: string; status: CapacityComparableStatus; instruments: string[] }> = [];
+): Array<Array<{
+  x: number;
+  y: number;
+  consultationId: string;
+  status: CapacityComparableStatus;
+  comparabilityKey: string;
+  instruments: string[];
+  reason: string;
+}>> {
+  const segments: Array<Array<{
+    x: number;
+    y: number;
+    consultationId: string;
+    status: CapacityComparableStatus;
+    comparabilityKey: string;
+    instruments: string[];
+    reason: string;
+  }>> = [];
+  let current: Array<{
+    x: number;
+    y: number;
+    consultationId: string;
+    status: CapacityComparableStatus;
+    comparabilityKey: string;
+    instruments: string[];
+    reason: string;
+  }> = [];
 
   for (const cell of dimension.cells) {
-    if (!isComparable(cell.status)) {
+    if (!isComparable(cell.status) || !cell.comparabilityKey) {
       if (current.length > 0) segments.push(current);
       current = [];
       continue;
     }
     const x = xByConsultation.get(cell.consultationId);
     if (x === undefined) continue;
+
+    if (current.length > 0 && current.at(-1)?.comparabilityKey !== cell.comparabilityKey) {
+      segments.push(current);
+      current = [];
+    }
+
     current.push({
       x,
       y: STATUS_Y[cell.status],
       consultationId: cell.consultationId,
       status: cell.status,
-      instruments: cell.assessments.map((item) => item.scaleName),
+      comparabilityKey: cell.comparabilityKey,
+      instruments: cell.assessments.map(assessmentDetail),
+      reason: cell.statusReason,
     });
   }
   if (current.length > 0) segments.push(current);
@@ -80,22 +121,29 @@ export function CapacityDimensionHistoryChart({
     : "Inclui as consultas com avaliações já preenchidas; a consulta mais recente aparece assim que houver dados registrados.";
 
   const chartWidth = Math.max(760, 180 + Math.max(history.consultations.length - 1, 1) * 145);
-  const left = 112;
+  const left = 128;
   const right = 34;
   const usableWidth = chartWidth - left - right;
-  const denominator = Math.max(history.consultations.length - 1, 1);
-  const xByConsultation = new Map(history.consultations.map((consultation, index) => [
-    consultation.id,
-    left + (usableWidth * index) / denominator,
-  ]));
+  const times = history.consultations.map((consultation) => new Date(consultation.occurredAt).getTime());
+  const minTime = Math.min(...times);
+  const maxTime = Math.max(...times);
+  const timeSpan = maxTime - minTime;
+  const xByConsultation = new Map(history.consultations.map((consultation) => {
+    const currentTime = new Date(consultation.occurredAt).getTime();
+    const x = timeSpan > 0
+      ? left + usableWidth * ((currentTime - minTime) / timeSpan)
+      : left + usableWidth / 2;
+    return [consultation.id, x] as const;
+  }));
   const inflectionKeys = new Set(history.inflectionPoints.map((point) => `${point.dimensionCode}:${point.consultationId}`));
   const inflectionConsultations = new Set(history.inflectionPoints.map((point) => point.consultationId));
 
   return (
     <figure className={styles.figure}>
       <figcaption className={styles.caption}>
-        <strong>Evolução da capacidade intrínseca e funcional</strong>
+        <strong>Evolução da capacidade intrínseca e da independência funcional</strong>
         <span>{description}</span>
+        <span>Modelo metodológico: {history.methodologyVersion}. O eixo horizontal respeita o intervalo real entre as consultas.</span>
       </figcaption>
 
       <div className={styles.dimensionLegend} aria-label="Dimensões do gráfico">
@@ -113,9 +161,9 @@ export function CapacityDimensionHistoryChart({
           role="img"
           aria-labelledby="capacity-line-title capacity-line-desc"
         >
-          <title id="capacity-line-title">Evolução longitudinal da capacidade funcional e intrínseca</title>
+          <title id="capacity-line-title">Evolução longitudinal da independência funcional e dos domínios de capacidade intrínseca</title>
           <desc id="capacity-line-desc">
-            Linhas categóricas por dimensão ao longo das consultas. Preservada fica acima, atenção no centro e alterada abaixo. Lacunas indicam ausência de classificação comparável.
+            Linhas categóricas por domínio ao longo do tempo real. Uma linha só conecta avaliações metodologicamente comparáveis do mesmo instrumento e versão. Lacunas, discordâncias e trocas de instrumento não são interpretadas como estabilidade nem como tendência.
           </desc>
 
           {(["preserved", "attention", "altered"] as const).map((status) => (
@@ -150,39 +198,57 @@ export function CapacityDimensionHistoryChart({
             );
           })}
 
-          {history.dimensions.map((dimension) => (
-            <g key={dimension.code} data-dimension={dimension.code}>
-              {lineSegments(dimension, xByConsultation).map((segment, segmentIndex) => (
-                <polyline
-                  key={`${dimension.code}-segment-${segmentIndex}`}
-                  className={styles.seriesLine}
-                  points={segment.map((point) => `${point.x},${point.y}`).join(" ")}
-                />
-              ))}
-              {lineSegments(dimension, xByConsultation).flat().map((point) => {
-                const isInflection = inflectionKeys.has(`${dimension.code}:${point.consultationId}`);
-                return (
-                  <circle
-                    key={`${dimension.code}-${point.consultationId}`}
-                    className={isInflection ? styles.inflectionPoint : styles.seriesPoint}
-                    cx={point.x}
-                    cy={point.y}
-                    r={isInflection ? 6 : 4}
-                  >
-                    <title>{`${dimension.label}: ${STATUS_LABEL[point.status]}${point.instruments.length ? ` — ${point.instruments.join(", ")}` : ""}`}</title>
-                  </circle>
-                );
-              })}
-            </g>
-          ))}
+          {history.dimensions.map((dimension) => {
+            const segments = lineSegments(dimension, xByConsultation);
+            return (
+              <g key={dimension.code} data-dimension={dimension.code}>
+                {segments.map((segment, segmentIndex) => (
+                  <polyline
+                    key={`${dimension.code}-segment-${segmentIndex}`}
+                    className={styles.seriesLine}
+                    points={segment.map((point) => `${point.x},${point.y}`).join(" ")}
+                  />
+                ))}
+                {segments.flat().map((point) => {
+                  const isInflection = inflectionKeys.has(`${dimension.code}:${point.consultationId}`);
+                  return (
+                    <circle
+                      key={`${dimension.code}-${point.consultationId}`}
+                      className={isInflection ? styles.inflectionPoint : styles.seriesPoint}
+                      cx={point.x}
+                      cy={point.y}
+                      r={isInflection ? 6 : 4}
+                    >
+                      <title>{`${dimension.label}: ${STATUS_LABEL[point.status]}. ${point.reason}${point.instruments.length ? ` Instrumentos: ${point.instruments.join(" | ")}.` : ""}`}</title>
+                    </circle>
+                  );
+                })}
+                {dimension.cells.filter((cell) => cell.status === "indeterminate").map((cell) => {
+                  const x = xByConsultation.get(cell.consultationId);
+                  if (x === undefined) return null;
+                  const size = 6;
+                  return (
+                    <polygon
+                      key={`${dimension.code}-${cell.consultationId}-indeterminate`}
+                      className={styles.indeterminatePoint}
+                      points={`${x},${STATUS_Y.attention - size} ${x + size},${STATUS_Y.attention} ${x},${STATUS_Y.attention + size} ${x - size},${STATUS_Y.attention}`}
+                    >
+                      <title>{`${dimension.label}: ${STATUS_LABEL.indeterminate}. ${cell.statusReason} Instrumentos: ${cell.assessments.map(assessmentDetail).join(" | ")}.`}</title>
+                    </polygon>
+                  );
+                })}
+              </g>
+            );
+          })}
         </svg>
       </div>
 
       <div className={styles.statusLegend} aria-label="Leitura do eixo clínico">
-        <span><i data-status="preserved" aria-hidden="true" />Preservada</span>
-        <span><i data-status="attention" aria-hidden="true" />Atenção</span>
-        <span><i data-status="altered" aria-hidden="true" />Alterada</span>
-        <span><i data-status="missing" aria-hidden="true" />Sem ponto = não avaliada ou sem classificação comparável</span>
+        <span><i data-status="preserved" aria-hidden="true" />Sem redução detectada</span>
+        <span><i data-status="attention" aria-hidden="true" />Sinal de atenção</span>
+        <span><i data-status="altered" aria-hidden="true" />Redução identificada</span>
+        <span><i data-status="indeterminate" aria-hidden="true" />Losango = resultados discordantes</span>
+        <span><i data-status="missing" aria-hidden="true" />Sem ponto = não avaliada, sem regra ou sem comparabilidade</span>
       </div>
 
       {history.inflectionPoints.length > 0 ? (
@@ -193,8 +259,9 @@ export function CapacityDimensionHistoryChart({
               <li key={`${point.dimensionCode}-${point.consultationId}-${point.previousConsultationId}`}>
                 <strong>{displayDate(point.occurredAt)} · {point.dimensionLabel}</strong>
                 <span>
-                  {point.direction === "worsened" ? "Piora" : "Melhora"}: {STATUS_LABEL[point.fromStatus]} → {STATUS_LABEL[point.toStatus]}.
+                  {point.direction === "worsened" ? "Piora observada" : "Melhora observada"}: {STATUS_LABEL[point.fromStatus]} → {STATUS_LABEL[point.toStatus]}.
                 </span>
+                <span>Comparabilidade: mesmo instrumento e versão ({point.comparabilityKey}).</span>
                 {point.milestones.length > 0 ? (
                   <span>
                     Registro clínico na mesma consulta: {point.milestones.map((milestone) => (
@@ -208,13 +275,13 @@ export function CapacityDimensionHistoryChart({
             ))}
           </ul>
           <p className={styles.causalityNote}>
-            Os marcos acima indicam coincidência temporal com registros clínicos existentes. Causalidade só deve ser descrita quando estiver documentada e confirmada pelo médico.
+            Os marcos indicam apenas coincidência temporal com registros clínicos existentes. Causalidade não é inferida pelo software.
           </p>
         </section>
       ) : null}
 
       <p className={styles.frameworkNote}>
-        As linhas representam categorias clínicas já persistidas, não um escore composto. Não há soma, média ou normalização entre instrumentos diferentes. Quando mais de um instrumento foi aplicado na mesma dimensão e consulta, prevalece apenas o maior nível de atenção já registrado e os instrumentos permanecem identificáveis no ponto do gráfico.
+        {history.methodologyNote} Resultados originais, versões, classificação e fonte permanecem vinculados aos pontos. Quando instrumentos de mesma prioridade discordam, o domínio fica indeterminado; quando o instrumento muda, a linha é interrompida em vez de fabricar uma tendência.
       </p>
     </figure>
   );
