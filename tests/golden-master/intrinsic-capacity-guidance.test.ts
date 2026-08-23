@@ -17,7 +17,7 @@ test("gera orientações somente para domínios alterados e avaliados na consult
   assert.ok(guidance.alteredDomains.every((domain) => domain.attentionSigns.length >= 2));
 });
 
-test("MNA-SF é marcador principal e FRAIL-BR pode complementar vitalidade", () => {
+test("MNA-SF é indicador proxy de vitalidade e FRAIL-BR permanece contextual", () => {
   const guidance = buildIntrinsicCapacityGuidance([
     { scaleId: "mna_sf", scaleName: "MNA-SF", color: "vermelho", assessedInTargetConsultation: true },
     { scaleId: "frail_br", scaleName: "FRAIL-BR", color: "amarelo", assessedInTargetConsultation: true },
@@ -25,8 +25,27 @@ test("MNA-SF é marcador principal e FRAIL-BR pode complementar vitalidade", () 
 
   const vitality = guidance.alteredDomains.find((domain) => domain.code === "vitalidade");
   assert.ok(vitality);
-  assert.deepEqual(vitality.triggeredBy, ["MNA-SF", "FRAIL-BR"]);
-  assert.ok(guidance.alteredDomains.some((domain) => domain.code === "locomocao" && domain.triggeredBy.includes("FRAIL-BR")));
+  assert.deepEqual(vitality.triggeredBy, ["MNA-SF"]);
+  assert.ok(!guidance.alteredDomains.some((domain) => domain.triggeredBy.includes("FRAIL-BR")));
+  assert.match(vitality.whyItMatters, /indicador/i);
+});
+
+test("FRAIL-BR isolado não define automaticamente locomoção ou vitalidade", () => {
+  const guidance = buildIntrinsicCapacityGuidance([
+    { scaleId: "frail_br", scaleName: "FRAIL-BR", color: "vermelho", assessedInTargetConsultation: true },
+  ]);
+
+  assert.deepEqual(guidance.alteredDomains, []);
+});
+
+test("FAST, CAM e ISI permanecem contextuais e não acionam domínios de capacidade intrínseca", () => {
+  const guidance = buildIntrinsicCapacityGuidance([
+    { scaleId: "fast", scaleName: "FAST", color: "vermelho", assessedInTargetConsultation: true },
+    { scaleId: "cam", scaleName: "CAM", color: "vermelho", assessedInTargetConsultation: true },
+    { scaleId: "isi", scaleName: "ISI", color: "vermelho", assessedInTargetConsultation: true },
+  ]);
+
+  assert.deepEqual(guidance.alteredDomains, []);
 });
 
 test("VES-13, G8, KPS, PPS e ESAS não acionam vitalidade automaticamente", () => {
