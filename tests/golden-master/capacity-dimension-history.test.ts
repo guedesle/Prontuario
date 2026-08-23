@@ -5,6 +5,7 @@ import {
   buildCapacityDimensionHistory,
   CAPACITY_DIMENSIONS,
 } from "../../src/domain/capacity-dimension-history.ts";
+import { INTRINSIC_CAPACITY_MODEL_VERSION } from "../../src/domain/intrinsic-capacity-methodology.ts";
 
 const consultations = [
   { id: "c1", patientId: "p1", occurredAt: "2026-01-10", createdAt: "2026-01-10" },
@@ -12,7 +13,11 @@ const consultations = [
   { id: "c3", patientId: "p1", occurredAt: "2026-08-21", createdAt: "2026-08-21" },
 ];
 
-test("gráfico usa capacidade funcional mais os cinco domínios de capacidade intrínseca", () => {
+function dimension(history: ReturnType<typeof buildCapacityDimensionHistory>, code: string) {
+  return history.dimensions.find((item) => item.code === code)!;
+}
+
+test("modelo usa independência funcional separada dos cinco domínios de capacidade intrínseca", () => {
   assert.deepEqual(CAPACITY_DIMENSIONS.map((item) => item.code), [
     "funcionalidade",
     "locomocao",
@@ -21,103 +26,162 @@ test("gráfico usa capacidade funcional mais os cinco domínios de capacidade in
     "vitalidade",
     "sensorial",
   ]);
+  assert.equal(CAPACITY_DIMENSIONS[0]?.label, "Independência funcional");
+  assert.equal(INTRINSIC_CAPACITY_MODEL_VERSION, "intrinsic-capacity-model-v1.0.0");
 });
 
-test("gráfico não cria média entre escalas e preserva o maior nível de atenção registrado", () => {
-  const history = buildCapacityDimensionHistory({
-    patientId: "p1",
-    consultations,
-    assessments: [
-      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", clinicalColor: "verde", appliedAt: "2026-01-10T10:00:00Z" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "lawton", clinicalColor: "amarelo", appliedAt: "2026-04-10T10:00:00Z" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "barthel", clinicalColor: "vermelho", appliedAt: "2026-04-10T10:01:00Z" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "sarcf", clinicalColor: "amarelo", appliedAt: "2026-04-10T10:02:00Z" },
-      { patientId: "p1", consultationId: "c3", scaleCode: "moca", clinicalColor: "verde", appliedAt: "2026-08-21T10:00:00Z" },
-      { patientId: "p1", consultationId: "c3", scaleCode: "charlson", clinicalColor: "vermelho", appliedAt: "2026-08-21T10:01:00Z" },
-    ],
-    targetConsultationId: "c3",
-  });
-
-  const functionality = history.dimensions.find((item) => item.code === "funcionalidade")!;
-  const locomotion = history.dimensions.find((item) => item.code === "locomocao")!;
-  const cognition = history.dimensions.find((item) => item.code === "cognicao")!;
-
-  assert.deepEqual(history.consultations.map((item) => item.id), ["c1", "c2", "c3"]);
-  assert.equal(functionality.cells[0]?.status, "preserved");
-  assert.equal(functionality.cells[1]?.status, "altered");
-  assert.deepEqual(functionality.cells[1]?.assessments.map((item) => item.scaleCode), ["barthel", "lawton"]);
-  assert.equal(functionality.cells[2]?.status, "not-assessed");
-  assert.equal(locomotion.cells[1]?.status, "attention");
-  assert.equal(cognition.cells[2]?.status, "preserved");
-  assert.ok(history.dimensions.every((dimension) => dimension.cells.every((cell) => !cell.assessments.some((item) => item.scaleCode === "charlson"))));
-});
-
-test("página do paciente só inclui consulta atual quando ela já possui dimensão pertinente preenchida", () => {
-  const withoutCurrentData = buildCapacityDimensionHistory({
-    patientId: "p1",
-    consultations,
-    assessments: [
-      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", clinicalColor: "verde", appliedAt: "2026-01-10" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "sarcf", clinicalColor: "amarelo", appliedAt: "2026-04-10" },
-    ],
-    targetConsultationId: "c3",
-    includeTargetWhenEmpty: false,
-  });
-  assert.deepEqual(withoutCurrentData.consultations.map((item) => item.id), ["c1", "c2"]);
-
-  const withCurrentData = buildCapacityDimensionHistory({
-    patientId: "p1",
-    consultations,
-    assessments: [
-      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", clinicalColor: "verde", appliedAt: "2026-01-10" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "sarcf", clinicalColor: "amarelo", appliedAt: "2026-04-10" },
-      { patientId: "p1", consultationId: "c3", scaleCode: "gds15", clinicalColor: "verde", appliedAt: "2026-08-21" },
-    ],
-    targetConsultationId: "c3",
-    includeTargetWhenEmpty: false,
-  });
-  assert.deepEqual(withCurrentData.consultations.map((item) => item.id), ["c1", "c2", "c3"]);
-  assert.equal(withCurrentData.consultations.at(-1)?.isTarget, true);
-});
-
-test("relatório preserva a consulta atual no horizonte mesmo se uma dimensão não foi reaplicada", () => {
-  const history = buildCapacityDimensionHistory({
-    patientId: "p1",
-    consultations,
-    assessments: [
-      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", clinicalColor: "verde", appliedAt: "2026-01-10" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "sarcf", clinicalColor: "amarelo", appliedAt: "2026-04-10" },
-    ],
-    targetConsultationId: "c3",
-    includeTargetWhenEmpty: true,
-  });
-
-  assert.deepEqual(history.consultations.map((item) => item.id), ["c1", "c2", "c3"]);
-  assert.equal(history.consultations.at(-1)?.isTarget, true);
-  assert.ok(history.dimensions.every((dimension) => dimension.cells.at(-1)?.status === "not-assessed"));
-});
-
-test("último registro da mesma escala na consulta é o efetivo", () => {
+test("modelo não aplica pior resultado vence quando assessments de mesma prioridade discordam", () => {
   const history = buildCapacityDimensionHistory({
     patientId: "p1",
     consultations: [consultations[0]!],
     assessments: [
-      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", clinicalColor: "vermelho", appliedAt: "2026-01-10T09:00:00Z" },
-      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", clinicalColor: "verde", appliedAt: "2026-01-10T10:00:00Z" },
+      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "amarelo", appliedAt: "2026-01-10T10:00:00Z" },
+      { patientId: "p1", consultationId: "c1", scaleCode: "barthel", scaleVersion: "1", clinicalColor: "vermelho", appliedAt: "2026-01-10T10:01:00Z" },
     ],
   });
-  const functionality = history.dimensions.find((item) => item.code === "funcionalidade")!;
-  assert.equal(functionality.cells[0]?.status, "preserved");
-  assert.equal(functionality.cells[0]?.assessments.length, 1);
+
+  const functionality = dimension(history, "funcionalidade");
+  assert.equal(functionality.cells[0]?.status, "indeterminate");
+  assert.match(functionality.cells[0]?.statusReason ?? "", /discordantes/);
+  assert.ok(functionality.cells[0]?.assessments.every((item) => item.selectedForDomainState));
 });
 
-test("mudança comparável gera ponto de inflexão e associa somente marco clínico explicitamente informado", () => {
+test("âncora locomotora tem precedência sobre rastreio sem somar nem misturar os instrumentos", () => {
+  const history = buildCapacityDimensionHistory({
+    patientId: "p1",
+    consultations: [consultations[0]!],
+    assessments: [
+      { patientId: "p1", consultationId: "c1", scaleCode: "sppb", scaleVersion: "1", clinicalColor: "verde", appliedAt: "2026-01-10T10:00:00Z" },
+      { patientId: "p1", consultationId: "c1", scaleCode: "sarcf", scaleVersion: "1", clinicalColor: "vermelho", appliedAt: "2026-01-10T10:01:00Z" },
+    ],
+  });
+
+  const locomotion = dimension(history, "locomocao");
+  assert.equal(locomotion.cells[0]?.status, "preserved");
+  assert.equal(locomotion.cells[0]?.comparabilityKey, "sppb@1");
+  assert.equal(locomotion.cells[0]?.assessments.find((item) => item.scaleCode === "sppb")?.selectedForDomainState, true);
+  assert.equal(locomotion.cells[0]?.assessments.find((item) => item.scaleCode === "sarcf")?.selectedForDomainState, false);
+});
+
+test("rastreio positivo gera atenção e rastreio negativo não afirma preservação de todo o domínio", () => {
+  const positive = buildCapacityDimensionHistory({
+    patientId: "p1",
+    consultations: [consultations[0]!],
+    assessments: [
+      { patientId: "p1", consultationId: "c1", scaleCode: "sarcf", scaleVersion: "1", clinicalColor: "vermelho", appliedAt: "2026-01-10" },
+    ],
+  });
+  const negative = buildCapacityDimensionHistory({
+    patientId: "p1",
+    consultations: [consultations[0]!],
+    assessments: [
+      { patientId: "p1", consultationId: "c1", scaleCode: "sarcf", scaleVersion: "1", clinicalColor: "verde", appliedAt: "2026-01-10" },
+    ],
+  });
+
+  assert.equal(dimension(positive, "locomocao").cells[0]?.status, "attention");
+  assert.equal(dimension(positive, "locomocao").cells[0]?.evidenceBasis, "screening");
+  assert.equal(dimension(negative, "locomocao").cells[0]?.status, "recorded");
+});
+
+test("FAST e CAM não definem cognição; ISI não define capacidade psicológica; FRAIL-BR não define locomoção ou vitalidade", () => {
+  const history = buildCapacityDimensionHistory({
+    patientId: "p1",
+    consultations: [consultations[0]!],
+    assessments: [
+      { patientId: "p1", consultationId: "c1", scaleCode: "fast", clinicalColor: "vermelho", appliedAt: "2026-01-10T09:00:00Z" },
+      { patientId: "p1", consultationId: "c1", scaleCode: "cam", clinicalColor: "vermelho", appliedAt: "2026-01-10T09:01:00Z" },
+      { patientId: "p1", consultationId: "c1", scaleCode: "isi", clinicalColor: "vermelho", appliedAt: "2026-01-10T09:02:00Z" },
+      { patientId: "p1", consultationId: "c1", scaleCode: "frail_br", clinicalColor: "vermelho", appliedAt: "2026-01-10T09:03:00Z" },
+    ],
+  });
+
+  assert.equal(dimension(history, "cognicao").cells[0]?.status, "recorded");
+  assert.equal(dimension(history, "psicologico").cells[0]?.status, "recorded");
+  assert.equal(dimension(history, "locomocao").cells[0]?.status, "recorded");
+  assert.equal(dimension(history, "vitalidade").cells[0]?.status, "recorded");
+});
+
+test("MNA-SF é indicador nutricional proxy de vitalidade e a limitação permanece explícita", () => {
+  const history = buildCapacityDimensionHistory({
+    patientId: "p1",
+    consultations: [consultations[0]!],
+    assessments: [
+      {
+        id: "a-mna",
+        patientId: "p1",
+        consultationId: "c1",
+        scaleCode: "mna_sf",
+        scaleVersion: "mna-sf-v1",
+        scoreNumeric: 7,
+        scoreText: "7/14",
+        classification: "Desnutrido",
+        clinicalColor: "vermelho",
+        appliedAt: "2026-01-10",
+        sourceCitation: "Kaiser MJ et al. 2009",
+        definitionHash: "hash-mna",
+      },
+    ],
+  });
+
+  const vitality = dimension(history, "vitalidade");
+  assert.equal(vitality.cells[0]?.status, "altered");
+  assert.equal(vitality.cells[0]?.evidenceBasis, "proxy");
+  assert.match(vitality.cells[0]?.statusReason ?? "", /proxy/);
+  assert.equal(vitality.cells[0]?.assessments[0]?.assessmentId, "a-mna");
+  assert.equal(vitality.cells[0]?.assessments[0]?.scoreNumeric, 7);
+  assert.equal(vitality.cells[0]?.assessments[0]?.classification, "Desnutrido");
+  assert.equal(vitality.cells[0]?.assessments[0]?.sourceCitation, "Kaiser MJ et al. 2009");
+  assert.equal(vitality.cells[0]?.assessments[0]?.definitionHash, "hash-mna");
+});
+
+test("instrumentos ou versões diferentes não criam falsa tendência longitudinal", () => {
+  const differentInstrument = buildCapacityDimensionHistory({
+    patientId: "p1",
+    consultations: [consultations[0]!, consultations[1]!],
+    assessments: [
+      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "verde", appliedAt: "2026-01-10" },
+      { patientId: "p1", consultationId: "c2", scaleCode: "barthel", scaleVersion: "1", clinicalColor: "vermelho", appliedAt: "2026-04-10" },
+    ],
+  });
+  const differentVersion = buildCapacityDimensionHistory({
+    patientId: "p1",
+    consultations: [consultations[0]!, consultations[1]!],
+    assessments: [
+      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "verde", appliedAt: "2026-01-10" },
+      { patientId: "p1", consultationId: "c2", scaleCode: "lawton", scaleVersion: "2", clinicalColor: "vermelho", appliedAt: "2026-04-10" },
+    ],
+  });
+
+  assert.equal(differentInstrument.inflectionPoints.length, 0);
+  assert.equal(differentVersion.inflectionPoints.length, 0);
+});
+
+test("consulta sem avaliação de capacidade permanece no eixo como missing explícito e interrompe comparabilidade", () => {
   const history = buildCapacityDimensionHistory({
     patientId: "p1",
     consultations,
     assessments: [
-      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", clinicalColor: "verde", appliedAt: "2026-01-10" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "lawton", clinicalColor: "vermelho", appliedAt: "2026-04-10" },
+      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "verde", appliedAt: "2026-01-10" },
+      { patientId: "p1", consultationId: "c3", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "vermelho", appliedAt: "2026-08-21" },
+    ],
+  });
+
+  assert.deepEqual(history.consultations.map((item) => item.id), ["c1", "c2", "c3"]);
+  const functionality = dimension(history, "funcionalidade");
+  assert.equal(functionality.cells[0]?.status, "preserved");
+  assert.equal(functionality.cells[1]?.status, "not-assessed");
+  assert.equal(functionality.cells[2]?.status, "altered");
+  assert.equal(history.inflectionPoints.length, 0);
+});
+
+test("mesmo instrumento e versão produz inflexão observada sem inferir causalidade", () => {
+  const history = buildCapacityDimensionHistory({
+    patientId: "p1",
+    consultations: [consultations[0]!, consultations[1]!],
+    assessments: [
+      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "verde", appliedAt: "2026-01-10" },
+      { patientId: "p1", consultationId: "c2", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "vermelho", appliedAt: "2026-04-10" },
     ],
     milestones: [
       {
@@ -135,46 +199,57 @@ test("mudança comparável gera ponto de inflexão e associa somente marco clín
   assert.equal(history.inflectionPoints[0]?.dimensionCode, "funcionalidade");
   assert.equal(history.inflectionPoints[0]?.fromStatus, "preserved");
   assert.equal(history.inflectionPoints[0]?.toStatus, "altered");
-  assert.equal(history.inflectionPoints[0]?.direction, "worsened");
+  assert.equal(history.inflectionPoints[0]?.comparabilityKey, "lawton@1");
   assert.equal(history.inflectionPoints[0]?.milestones[0]?.title, "AVC");
-  assert.equal(history.inflectionPoints[0]?.milestones[0]?.note, "Evento vascular registrado na evolução.");
 });
 
-test("inflexão sem evento documentado não inventa causa", () => {
+test("último registro da mesma escala na consulta é o efetivo sem apagar proveniência", () => {
+  const history = buildCapacityDimensionHistory({
+    patientId: "p1",
+    consultations: [consultations[0]!],
+    assessments: [
+      { id: "old", patientId: "p1", consultationId: "c1", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "vermelho", appliedAt: "2026-01-10T09:00:00Z" },
+      { id: "new", patientId: "p1", consultationId: "c1", scaleCode: "lawton", scaleVersion: "1", scoreText: "21", clinicalColor: "verde", appliedAt: "2026-01-10T10:00:00Z" },
+    ],
+  });
+
+  const functionality = dimension(history, "funcionalidade");
+  assert.equal(functionality.cells[0]?.status, "preserved");
+  assert.equal(functionality.cells[0]?.assessments.length, 1);
+  assert.equal(functionality.cells[0]?.assessments[0]?.assessmentId, "new");
+  assert.equal(functionality.cells[0]?.assessments[0]?.scoreText, "21");
+});
+
+test("consulta alvo vazia permanece explicitamente não avaliada no relatório", () => {
   const history = buildCapacityDimensionHistory({
     patientId: "p1",
     consultations,
     assessments: [
-      { patientId: "p1", consultationId: "c1", scaleCode: "sarcf", clinicalColor: "verde", appliedAt: "2026-01-10" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "sarcf", clinicalColor: "amarelo", appliedAt: "2026-04-10" },
+      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "verde", appliedAt: "2026-01-10" },
+      { patientId: "p1", consultationId: "c2", scaleCode: "sarcf", scaleVersion: "1", clinicalColor: "amarelo", appliedAt: "2026-04-10" },
     ],
+    targetConsultationId: "c3",
+    includeTargetWhenEmpty: true,
   });
 
-  assert.equal(history.inflectionPoints.length, 1);
-  assert.equal(history.inflectionPoints[0]?.dimensionCode, "locomocao");
-  assert.deepEqual(history.inflectionPoints[0]?.milestones, []);
+  assert.deepEqual(history.consultations.map((item) => item.id), ["c1", "c2", "c3"]);
+  assert.equal(history.consultations.at(-1)?.isTarget, true);
+  assert.ok(history.dimensions.every((item) => item.cells.at(-1)?.status === "not-assessed"));
 });
 
-test("status registrado sem classificação e lacunas não criam transição artificial", () => {
-  const history = buildCapacityDimensionHistory({
-    patientId: "p1",
-    consultations,
-    assessments: [
-      { patientId: "p1", consultationId: "c1", scaleCode: "lawton", clinicalColor: "verde", appliedAt: "2026-01-10" },
-      { patientId: "p1", consultationId: "c2", scaleCode: "lawton", clinicalColor: "cinza", appliedAt: "2026-04-10" },
-      { patientId: "p1", consultationId: "c3", scaleCode: "lawton", clinicalColor: "verde", appliedAt: "2026-08-21" },
-    ],
-  });
-  assert.equal(history.inflectionPoints.length, 0);
-});
-
-test("gráfico bloqueia mistura de pacientes em avaliações e marcos", () => {
+test("gráfico bloqueia mistura de pacientes em avaliações, consultas e marcos", () => {
   assert.throws(() => buildCapacityDimensionHistory({
     patientId: "p1",
     assessments: [
       { patientId: "p2", consultationId: "c1", scaleCode: "lawton", clinicalColor: "verde", appliedAt: "2026-01-10" },
     ],
   }), /pacientes diferentes/);
+
+  assert.throws(() => buildCapacityDimensionHistory({
+    patientId: "p1",
+    assessments: [],
+    consultations: [{ id: "c1", patientId: "p2", occurredAt: "2026-01-10" }],
+  }), /consultas de pacientes diferentes/);
 
   assert.throws(() => buildCapacityDimensionHistory({
     patientId: "p1",
@@ -189,22 +264,26 @@ test("gráfico bloqueia mistura de pacientes em avaliações e marcos", () => {
   }), /marcos clínicos/);
 });
 
-test("página do paciente e relatório final renderizam o mesmo gráfico em linha e preservam snapshot", () => {
+test("UI usa tempo real, comparabilidade e o design system clínico aprovado sem criar tabela estatística", () => {
   const patientPage = readFileSync("src/app/patients/[id]/page.tsx", "utf8");
   const report = readFileSync("src/components/reports/aga-report-preview.tsx", "utf8");
   const generator = readFileSync("src/server/clinical/generate-aga-report.ts", "utf8");
   const chart = readFileSync("src/components/reports/capacity-dimension-history-chart.tsx", "utf8");
+  const chartStyles = readFileSync("src/components/reports/capacity-dimension-history-chart.module.css", "utf8");
 
   assert.match(patientPage, /CapacityDimensionHistoryChart/);
   assert.match(patientPage, /includeTargetWhenEmpty: false/);
-  assert.match(patientPage, /milestones/);
-  assert.match(report, /Capacidade intrínseca e funcional/);
+  assert.match(patientPage, /scaleDefinition/);
   assert.match(report, /context="final-report"/);
   assert.match(generator, /includeTargetWhenEmpty: true/);
-  assert.match(generator, /milestones/);
+  assert.match(generator, /definitionHash/);
   assert.match(generator, /content: \{ report, text \}/);
-  assert.match(chart, /<svg/);
+  assert.match(chart, /timeSpan/);
+  assert.match(chart, /comparabilityKey/);
   assert.match(chart, /Pontos de inflexão observados/);
-  assert.doesNotMatch(chart, /<table/);
   assert.match(chart, /não atribui causa/);
+  assert.doesNotMatch(chart, /<table/);
+  assert.match(chartStyles, /var\(--primary\)/);
+  assert.match(chartStyles, /var\(--line\)/);
+  assert.match(chartStyles, /var\(--primary-soft\)/);
 });

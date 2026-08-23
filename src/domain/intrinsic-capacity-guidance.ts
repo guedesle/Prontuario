@@ -1,4 +1,5 @@
 import type { ClinicalColor } from "./clinical-engine.ts";
+import { methodologyForScale } from "./intrinsic-capacity-methodology.ts";
 
 export type IntrinsicCapacityDomainCode =
   | "locomocao"
@@ -37,42 +38,10 @@ const DOMAIN_ORDER: readonly IntrinsicCapacityDomainCode[] = [
   "sensorial",
 ];
 
-const SCALE_DOMAINS: Readonly<Record<string, readonly IntrinsicCapacityDomainCode[]>> = {
-  katz: ["locomocao"],
-  lawton: ["locomocao"],
-  barthel: ["locomocao"],
-  pfeffer: ["locomocao", "cognicao"],
-  pfeffer10: ["locomocao", "cognicao"],
-  sppb: ["locomocao"],
-  poma: ["locomocao"],
-  sarcf: ["locomocao"],
-  preensao: ["locomocao"],
-  velocidade_marcha: ["locomocao"],
-  sentar_levantar_5x: ["locomocao"],
-  moca: ["cognicao"],
-  meem: ["cognicao"],
-  dez_cs: ["cognicao"],
-  cam: ["cognicao"],
-  fast: ["cognicao"],
-  minicog_freitas: ["cognicao"],
-  clock_shulman: ["cognicao"],
-  moca_br_freitas: ["cognicao"],
-  iqcode_br_26: ["cognicao"],
-  gds15: ["psicologico"],
-  cornell: ["psicologico"],
-  cesd_br_elderly: ["psicologico"],
-  mna_sf: ["vitalidade"],
-  frail_br: ["locomocao", "vitalidade"],
-  audicao: ["sensorial"],
-  hearing: ["sensorial"],
-  visao: ["sensorial"],
-  vision: ["sensorial"],
-};
-
 const DOMAIN_CONTENT: Readonly<Record<IntrinsicCapacityDomainCode, Omit<IntrinsicCapacityGuidanceSection, "code" | "triggeredBy">>> = {
   locomocao: {
     label: "Locomoção",
-    whyItMatters: "Reúne força, equilíbrio, marcha e capacidade de realizar atividades com segurança.",
+    whyItMatters: "Reúne força, equilíbrio e marcha necessários para se movimentar com segurança.",
     actions: [
       "Mantenha corredores e o caminho até o banheiro livres, bem iluminados e sem tapetes soltos.",
       "Use bengala, andador, corrimão ou supervisão somente do modo já orientado pela equipe; deixe o apoio ao alcance antes de levantar.",
@@ -86,7 +55,7 @@ const DOMAIN_CONTENT: Readonly<Record<IntrinsicCapacityDomainCode, Omit<Intrinsi
   },
   cognicao: {
     label: "Cognição",
-    whyItMatters: "Inclui memória, orientação, atenção, comunicação e capacidade de organizar tarefas do dia a dia.",
+    whyItMatters: "Inclui memória, orientação, atenção e capacidade de organizar informações e tarefas.",
     actions: [
       "Mantenha rotina previsível, calendário e relógio visíveis; antecipe mudanças com frases curtas.",
       "Dê uma orientação por vez, confirme que foi compreendida e ofereça tempo para a resposta.",
@@ -100,12 +69,12 @@ const DOMAIN_CONTENT: Readonly<Record<IntrinsicCapacityDomainCode, Omit<Intrinsi
   },
   psicologico: {
     label: "Capacidade psicológica",
-    whyItMatters: "Abrange humor, motivação, ansiedade, sono, interesse e participação social.",
+    whyItMatters: "Abrange principalmente humor, motivação, bem-estar emocional e participação social.",
     actions: [
-      "Combine horários regulares para acordar, refeições e sono, evitando isolamento prolongado durante o dia.",
-      "Planeje diariamente uma atividade simples e significativa escolhida pelo paciente, sem cobrança por desempenho.",
+      "Mantenha rotina previsível e oportunidades de participação em atividades significativas escolhidas pelo paciente.",
+      "Planeje diariamente uma atividade simples e significativa, sem cobrança por desempenho.",
       "Mantenha contato frequente com pessoas de confiança e escute mudanças de humor sem minimizar o relato.",
-      "Registre por alguns dias alterações de sono, apetite, ansiedade, interesse e participação para discutir com a equipe.",
+      "Registre por alguns dias alterações de humor, ansiedade, interesse e participação para discutir com a equipe.",
     ],
     attentionSigns: [
       "Avise a equipe se tristeza, ansiedade, apatia, irritabilidade ou recusa de atividades persistirem ou piorarem.",
@@ -114,7 +83,7 @@ const DOMAIN_CONTENT: Readonly<Record<IntrinsicCapacityDomainCode, Omit<Intrinsi
   },
   vitalidade: {
     label: "Vitalidade",
-    whyItMatters: "Reflete energia, reservas do organismo, nutrição e capacidade de recuperação diante de doenças.",
+    whyItMatters: "Relaciona-se às reservas fisiológicas do organismo. Nesta versão, o alerta clínico disponível usa o estado nutricional como indicador, sem afirmar que nutrição represente toda a vitalidade.",
     actions: [
       "Ofereça refeições menores em horários regulares e alimentos bem aceitos dentro das orientações alimentares já definidas.",
       "Facilite água e outras bebidas permitidas ao longo do dia, respeitando eventual restrição de líquidos informada pela equipe.",
@@ -146,6 +115,10 @@ function isAltered(color: ClinicalColor | undefined): boolean {
   return color === "amarelo" || color === "vermelho";
 }
 
+function isIntrinsicDomain(value: string): value is IntrinsicCapacityDomainCode {
+  return DOMAIN_ORDER.includes(value as IntrinsicCapacityDomainCode);
+}
+
 export function buildIntrinsicCapacityGuidance(
   assessments: readonly AssessmentSignal[],
 ): IntrinsicCapacityGuidance {
@@ -153,7 +126,10 @@ export function buildIntrinsicCapacityGuidance(
 
   for (const assessment of assessments) {
     if (!assessment.assessedInTargetConsultation || !isAltered(assessment.color)) continue;
-    for (const domain of SCALE_DOMAINS[assessment.scaleId] ?? []) {
+
+    for (const rule of methodologyForScale(assessment.scaleId)) {
+      if (!isIntrinsicDomain(rule.domain) || !rule.canClassifyDomain || rule.role === "context") continue;
+      const domain: IntrinsicCapacityDomainCode = rule.domain;
       const names = triggers.get(domain) ?? new Set<string>();
       names.add(assessment.scaleName);
       triggers.set(domain, names);
@@ -162,7 +138,7 @@ export function buildIntrinsicCapacityGuidance(
 
   return {
     framework: "WHO intrinsic capacity — five domains",
-    sourceLabel: "OMS — Década do Envelhecimento Saudável: locomoção, capacidade sensorial, vitalidade, cognição e capacidade psicológica.",
+    sourceLabel: "OMS — capacidade intrínseca: locomoção, capacidade sensorial, vitalidade, cognição e capacidade psicológica. O aplicativo usa regras metodológicas versionadas e não cria escore global.",
     alteredDomains: DOMAIN_ORDER.flatMap((code) => {
       const names = triggers.get(code);
       if (!names?.size) return [];

@@ -83,6 +83,7 @@ export async function generateAgaReport(input: {
           },
           orderBy: { appliedAt: "asc" },
           select: {
+            id: true,
             patientId: true,
             consultationId: true,
             scaleCode: true,
@@ -94,6 +95,12 @@ export async function generateAgaReport(input: {
             interpretation: true,
             clinicalColor: true,
             appliedAt: true,
+            scaleDefinition: {
+              select: {
+                sourceCitation: true,
+                definitionHash: true,
+              },
+            },
             consultation: {
               select: {
                 occurredAt: true,
@@ -235,14 +242,22 @@ export async function generateAgaReport(input: {
       const capacityHistory = buildCapacityDimensionHistory({
         patientId: consultation.patientId,
         consultations: horizon,
-        assessments: assessments.map((assessment) => ({
+        assessments: scaleAssessments.map((assessment) => ({
+          id: assessment.id,
           patientId: assessment.patientId,
           consultationId: assessment.consultationId,
           scaleCode: assessment.scaleCode,
-          clinicalColor: assessment.color ?? null,
+          scaleVersion: assessment.scaleVersion,
+          scoreNumeric: assessment.scoreNumeric === null ? null : Number(assessment.scoreNumeric),
+          scoreText: assessment.scoreText,
+          classification: assessment.classification,
+          interpretation: assessment.interpretation,
+          clinicalColor: (assessment.clinicalColor ?? null) as LongitudinalAssessment["color"] | null,
           appliedAt: assessment.appliedAt,
-          consultationOccurredAt: assessment.consultationOccurredAt,
-          consultationCreatedAt: assessment.consultationCreatedAt,
+          consultationOccurredAt: assessment.consultation.occurredAt,
+          consultationCreatedAt: assessment.consultation.createdAt,
+          sourceCitation: assessment.scaleDefinition?.sourceCitation,
+          definitionHash: assessment.scaleDefinition?.definitionHash,
         })),
         milestones,
         targetConsultationId: consultation.id,

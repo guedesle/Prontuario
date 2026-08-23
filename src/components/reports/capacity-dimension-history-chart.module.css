@@ -1,95 +1,140 @@
 .figure {
   margin: 20px 0;
   padding: 18px;
-  border: 1px solid #e3dadd;
+  border: 1px solid var(--line);
   border-radius: 14px;
   background: #fff;
   break-inside: avoid;
 }
 
 .caption {
-  display: grid;
-  gap: 5px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 14px;
 }
 
+.caption > div {
+  display: grid;
+  gap: 5px;
+}
+
 .caption strong {
-  color: #493e42;
+  color: var(--primary);
   font-size: 17px;
 }
 
 .caption span,
 .frameworkNote,
-.causalityNote {
-  color: #6e6266;
+.causalityNote,
+.methodDetails,
+.readingGuide {
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
 }
 
-.dimensionLegend,
+.modelBadge {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary) !important;
+  font-size: 10px !important;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .statusLegend {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 14px;
-  color: #665b5f;
+  margin: 0 0 14px;
+  color: var(--muted);
   font-size: 11px;
 }
 
-.dimensionLegend {
-  margin: 0 0 12px;
-}
-
-.dimensionLegend span,
 .statusLegend span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.dimensionLegend i {
-  width: 20px;
-  height: 3px;
-  border-radius: 999px;
-  background: #806166;
+.statusLegend i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #fff;
 }
 
-.dimensionLegend span[data-dimension="funcionalidade"] i { background: #76545d; }
-.dimensionLegend span[data-dimension="locomocao"] i { background: #9a7440; }
-.dimensionLegend span[data-dimension="cognicao"] i { background: #4f7189; }
-.dimensionLegend span[data-dimension="psicologico"] i { background: #996277; }
-.dimensionLegend span[data-dimension="vitalidade"] i { background: #5f8068; }
-.dimensionLegend span[data-dimension="sensorial"] i { background: #6d6b82; }
+.statusLegend i[data-status="preserved"] { background: #edf6f0; border-color: #4c765f; }
+.statusLegend i[data-status="attention"] { background: #fff8e6; border-color: #b58a28; }
+.statusLegend i[data-status="altered"] { background: #f8e8e8; border-color: #8f3b3b; }
+.statusLegend i[data-status="indeterminate"] {
+  border-radius: 2px;
+  transform: rotate(45deg);
+  border-style: dashed;
+  background: var(--primary-soft);
+}
+.statusLegend i[data-status="missing"] {
+  background: #fff;
+  border-color: #a7a0a1;
+  border-style: dashed;
+}
 
 .scroll {
   overflow-x: auto;
-  padding: 4px 0 8px;
-  border: 1px solid #eee7e9;
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fffdfd;
+  background: #fff;
 }
 
-.chart {
+.timelineCanvas {
+  padding: 12px;
+}
+
+.dateRow,
+.dimensionRow {
+  display: grid;
+  grid-template-columns: 200px minmax(700px, 1fr);
+  align-items: stretch;
+}
+
+.dateRow {
+  margin-bottom: 10px;
+}
+
+.dateRowLabel {
+  align-self: center;
+  padding: 0 14px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.dateAxis,
+.domainChart {
   display: block;
   width: 100%;
-  min-width: 760px;
   height: auto;
 }
 
-.gridLine {
-  stroke: #eee6e8;
+.dateBaseline,
+.dateTick,
+.statusGuide {
+  stroke: var(--line);
   stroke-width: 1;
 }
 
-.axisLabel,
 .dateLabel,
 .targetLabel {
-  fill: #776b6f;
+  fill: var(--muted);
   font-family: Arial, Helvetica, sans-serif;
-}
-
-.axisLabel {
-  font-size: 11px;
-  font-weight: 700;
 }
 
 .dateLabel {
@@ -97,108 +142,202 @@
 }
 
 .targetLabel {
-  fill: #72555d;
-  font-size: 9px;
+  fill: var(--primary);
+  font-size: 8px;
   font-weight: 800;
 }
 
-.targetGuide {
-  stroke: #b9a3a9;
-  stroke-width: 1;
-  stroke-dasharray: 3 4;
+.dimensionGroup + .dimensionGroup {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
 
-.inflectionGuide {
-  stroke: #b68a48;
-  stroke-width: 1.2;
-  stroke-dasharray: 5 4;
+.groupHeading {
+  display: grid;
+  gap: 3px;
+  margin: 0 0 8px;
+  padding: 0 10px;
+}
+
+.groupHeading strong {
+  color: var(--primary);
+  font-size: 13px;
+}
+
+.groupHeading span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.dimensionRow {
+  min-height: 104px;
+  border-radius: 10px;
+}
+
+.dimensionRow + .dimensionRow {
+  margin-top: 4px;
+}
+
+.dimensionRow:nth-of-type(even) {
+  background: #fcfbfb;
+}
+
+.dimensionSummary {
+  display: grid;
+  align-content: center;
+  gap: 9px;
+  padding: 12px 14px;
+  border-left: 4px solid currentColor;
+}
+
+.dimensionSummary > div {
+  display: grid;
+  gap: 2px;
+}
+
+.dimensionSummary strong {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.dimensionSummary > div span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.latestBadge {
+  justify-self: start;
+  max-width: 176px;
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.latestBadge[data-status="preserved"] { background: #edf6f0; border-color: #b8d2c0; color: #315b43; }
+.latestBadge[data-status="attention"] { background: #fff8e6; border-color: #ead7a4; color: #765a18; }
+.latestBadge[data-status="altered"] { background: #f8e8e8; border-color: #e2bcbc; color: #783232; }
+.latestBadge[data-status="indeterminate"] { background: var(--primary-soft); border-style: dashed; color: var(--primary); }
+.latestBadge[data-status="recorded"] { background: #f5f3f3; color: var(--muted); }
+.latestBadge[data-status="not-assessed"] { border-style: dashed; color: #81797b; }
+
+.domainChart {
+  min-height: 96px;
+}
+
+.statusGuide {
+  stroke-dasharray: 2 5;
+  opacity: .85;
+}
+
+.targetGuide {
+  stroke: var(--primary);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: .28;
 }
 
 .seriesLine {
   fill: none;
-  stroke: #806166;
+  stroke: currentColor;
   stroke-width: 3;
   stroke-linejoin: round;
   stroke-linecap: round;
+  opacity: .78;
 }
 
 .seriesPoint,
-.inflectionPoint {
-  fill: #fff;
-  stroke: #806166;
+.inflectionHalo,
+.indeterminatePoint,
+.recordedPoint,
+.missingPoint {
+  stroke: currentColor;
+}
+
+.seriesPoint {
   stroke-width: 2.5;
 }
 
-.inflectionPoint {
-  fill: #fff7e6;
-  stroke-width: 3.5;
+.seriesPoint[data-status="preserved"] { fill: #edf6f0; }
+.seriesPoint[data-status="attention"] { fill: #fff8e6; }
+.seriesPoint[data-status="altered"] { fill: #f8e8e8; }
+
+.inflectionHalo {
+  fill: none;
+  stroke: #b58a28;
+  stroke-width: 2;
 }
 
-.chart g[data-dimension="funcionalidade"] .seriesLine,
-.chart g[data-dimension="funcionalidade"] .seriesPoint,
-.chart g[data-dimension="funcionalidade"] .inflectionPoint { stroke: #76545d; }
+.indeterminatePoint {
+  fill: var(--primary-soft);
+  stroke-width: 2;
+  stroke-dasharray: 2 1;
+}
 
-.chart g[data-dimension="locomocao"] .seriesLine,
-.chart g[data-dimension="locomocao"] .seriesPoint,
-.chart g[data-dimension="locomocao"] .inflectionPoint { stroke: #9a7440; }
+.recordedPoint {
+  fill: #f5f3f3;
+  stroke-width: 2;
+}
 
-.chart g[data-dimension="cognicao"] .seriesLine,
-.chart g[data-dimension="cognicao"] .seriesPoint,
-.chart g[data-dimension="cognicao"] .inflectionPoint { stroke: #4f7189; }
+.missingPoint {
+  fill: #fff;
+  stroke: #a7a0a1;
+  stroke-width: 1.8;
+  stroke-dasharray: 2 2;
+}
 
-.chart g[data-dimension="psicologico"] .seriesLine,
-.chart g[data-dimension="psicologico"] .seriesPoint,
-.chart g[data-dimension="psicologico"] .inflectionPoint { stroke: #996277; }
+.dimensionRow[data-dimension="funcionalidade"] { color: var(--primary); }
+.dimensionRow[data-dimension="locomocao"] { color: #9a7440; }
+.dimensionRow[data-dimension="cognicao"] { color: #4f7189; }
+.dimensionRow[data-dimension="psicologico"] { color: #996277; }
+.dimensionRow[data-dimension="vitalidade"] { color: #5f8068; }
+.dimensionRow[data-dimension="sensorial"] { color: #6d6b82; }
 
-.chart g[data-dimension="vitalidade"] .seriesLine,
-.chart g[data-dimension="vitalidade"] .seriesPoint,
-.chart g[data-dimension="vitalidade"] .inflectionPoint { stroke: #5f8068; }
-
-.chart g[data-dimension="sensorial"] .seriesLine,
-.chart g[data-dimension="sensorial"] .seriesPoint,
-.chart g[data-dimension="sensorial"] .inflectionPoint { stroke: #6d6b82; }
-
-.statusLegend {
+.readingGuide {
+  display: grid;
+  gap: 2px;
   margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: var(--primary-soft);
 }
 
-.statusLegend i {
-  width: 10px;
-  height: 10px;
-  border: 1px solid #c9bec1;
-  border-radius: 50%;
-  background: #fff;
+.readingGuide strong {
+  color: var(--primary);
+  font-size: 11px;
 }
-
-.statusLegend i[data-status="preserved"] { background: #edf6f0; border-color: #8fbea0; }
-.statusLegend i[data-status="attention"] { background: #fff2b8; border-color: #d4bd64; }
-.statusLegend i[data-status="altered"] { background: #f3caca; border-color: #c98888; }
-.statusLegend i[data-status="missing"] { border-style: dashed; }
 
 .inflectionSection {
-  margin-top: 16px;
-  padding: 15px 16px;
-  border-left: 4px solid #a9824b;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-left: 4px solid #b58a28;
   border-radius: 10px;
-  background: #fffaf2;
+  background: #fff8e6;
 }
 
 .inflectionSection h3 {
-  margin: 0 0 10px;
-  color: #5c484d;
-  font-size: 14px;
+  margin: 0 0 8px;
+  color: var(--primary);
+  font-size: 13px;
 }
 
 .inflectionSection ul {
   display: grid;
-  gap: 10px;
+  gap: 9px;
   margin: 0;
   padding-left: 18px;
 }
 
 .inflectionSection li {
-  color: #554b4e;
-  font-size: 12px;
+  color: var(--ink);
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -208,25 +347,81 @@
 }
 
 .inflectionSection li span + span {
-  margin-top: 3px;
-  color: #706468;
+  margin-top: 2px;
+  color: var(--muted);
 }
 
 .causalityNote {
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   font-style: italic;
 }
 
+.methodDetails {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.methodDetails summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.methodDetails p,
 .frameworkNote {
-  margin: 14px 0 0;
+  margin: 8px 0 0;
 }
 
 .empty {
   margin: 0;
   padding: 14px;
   border-radius: 10px;
-  background: #f8f5f6;
-  color: #71666a;
+  background: var(--primary-soft);
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .figure {
+    margin: 14px 0;
+    padding: 14px;
+  }
+
+  .caption {
+    display: grid;
+    gap: 10px;
+  }
+
+  .modelBadge {
+    justify-self: start;
+  }
+
+  .statusLegend {
+    gap: 7px 11px;
+  }
+
+  .timelineCanvas {
+    padding: 8px;
+  }
+
+  .dateRow,
+  .dimensionRow {
+    grid-template-columns: 164px minmax(700px, 1fr);
+  }
+
+  .dimensionSummary {
+    padding: 10px;
+  }
+
+  .dimensionSummary strong {
+    font-size: 12px;
+  }
+
+  .latestBadge {
+    max-width: 142px;
+    font-size: 9px;
+  }
 }
 
 @media print {
@@ -236,24 +431,45 @@
 
   .scroll {
     overflow: visible;
-    border-color: #d9d2d4;
+    border-color: #bbb;
   }
 
-  .chart {
-    min-width: 0;
-    width: 100%;
+  .timelineCanvas {
+    min-width: 0 !important;
+    padding: 6px;
   }
 
-  .dimensionLegend,
-  .statusLegend,
-  .caption span,
+  .dateRow,
+  .dimensionRow {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+
+  .dateRowLabel,
+  .dimensionSummary > div span,
+  .groupHeading span,
+  .readingGuide,
   .frameworkNote,
   .causalityNote,
+  .methodDetails,
   .inflectionSection li {
+    font-size: 8px;
+  }
+
+  .dimensionSummary strong,
+  .groupHeading strong {
     font-size: 9px;
+  }
+
+  .latestBadge {
+    max-width: 138px;
+    font-size: 7px;
   }
 
   .inflectionSection {
     break-inside: avoid;
+  }
+
+  .methodDetails[open] {
+    display: block;
   }
 }
