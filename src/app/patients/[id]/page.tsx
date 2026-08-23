@@ -52,11 +52,23 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       scaleAssessments: {
         orderBy: { appliedAt: "asc" },
         select: {
+          id: true,
           patientId: true,
           consultationId: true,
           scaleCode: true,
+          scaleVersion: true,
+          scoreNumeric: true,
+          scoreText: true,
+          classification: true,
+          interpretation: true,
           clinicalColor: true,
           appliedAt: true,
+          scaleDefinition: {
+            select: {
+              sourceCitation: true,
+              definitionHash: true,
+            },
+          },
         },
       },
     },
@@ -99,9 +111,20 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       occurredAt: consultation.occurredAt,
       createdAt: consultation.createdAt,
     })),
-    assessments: patient.scaleAssessments.map((assessment) => ({
-      ...assessment,
+    assessments: patient.scaleAssessments.map((assessment): CapacityTimelineAssessment => ({
+      id: assessment.id,
+      patientId: assessment.patientId,
+      consultationId: assessment.consultationId,
+      scaleCode: assessment.scaleCode,
+      scaleVersion: assessment.scaleVersion,
+      scoreNumeric: assessment.scoreNumeric === null ? null : Number(assessment.scoreNumeric),
+      scoreText: assessment.scoreText,
+      classification: assessment.classification,
+      interpretation: assessment.interpretation,
       clinicalColor: assessment.clinicalColor as CapacityTimelineAssessment["clinicalColor"],
+      appliedAt: assessment.appliedAt,
+      sourceCitation: assessment.scaleDefinition?.sourceCitation,
+      definitionHash: assessment.scaleDefinition?.definitionHash,
     })),
     milestones,
     targetConsultationId: patient.consultations[0]?.id,
@@ -122,7 +145,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
         <div className="section-heading">
           <div>
             <p className="eyebrow">Evolução longitudinal</p>
-            <h2 id="capacity-history-title">Capacidade intrínseca e funcional</h2>
+            <h2 id="capacity-history-title">Capacidade intrínseca e independência funcional</h2>
           </div>
         </div>
         <CapacityDimensionHistoryChart history={capacityHistory} context="patient-home" />
