@@ -393,11 +393,11 @@ export function buildCapacityDimensionHistory(input: {
   const consultationSource = input.consultations
     ? [...input.consultations]
     : derivedConsultations(input.patientId, effective);
-  const consultationsWithCapacityData = new Set(effective.map((item) => item.consultationId));
 
+  // Quando o chamador fornece o horizonte de consultas, todas as visitas são
+  // preservadas no eixo. Uma consulta sem instrumento pertinente é missing
+  // explícito, não ausência de visita e nunca estabilidade implícita.
   const consultations = consultationSource
-    .filter((item) => consultationsWithCapacityData.has(item.id)
-      || Boolean(input.includeTargetWhenEmpty && input.targetConsultationId === item.id))
     .sort((left, right) =>
       timestamp(left.occurredAt) - timestamp(right.occurredAt)
       || timestamp(left.createdAt) - timestamp(right.createdAt)
