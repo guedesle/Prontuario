@@ -42,15 +42,25 @@ export default async function ConsultationPage({ params }: { params: Promise<{ i
   });
 
   return (
-    <main className={`shell ${styles.consultationShell}`}>
-      <div className={styles.consultationLayout}>
-        <aside className={styles.sidebarColumn}>
-          <ConsultationSectionNav />
+    <main className={`shell consultation-shell ${styles.consultationShell}`}>
+      <div className={`consultation-layout ${styles.consultationLayout}`}>
+        <aside className={`consultation-sidebar ${styles.sidebarColumn}`}>
+          <ConsultationSectionNav
+            patientName={context.patientName}
+            patientBirthDateLabel={context.patientBirthDateLabel}
+            consultationDateLabel={context.consultationDateLabel}
+            consultationStatusLabel={context.consultationStatusLabel}
+          />
         </aside>
 
-        <div className={styles.contentColumn}>
-          <section id="resumo-consulta" className={styles.sectionAnchor} aria-labelledby="consultation-title">
-            <header className="hero compact-hero clinical-hero">
+        <div className={`consultation-content ${styles.contentColumn}`}>
+          <div className={`consultation-workspace-topbar ${styles.workspaceTopbar}`} aria-label="Contexto do workspace">
+            <span>Paciente <b aria-hidden="true">›</b> Consulta <b aria-hidden="true">›</b> {context.consultationTypeLabel}</span>
+            <span className={styles.savedState}>Dados vinculados à consulta atual</span>
+          </div>
+
+          <section id="resumo-consulta" className={`consultation-section ${styles.sectionAnchor}`} aria-labelledby="consultation-title">
+            <header className={`hero compact-hero clinical-hero ${styles.clinicalHero}`}>
               <p className="eyebrow">Consulta geriátrica longitudinal</p>
               <div className={styles.identityHeading}>
                 <div>
@@ -84,36 +94,38 @@ export default async function ConsultationPage({ params }: { params: Promise<{ i
                 </div>
               ) : null}
 
-              <a className={styles.patientLink} href={`/patients/${context.patientId}`}>
-                Voltar ao cadastro do paciente
-              </a>
-              <p className={styles.intro}>
-                Navegue pelas etapas à esquerda para preencher a consulta com menos rolagem e manter o contexto clínico do paciente.
-              </p>
+              <div className={styles.heroFooter}>
+                <a className={styles.patientLink} href={`/patients/${context.patientId}`}>
+                  Voltar ao cadastro do paciente
+                </a>
+                <p className={styles.intro}>
+                  Use a navegação lateral para preencher a consulta por etapas e manter o contexto clínico sempre visível.
+                </p>
+              </div>
             </header>
           </section>
 
-          <section id="problemas" className={styles.sectionAnchor} aria-label="Problemas clínicos e geriátricos">
+          <section id="problemas" className={`consultation-section ${styles.sectionAnchor}`} aria-label="Problemas clínicos e geriátricos">
             <ProblemWorkspace consultationId={id} />
           </section>
 
-          <section id="medicamentos" className={styles.sectionAnchor} aria-label="Medicamentos">
+          <section id="medicamentos" className={`consultation-section ${styles.sectionAnchor}`} aria-label="Medicamentos">
             <MedicationWorkspace consultationId={id} patientName={context.patientName} />
           </section>
 
-          <section id="soap" className={styles.sectionAnchor} aria-label="SOAP e AGA">
+          <section id="soap" className={`consultation-section ${styles.sectionAnchor}`} aria-label="SOAP e AGA">
             <SoapEditor consultationId={id} />
           </section>
 
-          <section id="escalas" className={styles.sectionAnchor} aria-label="Escalas clínicas">
+          <section id="escalas" className={`consultation-section ${styles.sectionAnchor}`} aria-label="Escalas clínicas">
             <ClinicalScalesWorkspace consultationId={id} />
           </section>
 
-          <section id="relatorio" className={styles.sectionAnchor} aria-label="Relatório final">
+          <section id="relatorio" className={`consultation-section consultation-report-section ${styles.sectionAnchor}`} aria-label="Relatório final">
             <AgaReportPreview consultationId={id} />
           </section>
 
-          <section id="finalizacao" className={styles.sectionAnchor} aria-label="Revisão e finalização">
+          <section id="finalizacao" className={`consultation-section ${styles.sectionAnchor}`} aria-label="Revisão e finalização">
             <ConsultationFinalizationPanel consultationId={id} />
           </section>
         </div>
