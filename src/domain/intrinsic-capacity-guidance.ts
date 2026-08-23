@@ -127,14 +127,12 @@ export function buildIntrinsicCapacityGuidance(
   for (const assessment of assessments) {
     if (!assessment.assessedInTargetConsultation || !isAltered(assessment.color)) continue;
 
-    const rules = methodologyForScale(assessment.scaleId).filter(
-      (rule) => isIntrinsicDomain(rule.domain) && rule.canClassifyDomain && rule.role !== "context",
-    );
-
-    for (const rule of rules) {
-      const names = triggers.get(rule.domain) ?? new Set<string>();
+    for (const rule of methodologyForScale(assessment.scaleId)) {
+      if (!isIntrinsicDomain(rule.domain) || !rule.canClassifyDomain || rule.role === "context") continue;
+      const domain: IntrinsicCapacityDomainCode = rule.domain;
+      const names = triggers.get(domain) ?? new Set<string>();
       names.add(assessment.scaleName);
-      triggers.set(rule.domain, names);
+      triggers.set(domain, names);
     }
   }
 
