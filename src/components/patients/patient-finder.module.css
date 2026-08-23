@@ -1,9 +1,9 @@
 .panel {
-  padding: 24px;
+  padding: 26px;
   background: #ffffff;
-  border: 1px solid #e5e2e6;
-  border-radius: 14px;
-  box-shadow: 0 4px 16px rgb(62 42 54 / 5%);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgb(62 42 54 / 5%);
 }
 
 .heading {
@@ -18,16 +18,16 @@
   margin: 0 0 6px;
   color: var(--primary);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
 }
 
 .heading h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
   line-height: 1.2;
-  color: #29252a;
+  color: var(--ink);
 }
 
 .newPatientLink {
@@ -51,19 +51,19 @@
 .label {
   display: grid;
   gap: 7px;
-  color: #302a31;
+  color: var(--ink);
   font-size: 14px;
   font-weight: 700;
 }
 
 .input {
   width: 100%;
-  min-height: 46px;
-  padding: 11px 13px;
+  min-height: 48px;
+  padding: 12px 14px;
   border: 1px solid #d8d4d9;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
-  color: #262226;
+  color: var(--ink);
   font: inherit;
   outline: none;
   transition: border-color .16s ease, box-shadow .16s ease;
@@ -79,9 +79,9 @@
 }
 
 .button {
-  min-height: 46px;
-  padding: 11px 18px;
-  border-radius: 8px;
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: 10px;
   white-space: nowrap;
 }
 
@@ -106,27 +106,47 @@
   font-weight: 700;
 }
 
+.resultRegion {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.resultRegionLabel {
+  margin: 0;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
 .results {
   display: grid;
   gap: 10px;
   padding: 0;
-  margin: 16px 0 0;
+  margin: 0;
   list-style: none;
 }
 
 .resultItem {
-  border: 1px solid #e7e3e7;
-  border-radius: 10px;
+  border: 1px solid #e4dee2;
+  border-radius: 12px;
   background: #fcfbfc;
   overflow: hidden;
 }
 
 .resultLink {
   display: grid;
-  gap: 4px;
-  padding: 13px 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
   color: inherit;
   text-decoration: none;
+  transition: background .15s ease, border-color .15s ease;
 }
 
 .resultLink:hover {
@@ -138,15 +158,54 @@
   outline-offset: -3px;
 }
 
-.resultName {
-  color: #2f2930;
-  font-weight: 700;
+.resultIdentity,
+.resultConsultation {
+  display: grid;
+  gap: 5px;
 }
 
-.resultMeta {
+.resultName {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.resultMeta,
+.resultConsultationDate {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
+}
+
+.resultConsultation {
+  justify-items: end;
+  min-width: 180px;
+}
+
+.resultStatus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.resultStatus[data-active="true"] {
+  border-color: #cbb8c4;
+  background: var(--primary-soft);
+  color: #68495a;
+}
+
+.resultAction {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 @media (max-width: 680px) {
@@ -165,5 +224,14 @@
 
   .button {
     width: 100%;
+  }
+
+  .resultLink {
+    grid-template-columns: 1fr;
+  }
+
+  .resultConsultation {
+    justify-items: start;
+    min-width: 0;
   }
 }
