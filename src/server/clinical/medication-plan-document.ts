@@ -71,17 +71,24 @@ export async function getMedicationPlanDocument(consultationId: string): Promise
         plan: snapshot.plan,
       };
     } catch (error) {
-      if (error instanceof MedicationPlanSnapshotError && error.code === "HISTORICAL_STATUS_NOT_REVIEWED") {
-        return {
-          consultationId: consultation.id,
-          patientId: consultation.patientId,
-          patientName: consultation.patient.fullName,
-          patientBirthDate,
-          consultationDate: consultation.occurredAt.toISOString(),
-          needsIdentityReview: consultation.patient.needsIdentityReview,
-          status: "REQUIRES_REVIEW" as const,
-          message: "Plano não liberado: conclua a reconciliação e confirme o status histórico e os horários dos medicamentos antes de compartilhar.",
-        };
+      if (error instanceof MedicationPlanSnapshotError) {
+        const message = error.code === "INCOMPLETE_SCHEDULE"
+          ? "Plano não liberado: há medicamento semanal ou mensal com programação incompleta. Defina o dia/programação antes de compartilhar."
+          : error.code === "HISTORICAL_STATUS_NOT_REVIEWED"
+            ? "Plano não liberado: conclua a reconciliação e confirme o status histórico e os horários dos medicamentos antes de compartilhar."
+            : null;
+        if (message) {
+          return {
+            consultationId: consultation.id,
+            patientId: consultation.patientId,
+            patientName: consultation.patient.fullName,
+            patientBirthDate,
+            consultationDate: consultation.occurredAt.toISOString(),
+            needsIdentityReview: consultation.patient.needsIdentityReview,
+            status: "REQUIRES_REVIEW" as const,
+            message,
+          };
+        }
       }
       throw error;
     }
