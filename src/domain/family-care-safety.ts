@@ -28,8 +28,19 @@ const MEDICAL_CONDUCT_PATTERNS = [
   /\bsuspender\s+(?:o\s+|a\s+|um\s+|uma\s+)?(?:medicamento|remédio)/i,
   /\b(?:aplicar|administrar|prescrever|tomar|receber)\b.{0,60}\bvacina\w*/i,
   /\b(?:vacinar|imunizar)\b/i,
-  /\binvestigar\s+causas?\s+(?:secundárias|reversíveis|clínicas|medicamentosas)/i,
-  /\bconsiderar\s+(?:avaliação\s+de\s+massa\s+muscular|dxa|bioimpedância)/i,
+  /\binvestigar\b/i,
+  /\bconfirmar\s+(?:diagnóstico|diagnostico|sarcopenia|etiologia|causa)/i,
+  /\bclassificar\s+(?:sarcopenia|doença|doenca|estágio|estagio)/i,
+  /\bestadiar\b/i,
+  /\bsolicitar\b.{0,80}\b(?:exame|dxa|bioimpedância|bioimpedancia|tomografia|ressonância|ressonancia|ultrassom|laborat[oó]rio)/i,
+  /\brealizar\b.{0,80}\b(?:exame|dxa|bioimpedância|bioimpedancia|teste\s+diagnóstico|teste\s+diagnostico)/i,
+  /\bconsiderar\s+(?:avaliação|avaliacao)\s+de\s+massa\s+muscular/i,
+  /\bconsiderar\s+(?:dxa|bioimpedância|bioimpedancia)/i,
+  /\bforça\s+de\s+preensão\s+palmar/i,
+  /\bteste\s+de\s+sentar[- ]?levantar/i,
+  /\bfunção\s+(?:renal|hepática|hepatica)/i,
+  /\bencaminhar\b/i,
+  /\bencaminhamento\s+(?:para|a)\b/i,
 ];
 
 export function isFamilySafeCareInstruction(text: string): boolean {
@@ -48,7 +59,9 @@ export function sanitizeFamilyCarePlan(plan: InterventionPlan): InterventionPlan
     agora: filterFamilySafeCareItems(plan.agora),
     medio: filterFamilySafeCareItems(plan.medio),
     cuidador: filterFamilySafeCareItems(plan.cuidador),
-    encaminhamentos: filterFamilySafeCareItems(plan.encaminhamentos),
+    // Encaminhamentos pertencem à área profissional. O relatório compartilhável
+    // não deve transformar sugestão de encaminhamento em orientação automática.
+    encaminhamentos: [],
     contato: filterFamilySafeCareItems(plan.contato),
     urgencia: filterFamilySafeCareItems(plan.urgencia),
   };
@@ -71,7 +84,9 @@ export function sanitizeFamilyReportModel(report: AgaReportModel): AgaReportMode
     assessedScales: report.assessedScales.map((scale) => ({
       ...scale,
       interpretation: sanitizeFamilyNarrative(scale.interpretation),
-      interventionSuggestions: scale.interventionSuggestions.filter((suggestion) => isFamilySafeCareInstruction(suggestion.text)),
+      // As sugestões originadas do motor clínico permanecem na área profissional.
+      // A família recebe ações práticas pelas seções de capacidade intrínseca e segurança.
+      interventionSuggestions: [],
     })),
     intrinsicCapacity: {
       ...report.intrinsicCapacity,
@@ -85,7 +100,7 @@ export function sanitizeFamilyReportModel(report: AgaReportModel): AgaReportMode
       now: filterFamilySafeCareItems(report.carePlan.now),
       mediumTerm: filterFamilySafeCareItems(report.carePlan.mediumTerm),
       caregiver: filterFamilySafeCareItems(report.carePlan.caregiver),
-      referrals: filterFamilySafeCareItems(report.carePlan.referrals),
+      referrals: [],
       contact: filterFamilySafeCareItems(report.carePlan.contact),
       urgent: filterFamilySafeCareItems(report.carePlan.urgent),
     },
