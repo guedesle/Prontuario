@@ -33,7 +33,7 @@ type Item = {
   regimenId?: string;
 };
 type View = { consultationId: string; consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED"; isLatestConsultation: boolean; items: Item[] };
-type RouteChoice = "Via oral" | "Via subcutânea" | "Via intravenosa" | "Via gastrostomia" | "Outra via";
+type RouteChoice = "" | "Via oral" | "Via subcutânea" | "Via intravenosa" | "Via gastrostomia" | "Outra via";
 type Form = {
   name: string;
   presentation: string;
@@ -52,7 +52,7 @@ const EMPTY_FORM: Form = {
   name: "",
   presentation: "",
   doseInstruction: "",
-  routeChoice: "Via oral",
+  routeChoice: "",
   otherRoute: "",
   frequency: "DAILY",
   dayOfWeek: "",
@@ -63,10 +63,11 @@ const EMPTY_FORM: Form = {
   instructions: "",
 };
 const STATUS_LABEL: Record<MedicationStatus, string> = { ACTIVE: "Em uso", SUSPENDED: "Suspenso", FINISHED: "Finalizado", UNKNOWN: "Status histórico desconhecido" };
-const ROUTES: readonly RouteChoice[] = ["Via oral", "Via subcutânea", "Via intravenosa", "Via gastrostomia", "Outra via"];
+const ROUTES: readonly Exclude<RouteChoice, "">[] = ["Via oral", "Via subcutânea", "Via intravenosa", "Via gastrostomia", "Outra via"];
 const FREQUENCIES: readonly MedicationFrequency[] = ["DAILY", "WEEKLY", "MONTHLY", "AS_NEEDED"];
 
 function routeFromForm(form: Form): string | undefined {
+  if (!form.routeChoice) return undefined;
   if (form.routeChoice !== "Outra via") return form.routeChoice;
   const value = form.otherRoute.trim();
   return value ? `Outra via: ${value}` : undefined;
@@ -74,7 +75,7 @@ function routeFromForm(form: Form): string | undefined {
 
 function routeFormState(route?: string): Pick<Form, "routeChoice" | "otherRoute"> {
   const normalized = route?.trim();
-  if (!normalized) return { routeChoice: "Via oral", otherRoute: "" };
+  if (!normalized) return { routeChoice: "", otherRoute: "" };
   const exact = ROUTES.find((option) => option !== "Outra via" && option.toLocaleLowerCase("pt-BR") === normalized.toLocaleLowerCase("pt-BR"));
   if (exact) return { routeChoice: exact, otherRoute: "" };
   if (normalized.toLocaleLowerCase("pt-BR").startsWith("outra via:")) {
@@ -86,13 +87,13 @@ function routeFormState(route?: string): Pick<Form, "routeChoice" | "otherRoute"
 function scheduleFromForm(form: Form): MedicationSchedule | undefined {
   if (form.frequency === "WEEKLY") {
     const dayOfWeek = form.dayOfWeek === "" ? undefined : Number(form.dayOfWeek);
-    return { kind: "WEEKLY", dayOfWeek: Number.isInteger(dayOfWeek) ? dayOfWeek : undefined };
+    return { kind: "WEEKLY", dayOfWeek: dayOfWeek !== undefined && Number.isInteger(dayOfWeek) ? dayOfWeek : undefined };
   }
   if (form.frequency === "MONTHLY") {
     const dayOfMonth = form.dayOfMonth === "" ? undefined : Number(form.dayOfMonth);
     return {
       kind: "MONTHLY",
-      dayOfMonth: Number.isInteger(dayOfMonth) ? dayOfMonth : undefined,
+      dayOfMonth: dayOfMonth !== undefined && Number.isInteger(dayOfMonth) ? dayOfMonth : undefined,
       note: form.monthlyNote.trim() || undefined,
     };
   }
