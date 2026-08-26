@@ -1,7 +1,11 @@
 import type { Prisma } from "../../generated/prisma/client.ts";
 import type { MedicationMoment as DatabaseMedicationMoment } from "../../generated/prisma/enums.ts";
 import { consultationHorizon } from "../../domain/as-of-consultation.ts";
-import type { MedicationMoment } from "../../domain/medication-plan.ts";
+import {
+  normalizeMedicationFrequency,
+  normalizeMedicationSchedule,
+  type MedicationMoment,
+} from "../../domain/medication-plan.ts";
 import { medicationStatusAsOf, type MedicationLifecycleStatus } from "../../domain/medication-status-history.ts";
 import {
   effectiveMedicationRegimens,
@@ -73,8 +77,11 @@ export async function medicationDocumentWorkspaceContext(
           consultationId: true,
           createdAt: true,
           dose: true,
+          frequency: true,
+          schedule: true,
           route: true,
           continuous: true,
+          needsScheduleReview: true,
           instructions: true,
           scheduleSlots: { select: { moment: true } },
         },
@@ -94,18 +101,24 @@ export async function medicationDocumentWorkspaceContext(
   });
 
   const regimenRecords: MedicationWorkspaceRegimenRecord[] = medications.flatMap((medication) =>
-    medication.regimens.map((regimen) => ({
-      id: regimen.id,
-      medicationId: regimen.medicationId,
-      patientId: regimen.patientId,
-      consultationId: regimen.consultationId,
-      createdAt: regimen.createdAt,
-      dose: regimen.dose,
-      route: regimen.route,
-      continuous: regimen.continuous,
-      instructions: regimen.instructions,
-      moments: regimen.scheduleSlots.map((slot) => DATABASE_TO_MOMENT[slot.moment]),
-    })),
+    medication.regimens.map((regimen) => {
+      const moments = regimen.scheduleSlots.map((slot) => DATABASE_TO_MOMENT[slot.moment]);
+      return {
+        id: regimen.id,
+        medicationId: regimen.medicationId,
+        patientId: regimen.patientId,
+        consultationId: regimen.consultationId,
+        createdAt: regimen.createdAt,
+        dose: regimen.dose,
+        route: regimen.route,
+        frequency: normalizeMedicationFrequency(regimen.frequency, moments),
+        schedule: normalizeMedicationSchedule(regimen.schedule) ?? null,
+        needsScheduleReview: regimen.needsScheduleReview,
+        continuous: regimen.continuous,
+        instructions: regimen.instructions,
+        moments,
+      };
+    }),
   );
 
   const effective = new Map(
@@ -128,6 +141,7 @@ export async function medicationDocumentWorkspaceContext(
       explicitStatus: projection.status,
       currentStatus: medication.status as MedicationLifecycleStatus,
     });
+    const moments = regimen ? [...regimen.moments] : [];
 
     return {
       medicationId: medication.id,
@@ -136,7 +150,10 @@ export async function medicationDocumentWorkspaceContext(
       medicationText: [medication.name, medication.presentation].filter(Boolean).join(" "),
       doseInstruction: regimen?.dose ?? undefined,
       route: regimen?.route ?? undefined,
-      moments: regimen ? [...regimen.moments] : [],
+      frequency: normalizeMedicationFrequency(regimen?.frequency, moments),
+      schedule: regimen?.schedule ?? undefined,
+      needsScheduleReview: regimen?.needsScheduleReview ?? false,
+      moments,
       continuous: regimen?.continuous ?? false,
       instructions: regimen?.instructions ?? undefined,
       status: status.status,
