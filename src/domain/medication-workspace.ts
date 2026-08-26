@@ -1,4 +1,4 @@
-import type { MedicationMoment } from "./medication-plan.ts";
+import type { MedicationFrequency, MedicationMoment, MedicationSchedule } from "./medication-plan.ts";
 import type { MedicationLifecycleStatus } from "./medication-status-history.ts";
 
 export type MedicationWorkspaceStatus = MedicationLifecycleStatus | "UNKNOWN";
@@ -26,6 +26,9 @@ export interface MedicationWorkspaceRegimenRecord {
   createdAt: Date | string;
   dose?: string | null;
   route?: string | null;
+  frequency?: MedicationFrequency | null;
+  schedule?: MedicationSchedule | null;
+  needsScheduleReview?: boolean;
   continuous?: boolean;
   instructions?: string | null;
   moments: readonly MedicationMoment[];
@@ -38,6 +41,9 @@ export interface MedicationWorkspaceItem {
   presentation?: string;
   doseInstruction?: string;
   route?: string;
+  frequency: MedicationFrequency;
+  schedule?: MedicationSchedule;
+  needsScheduleReview: boolean;
   moments: MedicationMoment[];
   continuous: boolean;
   instructions?: string;
