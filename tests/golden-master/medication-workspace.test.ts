@@ -89,7 +89,40 @@ test("API deriva consulta da rota e preserva horários estruturados", async () =
     presentation: "50 mg",
     doseInstruction: "1 comprimido",
     route: "Oral",
+    frequency: undefined,
+    schedule: undefined,
     moments: ["manha", "noite"],
+    continuous: true,
+    instructions: undefined,
+    requestId: undefined,
+  });
+});
+
+test("API preserva frequência semanal e programação explícita sem aceitar contexto de identidade do cliente", async () => {
+  let received: unknown;
+  const handlers = medicationWorkspaceHttpHandlers(operations({ createMedicationWithRegimen: async (input) => { received = input; return view; } }));
+  const response = await handlers.POST(request({
+    action: "create",
+    name: "Medicamento semanal sintético",
+    presentation: "70 mg",
+    doseInstruction: "1 comprimido",
+    route: "Via oral",
+    frequency: "WEEKLY",
+    schedule: { kind: "WEEKLY", dayOfWeek: 2 },
+    moments: ["manha"],
+    continuous: true,
+  }), "consultation-from-route");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(received, {
+    consultationId: "consultation-from-route",
+    name: "Medicamento semanal sintético",
+    presentation: "70 mg",
+    doseInstruction: "1 comprimido",
+    route: "Via oral",
+    frequency: "WEEKLY",
+    schedule: { kind: "WEEKLY", dayOfWeek: 2 },
+    moments: ["manha"],
     continuous: true,
     instructions: undefined,
     requestId: undefined,

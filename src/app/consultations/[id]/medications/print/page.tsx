@@ -69,21 +69,27 @@ export default async function MedicationPlanPrintPage({ params }: { params: Prom
                 </tr>
               </thead>
               <tbody>
-                {document.plan.rows.length > 0 ? document.plan.rows.map((row) => (
-                  <tr key={row.id}>
-                    <th scope="row">
-                      <strong>{row.medicationText}</strong>
-                      {row.doseInstruction ? <span>{row.doseInstruction}</span> : null}
-                      {row.route ? <small>Via: {row.route}</small> : null}
-                    </th>
-                    {MEDICATION_MOMENTS.map((moment) => (
-                      <td key={`${row.id}-${moment}`} aria-label={`${MEDICATION_MOMENT_LABELS[moment]}: ${row.moments[moment] ? "sim" : "não"}`}>
-                        {row.moments[moment] ? "✓" : ""}
-                      </td>
-                    ))}
-                    <td>{row.instructions ?? "—"}</td>
-                  </tr>
-                )) : (
+                {document.plan.rows.length > 0 ? document.plan.rows.map((row) => {
+                  const displayDailyMoments = row.frequency === "DAILY" || row.frequency === "AS_NEEDED";
+                  const selectedNonDailyMoments = MEDICATION_MOMENTS.filter((moment) => row.moments[moment]);
+                  return (
+                    <tr key={row.id}>
+                      <th scope="row">
+                        <strong>{row.medicationText}</strong>
+                        {row.doseInstruction ? <span>{row.doseInstruction}</span> : null}
+                        {row.route ? <small>Via: {row.route}</small> : null}
+                        <small>Frequência: {row.frequencyLabel}{row.scheduleLabel ? ` · ${row.scheduleLabel}` : ""}</small>
+                        {!displayDailyMoments && selectedNonDailyMoments.length > 0 ? <small>Horário no dia: {selectedNonDailyMoments.map((moment) => MEDICATION_MOMENT_LABELS[moment]).join(", ")}</small> : null}
+                      </th>
+                      {MEDICATION_MOMENTS.map((moment) => (
+                        <td key={`${row.id}-${moment}`} aria-label={displayDailyMoments ? `${MEDICATION_MOMENT_LABELS[moment]}: ${row.moments[moment] ? "sim" : "não"}` : `${MEDICATION_MOMENT_LABELS[moment]}: não se aplica à frequência semanal ou mensal`}>
+                          {displayDailyMoments ? (row.moments[moment] ? "✓" : "") : "—"}
+                        </td>
+                      ))}
+                      <td>{row.instructions ?? "—"}</td>
+                    </tr>
+                  );
+                }) : (
                   <tr><td colSpan={MEDICATION_MOMENTS.length + 2}>Nenhum medicamento ativo reconciliado nesta consulta.</td></tr>
                 )}
               </tbody>

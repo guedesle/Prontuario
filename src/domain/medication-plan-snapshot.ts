@@ -2,7 +2,7 @@ import { buildMedicationPlanViewModel, renderMedicationPlanText, type Medication
 import type { MedicationWorkspaceView } from "./medication-workspace.ts";
 
 export interface MedicationPlanSnapshotModel {
-  schemaVersion: "1.0";
+  schemaVersion: "1.1";
   consultationId: string;
   patientName: string;
   plan: MedicationPlanViewModel;
@@ -13,7 +13,7 @@ export interface MedicationPlanSnapshotModel {
   }>;
 }
 
-type MedicationPlanSnapshotErrorCode = "HISTORICAL_STATUS_NOT_REVIEWED" | "CONSULTATION_CONTEXT_MISMATCH";
+type MedicationPlanSnapshotErrorCode = "HISTORICAL_STATUS_NOT_REVIEWED" | "CONSULTATION_CONTEXT_MISMATCH" | "INCOMPLETE_SCHEDULE";
 
 export class MedicationPlanSnapshotError extends Error {
   readonly code: MedicationPlanSnapshotErrorCode;
@@ -42,6 +42,14 @@ export function buildMedicationPlanSnapshotModel(input: {
     );
   }
 
+  const incompleteSchedule = input.workspace.items.filter((item) => item.status === "ACTIVE" && item.needsScheduleReview);
+  if (incompleteSchedule.length > 0) {
+    throw new MedicationPlanSnapshotError(
+      "INCOMPLETE_SCHEDULE",
+      "Há medicamento semanal ou mensal com programação incompleta. Revise o dia/programação antes de gerar o plano.",
+    );
+  }
+
   const active: MedicationPlanItem[] = input.workspace.items
     .filter((item) => item.status === "ACTIVE")
     .map((item) => ({
@@ -49,6 +57,9 @@ export function buildMedicationPlanSnapshotModel(input: {
       medicationText: item.medicationText,
       doseInstruction: item.doseInstruction,
       route: item.route,
+      frequency: item.frequency,
+      schedule: item.schedule,
+      needsScheduleReview: item.needsScheduleReview,
       moments: item.moments,
       continuous: item.continuous,
       instructions: item.instructions,
@@ -58,7 +69,7 @@ export function buildMedicationPlanSnapshotModel(input: {
   const text = renderMedicationPlanText(input.patientName, active);
 
   return {
-    schemaVersion: "1.0",
+    schemaVersion: "1.1",
     consultationId: input.consultationId,
     patientName: plan.patientName,
     plan,

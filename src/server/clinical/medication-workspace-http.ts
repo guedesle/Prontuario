@@ -2,7 +2,12 @@ import {
   AccessForbiddenError,
   AuthenticationRequiredError,
 } from "../auth/access-errors.ts";
-import { MEDICATION_MOMENTS, type MedicationMoment } from "../../domain/medication-plan.ts";
+import {
+  MEDICATION_MOMENTS,
+  type MedicationFrequency,
+  type MedicationMoment,
+  type MedicationSchedule,
+} from "../../domain/medication-plan.ts";
 import {
   MedicationWorkspaceError,
   type MedicationWorkspaceView,
@@ -10,13 +15,14 @@ import {
 
 const OPERATIONAL_REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MOMENTS = new Set<string>(MEDICATION_MOMENTS);
+const FREQUENCIES = new Set<string>(["DAILY", "WEEKLY", "MONTHLY", "AS_NEEDED"]);
 const MAX_TEXT = 5000;
 
 export class MedicationWorkspaceRequestError extends Error {
   constructor(message: string) { super(message); this.name = "MedicationWorkspaceRequestError"; }
 }
 
-type RegimenFields = { doseInstruction?: string; route?: string; moments: MedicationMoment[]; continuous?: boolean; instructions?: string };
+type RegimenFields = { doseInstruction?: string; route?: string; frequency?: MedicationFrequency; schedule?: MedicationSchedule; moments: MedicationMoment[]; continuous?: boolean; instructions?: string };
 type CreateCommand = RegimenFields & { action: "create"; name: string; presentation?: string };
 type RegimenCommand = RegimenFields & { action: "regimen"; medicationId: string };
 export type MedicationWorkspaceCommand = CreateCommand | RegimenCommand;
@@ -39,10 +45,36 @@ function requiredText(value: unknown, label: string, max = 500): string {
   if (typeof value !== "string" || !value.trim() || value.length > max) throw new MedicationWorkspaceRequestError(`${label} inválido.`);
   return value.trim();
 }
-function optionalText(value: unknown, label: string): string | undefined {
+function optionalText(value: unknown, label: string, max = MAX_TEXT): string | undefined {
   if (value === undefined || value === null || value === "") return undefined;
-  if (typeof value !== "string" || value.length > MAX_TEXT) throw new MedicationWorkspaceRequestError(`${label} inválido.`);
+  if (typeof value !== "string" || value.length > max) throw new MedicationWorkspaceRequestError(`${label} inválido.`);
   return value.trim() || undefined;
+}
+function parseSchedule(value: unknown, frequency: MedicationFrequency | undefined): MedicationSchedule | undefined {
+  if (value === undefined || value === null) return undefined;
+  const record = asRecord(value);
+  if (record.kind === "WEEKLY") {
+    assertOnlyKeys(record, ["kind", "dayOfWeek"]);
+    if (frequency !== "WEEKLY") throw new MedicationWorkspaceRequestError("Programação semanal incompatível com a frequência selecionada.");
+    if (record.dayOfWeek === undefined || record.dayOfWeek === null || record.dayOfWeek === "") return { kind: "WEEKLY" };
+    if (typeof record.dayOfWeek !== "number" || !Number.isInteger(record.dayOfWeek) || record.dayOfWeek < 0 || record.dayOfWeek > 6) {
+      throw new MedicationWorkspaceRequestError("Dia da semana inválido.");
+    }
+    return { kind: "WEEKLY", dayOfWeek: record.dayOfWeek };
+  }
+  if (record.kind === "MONTHLY") {
+    assertOnlyKeys(record, ["kind", "dayOfMonth", "note"]);
+    if (frequency !== "MONTHLY") throw new MedicationWorkspaceRequestError("Programação mensal incompatível com a frequência selecionada.");
+    let dayOfMonth: number | undefined;
+    if (record.dayOfMonth !== undefined && record.dayOfMonth !== null && record.dayOfMonth !== "") {
+      if (typeof record.dayOfMonth !== "number" || !Number.isInteger(record.dayOfMonth) || record.dayOfMonth < 1 || record.dayOfMonth > 31) {
+        throw new MedicationWorkspaceRequestError("Dia do mês inválido.");
+      }
+      dayOfMonth = record.dayOfMonth;
+    }
+    return { kind: "MONTHLY", dayOfMonth, note: optionalText(record.note, "Detalhe da programação mensal", 160) };
+  }
+  throw new MedicationWorkspaceRequestError("Programação do medicamento inválida.");
 }
 function regimenFields(record: Record<string, unknown>): RegimenFields {
   if (!Array.isArray(record.moments) || record.moments.length > MEDICATION_MOMENTS.length) throw new MedicationWorkspaceRequestError("Horários do medicamento inválidos.");
@@ -52,12 +84,25 @@ function regimenFields(record: Record<string, unknown>): RegimenFields {
   });
   if (new Set(moments).size !== moments.length) throw new MedicationWorkspaceRequestError("Horários duplicados não são permitidos.");
   if (record.continuous !== undefined && typeof record.continuous !== "boolean") throw new MedicationWorkspaceRequestError("Indicador de uso contínuo inválido.");
-  return { doseInstruction: optionalText(record.doseInstruction, "Dose em uso"), route: optionalText(record.route, "Via"), moments, continuous: record.continuous as boolean | undefined, instructions: optionalText(record.instructions, "Observações") };
+  let frequency: MedicationFrequency | undefined;
+  if (record.frequency !== undefined) {
+    if (typeof record.frequency !== "string" || !FREQUENCIES.has(record.frequency)) throw new MedicationWorkspaceRequestError("Frequência do medicamento inválida.");
+    frequency = record.frequency as MedicationFrequency;
+  }
+  return {
+    doseInstruction: optionalText(record.doseInstruction, "Dose em uso"),
+    route: optionalText(record.route, "Via", 160),
+    frequency,
+    schedule: parseSchedule(record.schedule, frequency),
+    moments,
+    continuous: record.continuous as boolean | undefined,
+    instructions: optionalText(record.instructions, "Observações"),
+  };
 }
 
 export function parseMedicationWorkspaceCommand(body: unknown): MedicationWorkspaceCommand {
   const record = asRecord(body);
-  const common = ["action", "doseInstruction", "route", "moments", "continuous", "instructions"];
+  const common = ["action", "doseInstruction", "route", "frequency", "schedule", "moments", "continuous", "instructions"];
   if (record.action === "create") {
     assertOnlyKeys(record, [...common, "name", "presentation"]);
     return { action: "create", name: requiredText(record.name, "Nome do medicamento"), presentation: optionalText(record.presentation, "Dose/apresentação"), ...regimenFields(record) };
@@ -87,8 +132,8 @@ export function medicationWorkspaceHttpHandlers(operations: Operations) {
         let raw: unknown; try { raw = await request.json(); } catch { throw new MedicationWorkspaceRequestError("Requisição inválida."); }
         const command = parseMedicationWorkspaceCommand(raw); const operationalRequestId = requestId(request);
         const view = command.action === "create"
-          ? await operations.createMedicationWithRegimen({ consultationId, name: command.name, presentation: command.presentation, doseInstruction: command.doseInstruction, route: command.route, moments: command.moments, continuous: command.continuous, instructions: command.instructions, requestId: operationalRequestId })
-          : await operations.addMedicationRegimen({ consultationId, medicationId: command.medicationId, doseInstruction: command.doseInstruction, route: command.route, moments: command.moments, continuous: command.continuous, instructions: command.instructions, requestId: operationalRequestId });
+          ? await operations.createMedicationWithRegimen({ consultationId, name: command.name, presentation: command.presentation, doseInstruction: command.doseInstruction, route: command.route, frequency: command.frequency, schedule: command.schedule, moments: command.moments, continuous: command.continuous, instructions: command.instructions, requestId: operationalRequestId })
+          : await operations.addMedicationRegimen({ consultationId, medicationId: command.medicationId, doseInstruction: command.doseInstruction, route: command.route, frequency: command.frequency, schedule: command.schedule, moments: command.moments, continuous: command.continuous, instructions: command.instructions, requestId: operationalRequestId });
         return json(view, 200);
       } catch (error) { return errorResponse(error); }
     },
