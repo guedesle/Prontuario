@@ -135,14 +135,18 @@ export function normalizeMedicationSchedule(value: unknown): MedicationSchedule 
     const dayOfWeek = typeof record.dayOfWeek === "number" && Number.isInteger(record.dayOfWeek) && record.dayOfWeek >= 0 && record.dayOfWeek <= 6
       ? record.dayOfWeek
       : undefined;
-    return { kind: "WEEKLY", dayOfWeek };
+    return dayOfWeek === undefined ? { kind: "WEEKLY" } : { kind: "WEEKLY", dayOfWeek };
   }
   if (record.kind === "MONTHLY") {
     const dayOfMonth = typeof record.dayOfMonth === "number" && Number.isInteger(record.dayOfMonth) && record.dayOfMonth >= 1 && record.dayOfMonth <= 31
       ? record.dayOfMonth
       : undefined;
     const note = typeof record.note === "string" ? cleanMedicationText(record.note).slice(0, 160) || undefined : undefined;
-    return { kind: "MONTHLY", dayOfMonth, note };
+    return {
+      kind: "MONTHLY",
+      ...(dayOfMonth === undefined ? {} : { dayOfMonth }),
+      ...(note === undefined ? {} : { note }),
+    };
   }
   return undefined;
 }
