@@ -68,6 +68,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         >
           Entrar com Google
         </a>
+        <p style={{ maxWidth: 620, margin: "16px 0 0", color: "#756a6c", fontSize: 14, lineHeight: 1.55 }}>
+          Se o prontuário estiver aberto dentro de outro aplicativo, a próxima tela permitirá continuar manualmente com o Google ou abrir um novo contexto de navegador.
+        </p>
         {hasError ? (
           <p role="alert" style={{ marginTop: 18, color: "#8f2727", fontWeight: 700 }}>
             Não foi possível iniciar a autenticação com o Google. Tente novamente.

@@ -30,7 +30,7 @@ async function request(base: URL, path: string, redirect: RequestRedirect = "man
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       "cache-control": "no-cache",
-      "user-agent": "prontuario-clinical-release-smoke/1.6",
+      "user-agent": "prontuario-clinical-release-smoke/1.7",
     },
   });
 }
@@ -53,7 +53,7 @@ async function startGoogleOAuth(base: URL) {
     headers: {
       "cache-control": "no-cache",
       "content-type": "application/json",
-      "user-agent": "prontuario-clinical-release-smoke/1.6",
+      "user-agent": "prontuario-clinical-release-smoke/1.7",
     },
     body: JSON.stringify({
       provider: "google",
@@ -92,6 +92,15 @@ async function startGoogleOAuthViaPublicEntrypoint(base: URL) {
   const html = await response.text();
   if (!html.includes('data-google-oauth-continuation="true"')) {
     blocked("/auth/google não apresentou continuação navegável para o Google.");
+  }
+  if (!html.includes('data-google-oauth-user-gesture="true"') || !html.includes('target="_top"')) {
+    blocked("/auth/google não exige continuação por gesto explícito do usuário no contexto superior.");
+  }
+  if (html.toLowerCase().includes('http-equiv="refresh"') || /window\.location|location\.replace|location\.assign/i.test(html)) {
+    blocked("/auth/google voltou a conter redirecionamento automático, incompatível com navegadores internos.");
+  }
+  if (!html.includes('data-google-oauth-browser-restart="true"') || !html.includes('/auth/google?fresh=1')) {
+    blocked("/auth/google não oferece fallback para novo contexto de navegador.");
   }
   if (!html.includes("https://accounts.google.com/") || !html.includes("state=")) {
     blocked("/auth/google não contém destino Google HTTPS com state.");
@@ -167,5 +176,6 @@ console.log("- /api/health/auth confirmou prontidão estática do OAuth");
 console.log("- CSS e JavaScript do Next.js presentes e entregues com HTTP 200");
 console.log("- /login contém ação de autenticação Google");
 console.log("- endpoint canônico do Better Auth iniciou Google OAuth com state e Set-Cookie");
-console.log("- /auth/google entregou continuação Google navegável com state e Set-Cookie");
+console.log("- /auth/google exige gesto explícito, sem auto-redirecionamento, e preserva state/PKCE");
+console.log("- /auth/google oferece fallback de novo contexto para navegadores internos");
 console.log("- rotas clínicas não estão abertas anonimamente");
