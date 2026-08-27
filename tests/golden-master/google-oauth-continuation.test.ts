@@ -27,10 +27,16 @@ test("rejeita destino Google sem state", () => {
   );
 });
 
-test("renderiza continuação navegável com fallback visível", () => {
+test("renderiza continuação somente por gesto do usuário e fallback de novo contexto", () => {
   const html = renderGoogleOAuthContinuationPage(validateGoogleOAuthTarget(googleUrl));
-  assert.match(html, /Continuar no Google/);
+  assert.match(html, /Continuar com Google/);
   assert.match(html, /data-google-oauth-continuation="true"/);
+  assert.match(html, /data-google-oauth-user-gesture="true"/);
+  assert.match(html, /target="_top"/);
   assert.match(html, /accounts\.google\.com/);
-  assert.match(html, /http-equiv="refresh"/);
+  assert.match(html, /data-google-oauth-browser-restart="true"/);
+  assert.match(html, /href="\/auth\/google\?fresh=1"/);
+  assert.match(html, /target="_blank"/);
+  assert.doesNotMatch(html, /http-equiv="refresh"/i);
+  assert.doesNotMatch(html, /window\.location|location\.replace|location\.assign/i);
 });
