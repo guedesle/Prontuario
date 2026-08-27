@@ -84,8 +84,8 @@ test("MoCA educational boundary behavior is explicit and conservative", () => {
 });
 
 test("cognitive quick entry rejects invalid MEEM bands and out-of-range input", () => {
-  assert.throws(() => scoreCognitiveQuickEntry("meem", { score: 31, educationBand: "0_4" }), /inválido/i);
-  assert.throws(() => scoreCognitiveQuickEntry("meem", { score: 22, educationBand: "invalid" }), /inválido/i);
-  assert.throws(() => scoreCognitiveQuickEntry("moca", { score: 20.5, educationYears: 4 }), /inválido/i);
-  assert.throws(() => scoreCognitiveQuickEntry("moca", { score: 20, educationYears: 4.5 }), /inválido/i);
+  assert.throws(() => scoreCognitiveQuickEntry("meem", { score: 31, educationBand: "0_4" }), /inválid[oa]/i);
+  assert.throws(() => scoreCognitiveQuickEntry("meem", { score: 22, educationBand: "invalid" }), /inválid[oa]/i);
+  assert.throws(() => scoreCognitiveQuickEntry("moca", { score: 20.5, educationYears: 4 }), /inválid[oa]/i);
+  assert.throws(() => scoreCognitiveQuickEntry("moca", { score: 20, educationYears: 4.5 }), /inválid[oa]/i);
 });
