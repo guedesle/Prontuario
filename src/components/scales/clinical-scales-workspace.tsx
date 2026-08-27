@@ -128,6 +128,14 @@ function fieldInput(
     );
   }
   if (field.choices) {
+    if (field.id === "educationBand") {
+      return (
+        <select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+          <option value="">Selecione</option>
+          {field.choices.map((choice) => <option key={String(choice.value)} value={String(choice.value)}>{choice.label}</option>)}
+        </select>
+      );
+    }
     if (field.choices.length <= INLINE_CHOICE_LIMIT) {
       return (
         <div className={styles.inlineChoices} role="radiogroup" aria-label={field.label}>
