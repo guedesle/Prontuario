@@ -14,6 +14,7 @@ import {
 } from "../../domain/vaccination-prevention.ts";
 
 const OPERATIONAL_REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const NOTE_VERSION = /^[0-9a-f]{64}$/i;
 const MAX_FIELD_LENGTH = 30000;
 const MAX_PLAN_PROBLEMS = 100;
 const MAX_ACTIONS_PER_PROBLEM = 20;
@@ -32,7 +33,8 @@ type Operations = {
   getConsultationNote(consultationId: string): Promise<ConsultationNoteView>;
   saveConsultationNote(input: {
     consultationId: string;
-    expectedUpdatedAt: string;
+    expectedUpdatedAt?: string;
+    expectedNoteVersion?: string;
     fields: SoapDraftFields;
     examsText?: string;
     requestId?: string;
@@ -127,12 +129,14 @@ function parseVaccinationReview(value: unknown): VaccinationReview | undefined {
 
 export function parseConsultationNoteUpdate(body: unknown): {
   expectedUpdatedAt: string;
+  expectedNoteVersion?: string;
   fields: SoapDraftFields;
   examsText?: string;
 } {
   const record = asRecord(body);
   assertOnlyKeys(record, [
     "expectedUpdatedAt",
+    "expectedNoteVersion",
     "subjective",
     "physicalExam",
     "vitalSigns",
@@ -145,9 +149,15 @@ export function parseConsultationNoteUpdate(body: unknown): {
   if (typeof record.expectedUpdatedAt !== "string" || !Number.isFinite(new Date(record.expectedUpdatedAt).getTime())) {
     throw new ConsultationNoteRequestError("Versão da consulta inválida.");
   }
+  if (record.expectedNoteVersion !== undefined && (
+    typeof record.expectedNoteVersion !== "string" || !NOTE_VERSION.test(record.expectedNoteVersion)
+  )) {
+    throw new ConsultationNoteRequestError("Versão do conteúdo SOAP inválida.");
+  }
 
   return {
     expectedUpdatedAt: record.expectedUpdatedAt,
+    expectedNoteVersion: record.expectedNoteVersion as string | undefined,
     examsText: optionalTextWithLimit(
       record.examsText,
       "Exames laboratoriais e de imagem",
@@ -211,6 +221,7 @@ export function consultationNoteHttpHandlers(operations: Operations) {
         return json(await operations.saveConsultationNote({
           consultationId,
           expectedUpdatedAt: parsed.expectedUpdatedAt,
+          expectedNoteVersion: parsed.expectedNoteVersion,
           fields: parsed.fields,
           examsText: parsed.examsText,
           requestId: requestId(request),
