@@ -11,12 +11,15 @@ test("login Google usa link navegável sem depender de hidratação do React", (
   assert.doesNotMatch(loginSource, /authClient\.signIn\.social/);
 });
 
-test("rota de bootstrap OAuth preserva state cookies e redireciona para Google", () => {
+test("rota de bootstrap OAuth preserva state cookies e entrega continuação segura para Google", () => {
   assert.match(routeSource, /auth\.api\.signInSocial/);
   assert.match(routeSource, /provider:\s*"google"/);
   assert.match(routeSource, /returnHeaders:\s*true/);
-  assert.match(routeSource, /appendSetCookies\(authHeaders, redirect\.headers\)/);
-  assert.match(routeSource, /NextResponse\.redirect\(result\.url, 303\)/);
+  assert.match(routeSource, /validateGoogleOAuthTarget\(result\.url\)/);
+  assert.match(routeSource, /appendSetCookies\(authHeaders, headers\)/);
+  assert.match(routeSource, /renderGoogleOAuthContinuationPage\(googleTarget\)/);
+  assert.match(routeSource, /status:\s*200/);
+  assert.doesNotMatch(routeSource, /NextResponse\.redirect\(result\.url, 303\)/);
 });
 
 test("falha no bootstrap retorna para login com erro visível", () => {
