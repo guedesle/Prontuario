@@ -22,14 +22,20 @@ test("handler canônico do Better Auth e diagnóstico exato de assets permanecem
   assert.equal(validationCalls, 0);
 });
 
-test("rota customizada removida e exceção de diagnóstico não ampliam prefixos sensíveis", async () => {
+test("bootstrap Google exato é público sem ampliar prefixos sensíveis", async () => {
   const guard = createRequestGuard(async () => false);
 
-  assert.equal(isPublicRoute("/auth/google"), false);
-  assert.equal(routeAccessFor({ pathname: "/auth/google", authenticated: false }), "redirect-login");
-  const removedCustomRoute = await guard(new NextRequest("https://prontuario.test/auth/google"));
-  assert.equal(removedCustomRoute.status, 307);
-  assert.equal(removedCustomRoute.headers.get("location"), "https://prontuario.test/login");
+  assert.equal(isPublicRoute("/auth/google"), true);
+  assert.equal(routeAccessFor({ pathname: "/auth/google", authenticated: false }), "public");
+  const googleBootstrap = await guard(new NextRequest("https://prontuario.test/auth/google"));
+  assert.equal(googleBootstrap.status, 200);
+  assert.equal(googleBootstrap.headers.get("location"), null);
+
+  assert.equal(isPublicRoute("/auth/google/private"), false);
+  assert.equal(routeAccessFor({ pathname: "/auth/google/private", authenticated: false }), "redirect-login");
+  const authChild = await guard(new NextRequest("https://prontuario.test/auth/google/private"));
+  assert.equal(authChild.status, 307);
+  assert.equal(authChild.headers.get("location"), "https://prontuario.test/login");
 
   assert.equal(isPublicRoute("/api/health/assets/private"), false);
   assert.equal(routeAccessFor({ pathname: "/api/health/assets/private", authenticated: false }), "unauthorized-api");

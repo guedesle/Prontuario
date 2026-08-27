@@ -25,13 +25,27 @@ test("login, autenticação e health permanecem públicos sem consultar sessão"
     return false;
   });
 
-  for (const pathname of ["/login", "/api/auth/session", "/api/auth/callback/google", "/api/health"]) {
+  for (const pathname of ["/login", "/auth/google", "/api/auth/session", "/api/auth/callback/google", "/api/health"]) {
     assert.equal(isPublicRoute(pathname), true);
     const response = await guard(new NextRequest(`https://prontuario.test${pathname}`));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("location"), null);
   }
   assert.equal(validationCalls, 0);
+});
+
+test("bootstrap Google OAuth é público sem ampliar todo o namespace /auth", async () => {
+  const guard = createRequestGuard(async () => false);
+
+  const googleBootstrap = await guard(new NextRequest("https://prontuario.test/auth/google"));
+  assert.equal(googleBootstrap.status, 200);
+  assert.equal(googleBootstrap.headers.get("location"), null);
+  assert.equal(isPublicRoute("/auth/google/extra"), false);
+  assert.equal(isPublicRoute("/auth/other-provider"), false);
+
+  const unrelatedAuthRoute = await guard(new NextRequest("https://prontuario.test/auth/other-provider"));
+  assert.equal(unrelatedAuthRoute.status, 307);
+  assert.equal(unrelatedAuthRoute.headers.get("location"), "https://prontuario.test/login");
 });
 
 test("visitante anônimo é redirecionado antes de acessar páginas clínicas", async () => {
