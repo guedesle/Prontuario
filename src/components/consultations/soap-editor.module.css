@@ -131,6 +131,40 @@
   outline-offset: 2px;
 }
 
+.checkRow {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 9px !important;
+  min-width: min(100%, 290px);
+  margin: 4px 0 !important;
+  padding: 9px 10px;
+  border: 1px solid #e6ddec;
+  border-radius: 10px;
+  background: #fdfcff;
+  font-weight: 650 !important;
+}
+
+.checkRow input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+  flex: 0 0 auto;
+}
+
+.checkRow span {
+  display: grid;
+  gap: 2px;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.checkRow small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
 .soapGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
