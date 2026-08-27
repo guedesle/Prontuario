@@ -18,6 +18,7 @@ const view: ConsultationNoteView = {
   consultationId: "consultation-synthetic",
   consultationStatus: "DRAFT",
   updatedAt: "2026-08-19T12:00:00.000Z",
+  noteVersion: "note-version-synthetic",
   fields: { subjective: "Queixa sintética" },
   exams: { current: "", history: [] },
   problems: [{ id: "problem-1", type: "CLINICAL", status: "ACTIVE", title: "Problema sintético" }],

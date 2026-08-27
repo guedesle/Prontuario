@@ -25,6 +25,10 @@ export interface ConsultationNoteView {
   consultationId: string;
   consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED";
   updatedAt: string;
+  /** Hash apenas dos campos SOAP/exames controlados pelo editor. */
+  noteVersion: string;
+  /** Conteúdo legado de Avaliação é preservado no banco e nunca sobrescrito pelo editor estruturado. */
+  legacyAssessmentPresent?: boolean;
   fields: SoapDraftFields;
   exams: ConsultationExamView;
   problems: Array<Pick<ClinicalProblem, "id" | "type" | "status" | "title">>;

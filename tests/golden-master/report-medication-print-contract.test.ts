@@ -4,6 +4,8 @@ import test from "node:test";
 
 const files = {
   consultationPage: new URL("../../src/app/consultations/[id]/page.tsx", import.meta.url),
+  reportTabs: new URL("../../src/components/reports/report-workspace-tabs.tsx", import.meta.url),
+  conductWorkspace: new URL("../../src/components/reports/geriatric-conduct-workspace.tsx", import.meta.url),
   report: new URL("../../src/components/reports/aga-report-document-preview.tsx", import.meta.url),
   reportCss: new URL("../../src/components/reports/aga-report-document-preview.module.css", import.meta.url),
   medicationPage: new URL("../../src/app/consultations/[id]/medications/print/page.tsx", import.meta.url),
@@ -16,15 +18,30 @@ async function text(url: URL) {
   return readFile(url, "utf8");
 }
 
-test("relatório final usa composição documental compacta, ilustrativa e não incorpora tabela completa de medicamentos", async () => {
-  const [consultationPage, report, css] = await Promise.all([
+test("relatório final mantém documento familiar e adiciona condutas profissionais em aba separada", async () => {
+  const [consultationPage, reportTabs, conductWorkspace, report, css] = await Promise.all([
     text(files.consultationPage),
+    text(files.reportTabs),
+    text(files.conductWorkspace),
     text(files.report),
     text(files.reportCss),
   ]);
 
-  assert.match(consultationPage, /AgaReportDocumentPreview/);
+  assert.match(consultationPage, /ReportWorkspaceTabs/);
   assert.doesNotMatch(consultationPage, /AgaReportPreview\s/);
+  assert.match(reportTabs, /AgaReportDocumentPreview/);
+  assert.match(reportTabs, /GeriatricConductWorkspace/);
+  assert.match(reportTabs, /Relatório paciente\s*\/\s*família/);
+  assert.match(reportTabs, /Condutas da consulta geriátrica/);
+
+  assert.match(conductWorkspace, /\/api\/consultations\/\$\{consultationId\}\/note/);
+  assert.match(conductWorkspace, /planByProblem/);
+  assert.match(conductWorkspace, /Salvar condutas/);
+  assert.match(conductWorkspace, /expectedNoteVersion/);
+  assert.match(conductWorkspace, /Consulta finalizada/);
+  assert.doesNotMatch(report, /GeriatricConductWorkspace/);
+  assert.doesNotMatch(report, /planByProblem/);
+
   assert.match(report, /Relatório de Avaliação Geriátrica/);
   assert.match(report, /Visão geral/);
   assert.match(report, /Pontos de atenção/);

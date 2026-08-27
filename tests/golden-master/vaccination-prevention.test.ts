@@ -1,11 +1,60 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  GERIATRIC_VACCINE_CHECKLIST,
   buildVaccinationPreventionSection,
+  deriveVaccinationReview,
   normalizeVaccinationReview,
 } from "../../src/domain/vaccination-prevention.ts";
 
-test("vacinas pendentes são reproduzidas sem criar prescrição automática", () => {
+test("checklist geriátrico representa o calendário SBIm 2026/2027 sem gerar prescrição", () => {
+  const routine = GERIATRIC_VACCINE_CHECKLIST.filter((item) => item.group === "ROTINA").map((item) => item.name);
+  const special = GERIATRIC_VACCINE_CHECKLIST.filter((item) => item.group === "SITUACOES_ESPECIAIS").map((item) => item.name);
+  const all = GERIATRIC_VACCINE_CHECKLIST.map((item) => item.name).join(" ");
+
+  for (const expected of ["Influenza", "VPC20", "Herpes-zóster", "dTpa", "Hepatite B", "Febre amarela", "VSR", "COVID-19"]) {
+    assert.match(routine.join(" "), new RegExp(expected, "i"));
+  }
+  for (const expected of ["Hepatite A", "Meningocócica", "Tríplice viral"]) {
+    assert.match(special.join(" "), new RegExp(expected, "i"));
+  }
+  assert.doesNotMatch(all, /dengue/i);
+  assert.ok(GERIATRIC_VACCINE_CHECKLIST.every((item) => item.note.trim().length > 0));
+});
+
+test("marcar ao menos uma vacina pendente deriva status PENDING para o relatório", () => {
+  const review = deriveVaccinationReview({
+    reviewed: true,
+    pendingVaccines: ["Influenza (gripe)", "Pneumocócica conjugada VPC20"],
+  });
+  assert.equal(review.status, "PENDING");
+  assert.deepEqual(review.pendingVaccines, ["Influenza (gripe)", "Pneumocócica conjugada VPC20"]);
+
+  const section = buildVaccinationPreventionSection(review);
+  assert.equal(section.status, "PENDING");
+  assert.equal(section.statusLabel, "Vacinas pendentes registradas");
+  assert.deepEqual(section.pendingVaccines, ["Influenza (gripe)", "Pneumocócica conjugada VPC20"]);
+  assert.equal(section.automaticPrescription, false);
+  assert.doesNotMatch(section.guidance.join(" "), /aplicar|administrar|prescrever/i);
+});
+
+test("carteira revisada sem pendência deriva UP_TO_DATE e não UNKNOWN", () => {
+  const review = deriveVaccinationReview({ reviewed: true, pendingVaccines: [] });
+  assert.deepEqual(review, { status: "UP_TO_DATE" });
+  assert.equal(buildVaccinationPreventionSection(review).status, "UP_TO_DATE");
+});
+
+test("carteira não revisada e sem pendências permanece UNKNOWN", () => {
+  const review = deriveVaccinationReview({ reviewed: false, pendingVaccines: [] });
+  assert.deepEqual(review, { status: "UNKNOWN" });
+  const section = buildVaccinationPreventionSection(review);
+  assert.equal(section.status, "UNKNOWN");
+  assert.deepEqual(section.pendingVaccines, []);
+  assert.match(section.guidance.join(" "), /carteira de vacinação.*revisão/i);
+  assert.match(section.guidance.join(" "), /nenhuma pendência foi presumida/i);
+});
+
+test("vacinas pendentes são normalizadas sem criar prescrição automática", () => {
   const section = buildVaccinationPreventionSection({
     status: "PENDING",
     pendingVaccines: ["Influenza", "  Pneumocócica  ", "influenza"],
@@ -14,16 +63,6 @@ test("vacinas pendentes são reproduzidas sem criar prescrição automática", (
   assert.equal(section.status, "PENDING");
   assert.deepEqual(section.pendingVaccines, ["Influenza", "Pneumocócica"]);
   assert.equal(section.automaticPrescription, false);
-  assert.doesNotMatch(section.guidance.join(" "), /aplicar|administrar|prescrever|dose|esquema/i);
-});
-
-test("status desconhecido orienta revisão da carteira sem presumir pendências", () => {
-  const section = buildVaccinationPreventionSection();
-
-  assert.equal(section.status, "UNKNOWN");
-  assert.deepEqual(section.pendingVaccines, []);
-  assert.match(section.guidance.join(" "), /carteira de vacinação.*revisão/i);
-  assert.match(section.guidance.join(" "), /nenhuma pendência foi presumida/i);
 });
 
 test("revisão vacinal rejeita status pendente sem nome e pendência incompatível", () => {
