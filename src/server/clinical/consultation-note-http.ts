@@ -221,7 +221,7 @@ export function consultationNoteHttpHandlers(operations: Operations) {
         return json(await operations.saveConsultationNote({
           consultationId,
           expectedUpdatedAt: parsed.expectedUpdatedAt,
-          expectedNoteVersion: parsed.expectedNoteVersion,
+          ...(parsed.expectedNoteVersion !== undefined ? { expectedNoteVersion: parsed.expectedNoteVersion } : {}),
           fields: parsed.fields,
           examsText: parsed.examsText,
           requestId: requestId(request),
