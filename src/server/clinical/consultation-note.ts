@@ -22,6 +22,7 @@ import {
 } from "../../domain/consultation-exams.ts";
 import { requireAuthenticatedUser } from "../auth/require-user.ts";
 import { prisma } from "../db.ts";
+import { consultationNoteVersion } from "./consultation-note-version.ts";
 
 function clinicalColor(value: string | null): ClinicalColor | undefined {
   if (value === "verde" || value === "amarelo" || value === "vermelho" || value === "cinza") return value;
@@ -143,13 +144,6 @@ async function noteContext(tx: Prisma.TransactionClient, consultationId: string)
     appliedAt: assessment.appliedAt,
   }));
 
-  if (consultation.assessment !== null) {
-    throw new ConsultationNoteError(
-      "UNSUPPORTED_ASSESSMENT_JSON",
-      "Esta consulta possui conteúdo legado em Avaliação e requer revisão antes de editar o SOAP estruturado.",
-    );
-  }
-
   let fields: SoapDraftFields;
   try {
     fields = consultationNoteJsonToSoapDraft({
@@ -184,6 +178,11 @@ function publicView(context: Awaited<ReturnType<typeof noteContext>>): Consultat
     consultationId: context.consultation.id,
     consultationStatus: context.consultation.status,
     updatedAt: context.consultation.updatedAt.toISOString(),
+    noteVersion: consultationNoteVersion({
+      fields: context.fields,
+      examsText: context.exams.current,
+    }),
+    ...(context.consultation.assessment !== null ? { legacyAssessmentPresent: true } : {}),
     fields: context.fields,
     exams: context.exams,
     problems: context.problems.map((problem) => ({
@@ -207,21 +206,38 @@ export async function getConsultationNote(consultationId: string): Promise<Consu
 
 export async function saveConsultationNote(input: {
   consultationId: string;
-  expectedUpdatedAt: string;
+  expectedUpdatedAt?: string;
+  expectedNoteVersion?: string;
   fields: SoapDraftFields;
   examsText?: string;
   requestId?: string;
 }): Promise<ConsultationNoteView> {
   const { user } = await requireAuthenticatedUser("consultation.write");
-  const expectedUpdatedAt = new Date(input.expectedUpdatedAt);
-  if (!Number.isFinite(expectedUpdatedAt.getTime())) {
+  const expectedUpdatedAt = input.expectedUpdatedAt ? new Date(input.expectedUpdatedAt) : undefined;
+  if (expectedUpdatedAt && !Number.isFinite(expectedUpdatedAt.getTime())) {
     throw new Error("Versão da consulta inválida.");
+  }
+  if (!input.expectedNoteVersion && !expectedUpdatedAt) {
+    throw new Error("Versão da nota clínica ausente.");
   }
 
   return prisma.$transaction(async (tx) => {
     const context = await noteContext(tx, input.consultationId);
     if (context.consultation.status === "FINALIZED") {
       throw new ConsultationNoteError("CONSULTATION_FINALIZED", "Consulta finalizada é imutável.");
+    }
+
+    if (input.expectedNoteVersion) {
+      const currentNoteVersion = consultationNoteVersion({
+        fields: context.fields,
+        examsText: context.exams.current,
+      });
+      if (currentNoteVersion !== input.expectedNoteVersion) {
+        throw new ConsultationNoteError(
+          "CONSULTATION_CHANGED",
+          "O SOAP ou os exames foram alterados em outra sessão. Recarregue antes de salvar novamente.",
+        );
+      }
     }
 
     const allowedProblemIds = new Set(context.problems.map((problem) => problem.id));
@@ -235,25 +251,37 @@ export async function saveConsultationNote(input: {
     }
 
     const serialized = soapDraftToConsultationNoteJson(input.fields);
-    const updated = await tx.consultation.updateMany({
-      where: {
-        id: context.consultation.id,
-        patientId: context.consultation.patientId,
-        status: { not: "FINALIZED" },
-        updatedAt: expectedUpdatedAt,
-      },
-      data: {
-        subjective: prismaJson(serialized.subjective),
-        objective: prismaJson(serialized.objective),
-        plan: prismaJson(serialized.plan),
-      },
-    });
 
-    if (updated.count !== 1) {
-      throw new ConsultationNoteError(
-        "CONSULTATION_CHANGED",
-        "A consulta foi alterada em outra sessão. Recarregue antes de salvar novamente.",
-      );
+    if (input.expectedNoteVersion) {
+      await tx.consultation.update({
+        where: { id: context.consultation.id },
+        data: {
+          subjective: prismaJson(serialized.subjective),
+          objective: prismaJson(serialized.objective),
+          plan: prismaJson(serialized.plan),
+        },
+      });
+    } else {
+      const updated = await tx.consultation.updateMany({
+        where: {
+          id: context.consultation.id,
+          patientId: context.consultation.patientId,
+          status: { not: "FINALIZED" },
+          updatedAt: expectedUpdatedAt!,
+        },
+        data: {
+          subjective: prismaJson(serialized.subjective),
+          objective: prismaJson(serialized.objective),
+          plan: prismaJson(serialized.plan),
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new ConsultationNoteError(
+          "CONSULTATION_CHANGED",
+          "A consulta foi alterada em outra sessão. Recarregue antes de salvar novamente.",
+        );
+      }
     }
 
     if (input.examsText !== undefined) {
@@ -288,7 +316,7 @@ export async function saveConsultationNote(input: {
         action: "consultation.note.update",
         requestId: input.requestId,
         outcome: "success",
-        reasonCode: "soap-contract-v1",
+        reasonCode: "soap-contract-v1-note-version",
       },
     });
 
