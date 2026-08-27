@@ -199,7 +199,7 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
     appliedAt: result.appliedAt,
   })), [scaleResults]);
   const completedScalesText = useMemo(() => renderCompletedScalesText(completedScaleResults), [completedScaleResults]);
-  const canCopySoap = medicationLoadState === "ready";
+  const canCopySoap = medicationLoadState === "ready" && medicationProvenance.canCopySoap;
   const canCopyCombined = canCopySoap && scaleLoadState === "ready";
   const canCopyExams = Boolean(draft?.examsText.trim() || view?.exams.history.length);
   const canCopyScales = scaleLoadState === "ready" && Boolean(completedScalesText);
@@ -313,7 +313,7 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
     {view.legacyAssessmentPresent ? <p className={styles.unsaved} role="status">Há conteúdo legado no campo Avaliação. Ele permanece preservado no banco e não é sobrescrito por este editor; revise o histórico antes de finalizar.</p> : null}
     {medicationLoadState === "loading" ? <p className={styles.unsaved} role="status">Carregando reconciliação medicamentosa para compor a cópia do SOAP…</p> : null}
     {medicationLoadState === "error" ? <p className={styles.error} role="alert">A cópia do SOAP está temporariamente indisponível porque a lista de medicações não pôde ser carregada.</p> : null}
-    {medicationLoadState === "ready" && medicationProvenance.pendingReviewCount > 0 ? <p className={styles.unsaved} role="status">{medicationProvenance.pendingReviewCount} medicamento(s) ainda exigem reconciliação explícita. Eles serão omitidos da cópia até revisão; isso não bloqueia SOAP, exames ou escalas.</p> : null}
+    {medicationLoadState === "ready" && medicationProvenance.pendingReviewCount > 0 ? <p className={styles.error} role="alert">A cópia do SOAP permanece bloqueada: {medicationProvenance.pendingReviewCount} medicamento(s) ainda exigem reconciliação explícita. Exames e escalas podem ser copiados separadamente; revise os status em Medicamentos para liberar SOAP e a cópia combinada.</p> : null}
     {scaleLoadState === "error" ? <p className={styles.error} role="alert">A cópia combinada está bloqueada porque os resultados das escalas não puderam ser carregados; SOAP e exames continuam disponíveis separadamente.</p> : null}
     {feedback ? <p className={feedback.kind === "error" ? styles.error : styles.success} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.text}</p> : null}
     <aside className={styles.copyPanel} aria-labelledby="clinical-copy-title">
