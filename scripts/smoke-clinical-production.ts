@@ -30,9 +30,17 @@ async function request(base: URL, path: string, redirect: RequestRedirect = "man
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       "cache-control": "no-cache",
-      "user-agent": "prontuario-clinical-release-smoke/1.5",
+      "user-agent": "prontuario-clinical-release-smoke/1.6",
     },
   });
+}
+
+function responseCookies(response: Response): string[] {
+  return typeof response.headers.getSetCookie === "function"
+    ? response.headers.getSetCookie()
+    : response.headers.get("set-cookie")
+      ? [response.headers.get("set-cookie") as string]
+      : [];
 }
 
 async function startGoogleOAuth(base: URL) {
@@ -45,7 +53,7 @@ async function startGoogleOAuth(base: URL) {
     headers: {
       "cache-control": "no-cache",
       "content-type": "application/json",
-      "user-agent": "prontuario-clinical-release-smoke/1.5",
+      "user-agent": "prontuario-clinical-release-smoke/1.6",
     },
     body: JSON.stringify({
       provider: "google",
@@ -59,20 +67,35 @@ async function startGoogleOAuth(base: URL) {
     url?: string;
   } | null;
 
-  const setCookies = typeof response.headers.getSetCookie === "function"
-    ? response.headers.getSetCookie()
-    : response.headers.get("set-cookie")
-      ? [response.headers.get("set-cookie") as string]
-      : [];
-
   const check = validateGoogleOAuthBootstrap({
     status: response.status,
     redirect: body?.redirect,
     url: body?.url,
-    setCookies,
+    setCookies: responseCookies(response),
   });
 
   if (!check.ok) blocked(check.reason);
+}
+
+async function startGoogleOAuthViaPublicEntrypoint(base: URL) {
+  const response = await request(base, "/auth/google", "manual");
+  if (response.status !== 200) {
+    blocked(`/auth/google respondeu HTTP ${response.status}; o ponto de entrada público do OAuth está indisponível.`);
+  }
+  const cacheControl = response.headers.get("cache-control")?.toLowerCase() ?? "";
+  if (!cacheControl.includes("no-store")) {
+    blocked("/auth/google não confirmou Cache-Control: no-store.");
+  }
+  if (responseCookies(response).length === 0) {
+    blocked("/auth/google não encaminhou Set-Cookie do state/PKCE.");
+  }
+  const html = await response.text();
+  if (!html.includes('data-google-oauth-continuation="true"')) {
+    blocked("/auth/google não apresentou continuação navegável para o Google.");
+  }
+  if (!html.includes("https://accounts.google.com/") || !html.includes("state=")) {
+    blocked("/auth/google não contém destino Google HTTPS com state.");
+  }
 }
 
 const base = productionBaseUrl();
@@ -118,6 +141,7 @@ try {
   }
 
   await startGoogleOAuth(base);
+  await startGoogleOAuthViaPublicEntrypoint(base);
 
   for (const path of ["/patients", "/patients/new"]) {
     const protectedResponse = await request(base, path, "manual");
@@ -143,4 +167,5 @@ console.log("- /api/health/auth confirmou prontidão estática do OAuth");
 console.log("- CSS e JavaScript do Next.js presentes e entregues com HTTP 200");
 console.log("- /login contém ação de autenticação Google");
 console.log("- endpoint canônico do Better Auth iniciou Google OAuth com state e Set-Cookie");
+console.log("- /auth/google entregou continuação Google navegável com state e Set-Cookie");
 console.log("- rotas clínicas não estão abertas anonimamente");
