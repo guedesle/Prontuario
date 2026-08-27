@@ -6,7 +6,11 @@ import {
   isExplicitActiveMedication,
   summarizeSoapMedicationProvenance,
 } from "@/domain/soap-medication-provenance";
-import type { VaccinationReviewStatus } from "@/domain/vaccination-prevention";
+import {
+  deriveVaccinationReview,
+  GERIATRIC_VACCINE_CHECKLIST,
+  type VaccinationReviewStatus,
+} from "@/domain/vaccination-prevention";
 import {
   renderClinicalExamsText,
   renderCompletedScalesText,
@@ -32,6 +36,8 @@ type NoteView = {
   consultationId: string;
   consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED";
   updatedAt: string;
+  noteVersion: string;
+  legacyAssessmentPresent?: boolean;
   fields: { subjective?: string; physicalExam?: string; vitalSigns?: string; anthropometry?: string; vaccinationReview?: { status: VaccinationReviewStatus; pendingVaccines?: readonly string[] }; planByProblem?: Record<string, readonly string[]> };
   exams: { current: string; history: ClinicalExamHistoryItem[] };
   problems: Problem[];
@@ -51,13 +57,40 @@ type MedicationItem = {
 type MedicationView = { items: MedicationItem[] };
 type ScaleStatusItem = { scaleCode: string; scoreNumeric: number | null; scoreText?: string | null; classification?: string | null; interpretation?: string | null; appliedAt: string };
 type ScaleStatusView = { latest: ScaleStatusItem[] };
-type Draft = { subjective: string; physicalExam: string; vitalSigns: string; anthropometry: string; examsText: string; vaccinationStatus: VaccinationReviewStatus; pendingVaccinesText: string; planTextByProblem: Record<string, string> };
+type Draft = {
+  subjective: string;
+  physicalExam: string;
+  vitalSigns: string;
+  anthropometry: string;
+  examsText: string;
+  vaccinationReviewed: boolean;
+  pendingVaccines: string[];
+  otherPendingVaccinesText: string;
+  planTextByProblem: Record<string, string>;
+};
+
+const KNOWN_VACCINE_NAMES = new Set(GERIATRIC_VACCINE_CHECKLIST.map((item) => item.name));
+
+function uniqueTextLines(value: string): string[] {
+  return [...new Set(value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean))];
+}
 
 function draftFromView(view: NoteView): Draft {
-  return { subjective: view.fields.subjective ?? "", physicalExam: view.fields.physicalExam ?? "", vitalSigns: view.fields.vitalSigns ?? "", anthropometry: view.fields.anthropometry ?? "", examsText: view.exams.current, vaccinationStatus: view.fields.vaccinationReview?.status ?? "UNKNOWN", pendingVaccinesText: view.fields.vaccinationReview?.pendingVaccines?.join("\n") ?? "", planTextByProblem: Object.fromEntries(Object.entries(view.fields.planByProblem ?? {}).map(([id, actions]) => [id, actions.join("\n")])) };
+  const review = view.fields.vaccinationReview;
+  const pending = [...(review?.pendingVaccines ?? [])];
+  return {
+    subjective: view.fields.subjective ?? "",
+    physicalExam: view.fields.physicalExam ?? "",
+    vitalSigns: view.fields.vitalSigns ?? "",
+    anthropometry: view.fields.anthropometry ?? "",
+    examsText: view.exams.current,
+    vaccinationReviewed: review?.status !== undefined && review.status !== "UNKNOWN",
+    pendingVaccines: pending.filter((name) => KNOWN_VACCINE_NAMES.has(name)),
+    otherPendingVaccinesText: pending.filter((name) => !KNOWN_VACCINE_NAMES.has(name)).join("\n"),
+    planTextByProblem: Object.fromEntries(Object.entries(view.fields.planByProblem ?? {}).map(([id, actions]) => [id, actions.join("\n")])),
+  };
 }
 function actionsFromText(value: string): string[] { return value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean); }
-function pendingVaccinesFromText(value: string): string[] { return [...new Set(actionsFromText(value))]; }
 function valueOrMissing(value: string): string { return value.trim() || "sem dados registrados"; }
 function medicationLine(item: MedicationItem): string {
   const parts = [item.medicationText, item.doseInstruction, item.route, item.moments.length ? item.moments.map((moment) => MEDICATION_MOMENT_LABELS[moment]).join(" / ") : undefined, item.instructions].filter(Boolean);
@@ -166,12 +199,28 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
     appliedAt: result.appliedAt,
   })), [scaleResults]);
   const completedScalesText = useMemo(() => renderCompletedScalesText(completedScaleResults), [completedScaleResults]);
-  const canCopySoap = medicationLoadState === "ready" && medicationProvenance.canCopySoap && !dirty;
+  const canCopySoap = medicationLoadState === "ready";
   const canCopyCombined = canCopySoap && scaleLoadState === "ready";
-  const canCopyExams = !dirty && Boolean(draft?.examsText.trim() || view?.exams.history.length);
+  const canCopyExams = Boolean(draft?.examsText.trim() || view?.exams.history.length);
   const canCopyScales = scaleLoadState === "ready" && Boolean(completedScalesText);
-  function setField<K extends Exclude<keyof Draft, "planTextByProblem">>(key: K, value: Draft[K]) { setDraft((current) => current ? { ...current, [key]: value } : current); setDirty(true); setFeedback(null); }
-  function setVaccinationStatus(status: VaccinationReviewStatus) { setDraft((current) => current ? { ...current, vaccinationStatus: status, pendingVaccinesText: status === "PENDING" ? current.pendingVaccinesText : "" } : current); setDirty(true); setFeedback(null); }
+  function setField<K extends "subjective" | "physicalExam" | "vitalSigns" | "anthropometry" | "examsText" | "otherPendingVaccinesText">(key: K, value: Draft[K]) { setDraft((current) => current ? { ...current, [key]: value } : current); setDirty(true); setFeedback(null); }
+  function setVaccinationReviewed(checked: boolean) {
+    setDraft((current) => current ? {
+      ...current,
+      vaccinationReviewed: checked,
+      ...(checked ? {} : { pendingVaccines: [], otherPendingVaccinesText: "" }),
+    } : current);
+    setDirty(true); setFeedback(null);
+  }
+  function setVaccinePending(name: string, checked: boolean) {
+    setDraft((current) => {
+      if (!current) return current;
+      const pending = new Set(current.pendingVaccines);
+      if (checked) pending.add(name); else pending.delete(name);
+      return { ...current, vaccinationReviewed: true, pendingVaccines: [...pending] };
+    });
+    setDirty(true); setFeedback(null);
+  }
   function setProblemPlan(problemId: string, value: string) { setDraft((current) => current ? { ...current, planTextByProblem: { ...current.planTextByProblem, [problemId]: value } } : current); setDirty(true); setFeedback(null); }
   function applySuggestion(suggestion: PlanSuggestion) {
     if (!draft) return;
@@ -188,29 +237,54 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
 
   async function save() {
     if (!view || !draft || saving || view.consultationStatus === "FINALIZED") return;
-    const pendingVaccines = pendingVaccinesFromText(draft.pendingVaccinesText);
-    if (draft.vaccinationStatus === "PENDING" && pendingVaccines.length === 0) {
-      setFeedback({ kind: "error", text: "Informe ao menos uma vacina registrada como pendente." });
-      return;
-    }
     setSaving(true); setFeedback(null);
     try {
       const planByProblem = Object.fromEntries(activeProblems.map((problem) => [problem.id, actionsFromText(draft.planTextByProblem[problem.id] ?? "")]));
-      const vaccinationReview = draft.vaccinationStatus === "PENDING" ? { status: draft.vaccinationStatus, pendingVaccines } : { status: draft.vaccinationStatus };
-      const response = await fetch(`/api/consultations/${consultationId}/note`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ expectedUpdatedAt: view.updatedAt, subjective: draft.subjective, physicalExam: draft.physicalExam, vitalSigns: draft.vitalSigns, anthropometry: draft.anthropometry, examsText: draft.examsText, vaccinationReview, planByProblem }) });
+      const vaccinationReview = deriveVaccinationReview({
+        reviewed: draft.vaccinationReviewed,
+        pendingVaccines: [...draft.pendingVaccines, ...uniqueTextLines(draft.otherPendingVaccinesText)],
+      });
+      const response = await fetch(`/api/consultations/${consultationId}/note`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ expectedUpdatedAt: view.updatedAt, expectedNoteVersion: view.noteVersion, subjective: draft.subjective, physicalExam: draft.physicalExam, vitalSigns: draft.vitalSigns, anthropometry: draft.anthropometry, examsText: draft.examsText, vaccinationReview, planByProblem }) });
       const body = await response.json().catch(() => null) as (NoteView & { message?: string }) | null;
       if (!response.ok || !body) throw new Error(body?.message || "Não foi possível salvar o SOAP.");
-      setView(body); setDraft(draftFromView(body)); setDirty(false); setFeedback({ kind: "success", text: "SOAP salvo nesta consulta." });
+      setView(body); setDraft(draftFromView(body)); setDirty(false); setFeedback({ kind: "success", text: "SOAP, exames, vacinas e condutas salvos nesta consulta." });
+      window.dispatchEvent(new CustomEvent("clinical-note-changed", { detail: { consultationId } }));
     } catch (error) { setFeedback({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível salvar o SOAP." }); }
     finally { setSaving(false); }
   }
   async function copyText(text: string, success: string) {
-    try { await navigator.clipboard.writeText(text); setFeedback({ kind: "success", text: success }); }
-    catch { setFeedback({ kind: "error", text: "Não foi possível copiar o conteúdo neste navegador." }); }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error("clipboard-api-unavailable");
+      }
+      setFeedback({ kind: "success", text: success });
+      return;
+    } catch {
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "true");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        textarea.style.pointerEvents = "none";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        if (!copied) throw new Error("copy-command-failed");
+        setFeedback({ kind: "success", text: success });
+      } catch {
+        setFeedback({ kind: "error", text: "Não foi possível copiar automaticamente neste navegador. Selecione o texto ou abra o prontuário no Safari/Chrome e tente novamente." });
+      }
+    }
   }
   async function copyCombinedReport() {
     if (!draft || !view || !canCopyCombined) return;
-    await copyText(renderSoapExamsScalesReport({ soap: renderSoap(draft, view.problems, medications), currentExams: draft.examsText, examHistory: view.exams.history, scaleResults: completedScaleResults }), "SOAP, exames e resultados das escalas copiadas para a área de transferência.");
+    await copyText(renderSoapExamsScalesReport({ soap: renderSoap(draft, view.problems, medications), currentExams: draft.examsText, examHistory: view.exams.history, scaleResults: completedScaleResults }), "SOAP, exames e resultados das escalas copiados para a área de transferência.");
   }
   async function copySoap() {
     if (!draft || !view || !canCopySoap) return;
@@ -228,15 +302,19 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
   if (loading) return <section className={styles.card}><p>Carregando SOAP…</p></section>;
   if (!view || !draft) return <section className={styles.card}><p role="alert">{feedback?.text ?? "SOAP indisponível."}</p></section>;
   const finalized = view.consultationStatus === "FINALIZED";
+  const routineVaccines = GERIATRIC_VACCINE_CHECKLIST.filter((item) => item.group === "ROTINA");
+  const specialVaccines = GERIATRIC_VACCINE_CHECKLIST.filter((item) => item.group === "SITUACOES_ESPECIAIS");
+  const derivedVaccinationStatus = deriveVaccinationReview({ reviewed: draft.vaccinationReviewed, pendingVaccines: [...draft.pendingVaccines, ...uniqueTextLines(draft.otherPendingVaccinesText)] }).status;
 
   return <section className={styles.card} aria-labelledby="soap-editor-title">
     <div className={styles.heading}><div><p className="eyebrow">Prontuário</p><h2 id="soap-editor-title">Evolução SOAP</h2><p className={styles.muted}>Avaliação usa problemas confirmados; Objetivo incorpora {medicationProvenance.explicitActiveCount} medicamento(s) em uso com status explicitamente reconciliado nesta trajetória.</p></div><div className={styles.actions}><button type="button" onClick={save} disabled={!dirty || saving || finalized}>{saving ? "Salvando…" : "Salvar SOAP e exames"}</button></div></div>
     {finalized ? <p className={styles.locked} role="status">Consulta finalizada: o SOAP está em modo somente leitura.</p> : null}
-    {dirty ? <p className={styles.unsaved} role="status">Há alterações ainda não salvas.</p> : null}
-    {medicationLoadState === "loading" ? <p className={styles.unsaved} role="status">Validando reconciliação medicamentosa antes de liberar a cópia do SOAP…</p> : null}
-    {medicationLoadState === "error" ? <p className={styles.error} role="alert">A cópia do SOAP está bloqueada porque a reconciliação medicamentosa não pôde ser validada.</p> : null}
-    {medicationLoadState === "ready" && medicationProvenance.pendingReviewCount > 0 ? <p className={styles.error} role="alert">A cópia do SOAP está bloqueada: {medicationProvenance.pendingReviewCount} medicamento(s) ainda dependem do estado atual do cadastro ou não possuem histórico explícito nesta trajetória. Revise o status na reconciliação medicamentosa.</p> : null}
-    {scaleLoadState === "error" ? <p className={styles.error} role="alert">A cópia combinada está bloqueada porque os resultados das escalas não puderam ser validados.</p> : null}
+    {dirty ? <p className={styles.unsaved} role="status">Há alterações ainda não salvas. A cópia usa o conteúdo atual da tela; salvar grava a versão nesta consulta.</p> : null}
+    {view.legacyAssessmentPresent ? <p className={styles.unsaved} role="status">Há conteúdo legado no campo Avaliação. Ele permanece preservado no banco e não é sobrescrito por este editor; revise o histórico antes de finalizar.</p> : null}
+    {medicationLoadState === "loading" ? <p className={styles.unsaved} role="status">Carregando reconciliação medicamentosa para compor a cópia do SOAP…</p> : null}
+    {medicationLoadState === "error" ? <p className={styles.error} role="alert">A cópia do SOAP está temporariamente indisponível porque a lista de medicações não pôde ser carregada.</p> : null}
+    {medicationLoadState === "ready" && medicationProvenance.pendingReviewCount > 0 ? <p className={styles.unsaved} role="status">{medicationProvenance.pendingReviewCount} medicamento(s) ainda exigem reconciliação explícita. Eles serão omitidos da cópia até revisão; isso não bloqueia SOAP, exames ou escalas.</p> : null}
+    {scaleLoadState === "error" ? <p className={styles.error} role="alert">A cópia combinada está bloqueada porque os resultados das escalas não puderam ser carregados; SOAP e exames continuam disponíveis separadamente.</p> : null}
     {feedback ? <p className={feedback.kind === "error" ? styles.error : styles.success} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.text}</p> : null}
     <aside className={styles.copyPanel} aria-labelledby="clinical-copy-title">
       <div><strong id="clinical-copy-title">Cópia para o prontuário</strong><span>O relatório combinado inclui o SOAP, os exames visíveis e somente os resultados das escalas preenchidas nesta consulta.</span></div>
@@ -249,7 +327,17 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
     </aside>
     <div className={styles.soapGrid}>
       <section className={styles.soapSection}><h3>S — Subjetivo</h3><label>Motivo da consulta, HDA e informações da paciente/acompanhante<textarea value={draft.subjective} disabled={finalized} onChange={(event) => setField("subjective", event.target.value)} rows={7} /></label></section>
-      <section className={styles.soapSection}><h3>O — Objetivo</h3><label>Exame físico<textarea value={draft.physicalExam} disabled={finalized} onChange={(event) => setField("physicalExam", event.target.value)} rows={4} /></label><label>Sinais vitais<textarea value={draft.vitalSigns} disabled={finalized} onChange={(event) => setField("vitalSigns", event.target.value)} rows={3} /></label><label>Antropometria<textarea value={draft.anthropometry} disabled={finalized} onChange={(event) => setField("anthropometry", event.target.value)} rows={3} /></label><fieldset><legend>Vacinas e prevenção</legend><label>Status da revisão da carteira<select value={draft.vaccinationStatus} disabled={finalized} onChange={(event) => setVaccinationStatus(event.target.value as VaccinationReviewStatus)}><option value="UNKNOWN">Status desconhecido / carteira não revisada</option><option value="UP_TO_DATE">Sem pendências registradas</option><option value="PENDING">Há vacinas pendentes registradas</option></select></label>{draft.vaccinationStatus === "PENDING" ? <label>Vacinas pendentes — uma por linha<textarea value={draft.pendingVaccinesText} disabled={finalized} onChange={(event) => setField("pendingVaccinesText", event.target.value)} rows={4} /></label> : null}<p className={styles.muted}>O relatório familiar reproduz apenas o status revisado e orienta conferência da carteira. Não gera prescrição, produto, dose ou esquema automático.</p></fieldset><p className={styles.muted}>Medicações em uso entram automaticamente apenas na cópia do SOAP quando o status deriva de histórico explicitamente reconciliado; não são duplicadas neste JSON.</p></section>
+      <section className={styles.soapSection}><h3>O — Objetivo</h3><label>Exame físico<textarea value={draft.physicalExam} disabled={finalized} onChange={(event) => setField("physicalExam", event.target.value)} rows={4} /></label><label>Sinais vitais<textarea value={draft.vitalSigns} disabled={finalized} onChange={(event) => setField("vitalSigns", event.target.value)} rows={3} /></label><label>Antropometria<textarea value={draft.anthropometry} disabled={finalized} onChange={(event) => setField("anthropometry", event.target.value)} rows={3} /></label>
+        <fieldset><legend>Vacinas e prevenção</legend>
+          <label className={styles.checkRow}><input type="checkbox" checked={draft.vaccinationReviewed} disabled={finalized} onChange={(event) => setVaccinationReviewed(event.target.checked)} /><span>Carteira/status vacinal revisado nesta consulta</span></label>
+          <p className={styles.muted}>Marque abaixo apenas as vacinas identificadas como pendentes após a revisão. O sistema deriva o status automaticamente: nenhuma revisão = desconhecido; revisão sem pendências = sem pendências; qualquer checkbox pendente = vacinas pendentes.</p>
+          <strong>Rotina no calendário do idoso</strong>
+          <div className={styles.copyActions}>{routineVaccines.map((item) => <label key={item.id} className={styles.checkRow}><input type="checkbox" checked={draft.pendingVaccines.includes(item.name)} disabled={finalized} onChange={(event) => setVaccinePending(item.name, event.target.checked)} /><span><b>{item.name}</b><small>{item.note}</small></span></label>)}</div>
+          <strong>Situações especiais</strong>
+          <div className={styles.copyActions}>{specialVaccines.map((item) => <label key={item.id} className={styles.checkRow}><input type="checkbox" checked={draft.pendingVaccines.includes(item.name)} disabled={finalized} onChange={(event) => setVaccinePending(item.name, event.target.checked)} /><span><b>{item.name}</b><small>{item.note}</small></span></label>)}</div>
+          <label>Outras pendências vacinais documentadas — uma por linha<textarea value={draft.otherPendingVaccinesText} disabled={finalized} onChange={(event) => { setDraft((current) => current ? { ...current, vaccinationReviewed: true, otherPendingVaccinesText: event.target.value } : current); setDirty(true); setFeedback(null); }} rows={3} /></label>
+          <p className={styles.muted}>Status que será salvo: <strong>{derivedVaccinationStatus === "PENDING" ? "Vacinas pendentes registradas" : derivedVaccinationStatus === "UP_TO_DATE" ? "Sem pendências registradas" : "Status desconhecido"}</strong>. Checklist baseado no calendário SBIm Idoso 2026/2027; não gera prescrição, produto, dose ou esquema automático.</p>
+        </fieldset><p className={styles.muted}>Medicações em uso entram automaticamente apenas na cópia do SOAP quando o status deriva de histórico explicitamente reconciliado; não são duplicadas neste JSON.</p></section>
       <section className={`${styles.soapSection} ${styles.examSection}`} aria-labelledby="clinical-exams-title"><div className={styles.examHeading}><h3 id="clinical-exams-title">Exames laboratoriais e de imagem</h3><p className={styles.muted}>O registro atual permanece separado; os exames anteriores aparecem somente como contexto longitudinal.</p></div><div className={styles.examLayout}><label>Exames desta consulta<textarea value={draft.examsText} disabled={finalized} onChange={(event) => setField("examsText", event.target.value)} rows={8} placeholder="Registre a data, o tipo de exame e os resultados relevantes." /></label><div>{view.exams.history.length > 0 ? <div className={styles.examHistory} aria-label="Exames de consultas anteriores"><strong>Exames de consultas anteriores</strong>{view.exams.history.map((item) => <article key={item.id}><time dateTime={item.consultationOccurredAt}>{new Date(item.consultationOccurredAt).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</time><p>{item.content}</p></article>)}</div> : <p className={styles.emptyHistory}>Nenhum exame registrado em consultas anteriores.</p>}</div></div></section>
       <section className={styles.soapSection}><h3>A — Avaliação</h3>{activeProblems.length === 0 ? <p className={styles.muted}>Sem problemas ativos registrados.</p> : <ol className={styles.problemList}>{activeProblems.map((problem) => <li key={problem.id}><strong>{problem.title}</strong><span>{problem.type === "GERIATRIC" ? "Problema geriátrico" : "Problema clínico"} · {problem.status}</span></li>)}</ol>}</section>
       <section className={styles.soapSection}><h3>P — Plano por problema</h3>{activeProblems.length === 0 ? <p className={styles.muted}>Cadastre/confirme problemas para vincular condutas.</p> : activeProblems.map((problem) => {
