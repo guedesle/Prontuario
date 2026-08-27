@@ -4,7 +4,7 @@ import { ConsultationSectionNav } from "@/components/consultations/consultation-
 import { SoapEditor } from "@/components/consultations/soap-editor";
 import { MedicationWorkspace } from "@/components/medications/medication-workspace";
 import { ProblemWorkspace } from "@/components/problems/problem-workspace";
-import { AgaReportDocumentPreview } from "@/components/reports/aga-report-document-preview";
+import { ReportWorkspaceTabs } from "@/components/reports/report-workspace-tabs";
 import { ClinicalScalesWorkspace } from "@/components/scales/clinical-scales-workspace";
 import { buildConsultationContextViewModel } from "@/domain/consultation-context";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
@@ -121,8 +121,8 @@ export default async function ConsultationPage({ params }: { params: Promise<{ i
             <ClinicalScalesWorkspace consultationId={id} />
           </section>
 
-          <section id="relatorio" className={`consultation-section consultation-report-section ${styles.sectionAnchor}`} aria-label="Relatório final">
-            <AgaReportDocumentPreview consultationId={id} />
+          <section id="relatorio" className={`consultation-section consultation-report-section ${styles.sectionAnchor}`} aria-label="Relatório final e condutas">
+            <ReportWorkspaceTabs consultationId={id} />
           </section>
 
           <section id="finalizacao" className={`consultation-section ${styles.sectionAnchor}`} aria-label="Revisão e finalização">
