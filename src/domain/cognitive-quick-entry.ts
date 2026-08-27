@@ -50,7 +50,7 @@ export const COGNITIVE_QUICK_DEFINITIONS: readonly CognitiveQuickDefinition[] = 
     name: "MEEM — pontuação e escolaridade",
     dimension: "cognicao",
     instruction: "Registre a pontuação do MEEM já aplicado e selecione a faixa de escolaridade. O resultado é classificado como rastreio cognitivo e nunca como diagnóstico isolado.",
-    sourceNote: "Referência de rastreio educacional: Kochhann et al., 2010 (PMID 29213658), com pontos de corte 22/23/24 para baixa/média/alta escolaridade. As três faixas exibidas são a padronização operacional do serviço solicitada para o prontuário; o resultado deve ser integrado à funcionalidade e à avaliação clínica.",
+    sourceNote: "Referência de rastreio educacional: Kochhann et al., 2010 (PMID 29213658). O estudo original estratificou analfabetos, 1–5 anos, 6–11 anos e ≥12 anos, com pontos de corte 21/22/23/24. A interface 0–4, 4–11 e >11 anos e o mapeamento operacional 22/23/24 são uma padronização local do serviço solicitada para o prontuário, não uma reprodução literal das faixas do estudo. O resultado é rastreio e deve ser integrado à funcionalidade e à avaliação clínica; não estabelece diagnóstico isoladamente.",
     fields: [
       scoreField,
       {
