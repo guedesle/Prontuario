@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  renderGoogleOAuthContinuationPage,
+  validateGoogleOAuthTarget,
+} from "@/domain/google-oauth-continuation";
 import { auth } from "@/server/auth/auth";
 
 function appendSetCookies(source: Headers, target: Headers) {
@@ -34,9 +38,20 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/login?error=oauth_start", request.url), 303);
     }
 
-    const redirect = NextResponse.redirect(result.url, 303);
-    appendSetCookies(authHeaders, redirect.headers);
-    return redirect;
+    const googleTarget = validateGoogleOAuthTarget(result.url);
+    const headers = new Headers({
+      "cache-control": "private, no-store, max-age=0",
+      "content-type": "text/html; charset=utf-8",
+      "referrer-policy": "no-referrer",
+      "x-content-type-options": "nosniff",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'",
+    });
+    appendSetCookies(authHeaders, headers);
+
+    return new Response(renderGoogleOAuthContinuationPage(googleTarget), {
+      status: 200,
+      headers,
+    });
   } catch {
     return NextResponse.redirect(new URL("/login?error=oauth_start", request.url), 303);
   }
