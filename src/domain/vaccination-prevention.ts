@@ -78,15 +78,15 @@ export function deriveVaccinationReview(input: {
 export function normalizeVaccinationReview(input: VaccinationReview | undefined): VaccinationReview {
   if (!input) return { status: "UNKNOWN" };
   if (!["UNKNOWN", "UP_TO_DATE", "PENDING"].includes(input.status)) {
-    throw new Error("Status da revisão vacinal inválido.");
+    throw new Error("Situação da revisão vacinal inválida.");
   }
 
   const pendingVaccines = uniqueVaccineNames(input.pendingVaccines ?? []);
   if (input.status === "PENDING" && pendingVaccines.length === 0) {
-    throw new Error("A revisão vacinal pendente exige ao menos uma vacina registrada.");
+    throw new Error("Uma revisão com vacinas pendentes exige ao menos uma vacina registrada.");
   }
   if (input.status !== "PENDING" && pendingVaccines.length > 0) {
-    throw new Error("Vacinas pendentes só podem ser registradas com status PENDING.");
+    throw new Error("Vacinas pendentes só podem ser registradas quando a revisão indica pendência.");
   }
 
   return input.status === "PENDING"
@@ -102,10 +102,10 @@ export function buildVaccinationPreventionSection(
   if (review.status === "PENDING") {
     return {
       status: review.status,
-      statusLabel: "Vacinas pendentes registradas",
+      statusLabel: "Há vacinas pendentes registradas",
       pendingVaccines: [...(review.pendingVaccines ?? [])],
       guidance: [
-        "Confira as pendências registradas com a carteira de vacinação e a equipe assistencial. Os próximos passos dependem de revisão clínica individual.",
+        "Confira as vacinas pendentes com a carteira de vacinação e a equipe assistencial. Os próximos passos dependem de revisão clínica individual.",
       ],
       automaticPrescription: false,
     };
@@ -114,7 +114,7 @@ export function buildVaccinationPreventionSection(
   if (review.status === "UP_TO_DATE") {
     return {
       status: review.status,
-      statusLabel: "Sem pendências registradas nesta consulta",
+      statusLabel: "Nenhuma vacina pendente foi registrada nesta consulta",
       pendingVaccines: [],
       guidance: [
         "Mantenha a carteira de vacinação disponível para conferência nas próximas avaliações.",
@@ -125,10 +125,10 @@ export function buildVaccinationPreventionSection(
 
   return {
     status: "UNKNOWN",
-    statusLabel: "Status vacinal desconhecido",
+    statusLabel: "Carteira de vacinação ainda não revisada",
     pendingVaccines: [],
     guidance: [
-      "Leve a carteira de vacinação para revisão com a equipe assistencial. Nenhuma pendência foi presumida sem esse registro.",
+      "Leve a carteira de vacinação para revisão com a equipe assistencial. O relatório não considera nenhuma vacina como pendente sem essa conferência.",
     ],
     automaticPrescription: false,
   };
