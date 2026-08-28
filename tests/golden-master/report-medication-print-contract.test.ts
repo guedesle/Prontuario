@@ -31,7 +31,7 @@ test("relatório final mantém documento familiar e adiciona condutas profission
   assert.doesNotMatch(consultationPage, /AgaReportPreview\s/);
   assert.match(reportTabs, /AgaReportDocumentPreview/);
   assert.match(reportTabs, /GeriatricConductWorkspace/);
-  assert.match(reportTabs, /Relatório paciente\s*\/\s*família/);
+  assert.match(reportTabs, /Relatório para paciente e família/);
   assert.match(reportTabs, /Condutas da consulta geriátrica/);
 
   assert.match(conductWorkspace, /\/api\/consultations\/\$\{consultationId\}\/note/);
