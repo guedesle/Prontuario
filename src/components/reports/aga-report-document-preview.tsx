@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { AgaReportModel } from "@/domain/aga-report";
+import { sourceStatusLabel } from "@/domain/accessible-report-language";
 import {
   hasDisplayableLongitudinalHistory,
   type CapacityDimensionHistory,
@@ -217,9 +218,9 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
     <section className={styles.workspace} data-review={clinicalReviewConfirmed ? "confirmed" : "pending"}>
       <div className={`${styles.toolbar} no-print`}>
         <div>
-          <p className={styles.eyebrow}>Documento para paciente, família e cuidadores</p>
+          <p className={styles.eyebrow}>Relatório para paciente, família e cuidadores</p>
           <h2>Prévia do relatório final</h2>
-          <p>O relatório só pode ser impresso ou exportado após revisão clínica explícita.</p>
+          <p>Gere a prévia, revise o conteúdo e só depois libere a impressão ou a exportação.</p>
         </div>
         <div className={styles.actions}>
           <button type="button" onClick={() => void generate()} disabled={loading}>{loading ? "Gerando…" : generated ? "Atualizar prévia" : "Gerar prévia"}</button>
@@ -235,11 +236,11 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
           <div className={`${styles.reviewGate} no-print`}>
             <label>
               <input type="checkbox" checked={clinicalReviewConfirmed} onChange={(event) => setClinicalReviewConfirmed(event.target.checked)} />
-              <span><strong>Revisão clínica antes de compartilhar</strong><small>Confirmo que revisei problemas, escalas, alertas, orientações e contexto desta consulta.</small></span>
+              <span><strong>Revisão clínica antes de compartilhar</strong><small>Confirmo que revisei problemas, avaliações, alertas, orientações e o contexto desta consulta.</small></span>
             </label>
             <label className={styles.technicalToggle}>
               <input type="checkbox" checked={showTechnical} onChange={(event) => setShowTechnical(event.target.checked)} />
-              Incluir apêndice técnico
+              Mostrar informações técnicas
             </label>
           </div>
 
@@ -265,10 +266,10 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
             </header>
 
             <section className={styles.introNote}>
-              Este relatório resume os principais achados da Avaliação Geriátrica Ampla para apoiar o cuidado diário e a continuidade do acompanhamento. Ele não substitui avaliação médica individualizada.
+              Este relatório reúne os principais achados da Avaliação Geriátrica Ampla para facilitar o cuidado no dia a dia e a continuidade do acompanhamento. Ele não substitui uma avaliação médica individual.
             </section>
 
-            <section className={styles.executiveGrid} data-count={executiveCardCount} aria-label="Resumo executivo">
+            <section className={styles.executiveGrid} data-count={executiveCardCount} aria-label="Resumo do relatório">
               <article className={styles.executiveCard} data-tone="overview">
                 <div className={styles.cardTitle}><ReportGlyph name="overview" /><span>Visão geral</span></div>
                 <p>{generated.report.changeSummary.headline}</p>
@@ -284,14 +285,14 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
               ) : null}
               {recommendation ? (
                 <article className={styles.executiveCard} data-tone="recommendation">
-                  <div className={styles.cardTitle}><ReportGlyph name="recommendation" /><span>Recomendação principal</span></div>
+                  <div className={styles.cardTitle}><ReportGlyph name="recommendation" /><span>Orientação principal</span></div>
                   <p>{recommendation}</p>
                 </article>
               ) : null}
             </section>
 
             {hasProblems ? <section className={styles.section}>
-              <div className={styles.sectionHeading}><span>1</span><h2>Problemas ativos</h2></div>
+              <div className={styles.sectionHeading}><span>1</span><h2>Problemas em acompanhamento</h2></div>
               <div className={styles.problemGrid}>
                 {generated.report.clinicalProblems.length > 0 ? <article>
                   <div className={styles.problemTitle}><ReportGlyph name="clinical" /><h3>Problemas clínicos</h3></div>
@@ -306,7 +307,7 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
 
             {reportDomains.length > 0 ? <section className={styles.section}>
               <div className={styles.sectionHeading}><span>2</span><h2>Resultados das avaliações</h2></div>
-              <p className={styles.sectionLead}>Resumo por domínio, com foco no significado funcional e nas orientações para o cuidado. As orientações sugeridas exigem revisão médica antes do compartilhamento; nomes e escores das escalas permanecem no prontuário técnico.</p>
+              <p className={styles.sectionLead}>Resumo por área avaliada, com foco no que o resultado significa para o dia a dia e nas orientações de cuidado. Os detalhes técnicos permanecem no prontuário.</p>
               <DomainSummaryTable domains={reportDomains} />
             </section> : null}
 
@@ -314,12 +315,12 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
               <div className={styles.sectionHeading}>
                 <span>3</span>
                 <div>
-                  <h2>Evolução da capacidade intrínseca e da independência funcional</h2>
-                  <p>Uma trajetória por dimensão. O tempo real entre consultas é preservado.</p>
+                  <h2>Evolução da capacidade e da independência funcional</h2>
+                  <p>O gráfico mostra a evolução de cada área ao longo das consultas.</p>
                 </div>
               </div>
               <CapacityDimensionHistoryChart history={generated.report.capacityHistory} context="final-report" />
-              <p className={styles.causalityNote}>A associação temporal entre uma mudança e um evento registrado não estabelece causalidade.</p>
+              <p className={styles.causalityNote}>Mudanças que aconteceram em períodos próximos podem estar relacionadas ou não. O gráfico não define a causa da mudança.</p>
             </section> : null}
 
             {hasCarePlan ? <section className={styles.section}>
@@ -377,7 +378,7 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
                   {generated.report.vaccinationPrevention.status === "PENDING" ? (
                     <ul>{generated.report.vaccinationPrevention.pendingVaccines.map((item) => <li key={item}>{item}</li>)}</ul>
                   ) : generated.report.vaccinationPrevention.status === "UNKNOWN" ? (
-                    <p>As pendências não podem ser determinadas sem revisar a carteira.</p>
+                    <p>A carteira de vacinação ainda precisa ser revisada para identificar possíveis pendências.</p>
                   ) : (
                     <p>Nenhuma vacina foi registrada como pendente nesta consulta.</p>
                   )}
@@ -390,22 +391,22 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
                 <div className={styles.medicationLinkCopy}>
                   <span className={styles.documentBadge}>Documento separado</span>
                   <h2>Plano de medicamentos</h2>
-                  <p>Plano de medicamentos disponível em documento próprio, vinculado a esta consulta.</p>
+                  <p>O plano de medicamentos fica em um documento próprio, vinculado a esta consulta.</p>
                   <small>{generated.report.medicationPlan.message}</small>
                 </div>
-                <a className={styles.medicationLink} href={`/consultations/${consultationId}/medications/print`} target="_blank" rel="noreferrer">Ver / imprimir plano de medicamentos</a>
+                <a className={styles.medicationLink} href={`/consultations/${consultationId}/medications/print`} target="_blank" rel="noreferrer">Ver ou imprimir plano de medicamentos</a>
               </section>
             </div>
 
             {showTechnical ? (
               <section className={`${styles.section} ${styles.technicalAppendix}`}>
-                <div className={styles.sectionHeading}><span>A</span><h2>Apêndice técnico opcional</h2></div>
+                <div className={styles.sectionHeading}><span>A</span><h2>Informações técnicas</h2></div>
                 {generated.report.assessedScales.map((scale) => (
                   <article key={`technical-${scale.code}-${scale.version}`}>
                     <h3>{scale.name}</h3>
                     <dl>
                       <div><dt>Código / versão</dt><dd>{scale.code} / {scale.version}</dd></div>
-                      <div><dt>Fonte / status</dt><dd>{scale.source.status}{scale.source.citation ? ` · ${scale.source.citation}` : ""}</dd></div>
+                      <div><dt>Fonte / situação</dt><dd>{sourceStatusLabel(scale.source.status)}{scale.source.citation ? ` · ${scale.source.citation}` : ""}</dd></div>
                       <div><dt>Dados registrados</dt><dd>{scale.collectedData.length > 0 ? scale.collectedData.map((item) => `${item.field}: ${item.value}`).join("; ") : "Sem respostas detalhadas registradas"}</dd></div>
                     </dl>
                   </article>
@@ -416,7 +417,7 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
             <footer className={styles.footer}>
               <p>Documento de apoio à continuidade do cuidado. Dúvidas ou intercorrências devem ser discutidas com a equipe responsável.</p>
               <PhysicianSignature />
-              <p className={`${styles.technicalMeta} no-print`}>Snapshot {generated.snapshot.version} · schema {generated.report.schemaVersion}</p>
+              <p className={`${styles.technicalMeta} no-print`}>Versão do relatório {generated.snapshot.version} · estrutura técnica {generated.report.schemaVersion}</p>
             </footer>
           </article>
         </>
