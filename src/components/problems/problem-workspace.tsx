@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { canSubmitProblemStatusChange, type ProblemStatus } from "@/domain/problem-status-review";
 import styles from "./problem-workspace.module.css";
 
@@ -30,13 +30,19 @@ const STATUS_LABELS: Record<ProblemStatus, string> = {
 };
 
 const GERIATRIC_PRESETS = [
-  "Incapacidade cognitiva",
-  "Instabilidade postural",
-  "Imobilidade",
-  "Incontinência esfincteriana",
-  "Iatrogenia",
-  "Insuficiência familiar",
-  "Incapacidade comunicativa",
+  "Fragilidade",
+  "Sarcopenia",
+  "Quedas",
+  "Comprometimento cognitivo e demência",
+  "Delirium",
+  "Incontinência urinária e fecal",
+  "Imobilidade e dependência funcional",
+  "Depressão e isolamento social",
+  "Desnutrição/perda de peso não intencional e anorexia do envelhecimento",
+  "Comprometimento multissensorial — perda visual, auditiva, olfativa, gustativa e tátil",
+  "Polifarmácia — uso de ≥5 medicamentos",
+  "Multimorbidade — presença de ≥2 condições crônicas",
+  "Úlceras de pressão",
 ] as const;
 
 function ProblemCard({
@@ -108,7 +114,7 @@ function ProblemCard({
       {editable ? (
         <div className={styles.statusControls}>
           <label>
-            Status
+            Situação do problema
             <select
               value={nextStatus}
               onChange={(event) => {
@@ -126,11 +132,11 @@ function ProblemCard({
                 checked={reviewConfirmed}
                 onChange={(event) => setReviewConfirmed(event.target.checked)}
               />
-              <span>Confirmo que revisei clinicamente esta alteração de status.</span>
+              <span>Confirmo que revisei clinicamente esta alteração.</span>
             </label>
           ) : null}
           <button type="button" onClick={updateStatus} disabled={!canSubmit}>
-            {saving ? "Salvando…" : "Atualizar status"}
+            {saving ? "Salvando…" : "Salvar alteração"}
           </button>
           {problem.canDelete ? (
             <button type="button" className={styles.deleteButton} onClick={deleteCurrentProblem} disabled={saving || deleting}>
@@ -152,6 +158,8 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     setLoading(true);
@@ -194,27 +202,39 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
   async function changeStatus(problemId: string, newStatus: ProblemStatus) {
     const next = await requestUpdate({ action: "status", problemId, newStatus });
     applyView(next);
+    setStatusMessage("Alteração salva. O histórico do problema foi preservado.");
   }
 
   async function deleteProblem(problemId: string) {
     const next = await requestUpdate({ action: "delete", problemId });
     applyView(next);
+    setStatusMessage("Inclusão removida desta consulta. O registro de auditoria foi preservado.");
+  }
+
+  function selectGeriatricPreset(preset: typeof GERIATRIC_PRESETS[number]) {
+    setType("GERIATRIC");
+    setTitle(preset);
+    setStatusMessage(null);
+    window.requestAnimationFrame(() => titleInputRef.current?.focus());
   }
 
   async function create() {
     if (!editable || !title.trim() || saving) return;
+    const problemTitle = title.trim();
     setSaving(true);
     setFeedback(null);
+    setStatusMessage(null);
     try {
       const next = await requestUpdate({
         action: "create",
         type,
-        title: title.trim(),
+        title: problemTitle,
         description: description.trim() || undefined,
       });
       applyView(next);
       setTitle("");
       setDescription("");
+      setStatusMessage(`${problemTitle} foi incluído na lista. Revise a situação clínica quando necessário.`);
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "Não foi possível criar o problema.");
     } finally {
@@ -231,23 +251,54 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
         <div>
           <p className="eyebrow">Linha de cuidado</p>
           <h2 id="problem-workspace-title">Lista longitudinal de problemas</h2>
-          <p>Problemas resolvidos permanecem no histórico. Sugestões de escalas só entram aqui após confirmação médica.</p>
+          <p>Registre os problemas relevantes para o acompanhamento. Problemas resolvidos continuam visíveis no histórico e sugestões automáticas só entram na lista após confirmação médica.</p>
         </div>
       </div>
 
       {!view.isLatestConsultation ? (
-        <p className={styles.notice} role="status">Consulta histórica: lista exibida no estado daquele momento; alterações retrospectivas estão bloqueadas.</p>
+        <p className={styles.notice} role="status">Consulta anterior: a lista mostra a situação registrada naquele momento e não permite alterações retrospectivas.</p>
       ) : null}
       {view.consultationStatus === "FINALIZED" ? (
-        <p className={styles.notice} role="status">Consulta finalizada: lista em modo somente leitura.</p>
+        <p className={styles.notice} role="status">Consulta finalizada: a lista está disponível apenas para leitura.</p>
       ) : null}
       {feedback ? <p className={styles.error} role="alert">{feedback}</p> : null}
+      {statusMessage ? <p className={styles.success} role="status" aria-live="polite">{statusMessage}</p> : null}
 
       {editable ? (
         <div className={styles.creator}>
+          <div className={styles.creatorIntro}>
+            <div>
+              <strong>Adicionar problema</strong>
+              <span>Use um atalho geriátrico ou escreva um problema clínico. Nada é incluído automaticamente.</span>
+            </div>
+          </div>
+
+          <div className={styles.presets} aria-labelledby="geriatric-presets-title">
+            <div className={styles.presetsHeader}>
+              <strong id="geriatric-presets-title">Problemas geriátricos frequentes</strong>
+              <span>Selecione um item para preencher o campo. Revise o texto antes de adicionar.</span>
+            </div>
+            <div className={styles.presetGrid}>
+              {GERIATRIC_PRESETS.map((preset) => {
+                const selected = type === "GERIATRIC" && title === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    aria-pressed={selected}
+                    className={selected ? styles.presetSelected : undefined}
+                    onClick={() => selectGeriatricPreset(preset)}
+                  >
+                    {preset}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className={styles.creatorFields}>
             <label>
-              Tipo
+              Categoria
               <select value={type} onChange={(event) => setType(event.target.value as ProblemType)}>
                 <option value="CLINICAL">Problema clínico</option>
                 <option value="GERIATRIC">Problema geriátrico</option>
@@ -255,35 +306,27 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
             </label>
             <label className={styles.titleField}>
               Problema
-              <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Hipertensão arterial" maxLength={500} />
+              <input ref={titleInputRef} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Hipertensão arterial" maxLength={500} aria-describedby="problem-title-help" />
+              <small id="problem-title-help">Confirme o termo antes de adicionar à lista longitudinal.</small>
             </label>
             <label className={styles.descriptionField}>
               Contexto opcional
-              <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Observação breve, sem duplicar a HDA" />
+              <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Observação breve, sem repetir a história clínica" />
             </label>
-            <button type="button" onClick={create} disabled={!title.trim() || saving}>{saving ? "Adicionando…" : "Adicionar problema"}</button>
-          </div>
-
-          <div className={styles.presets} aria-label="Atalhos para problemas geriátricos">
-            <span>I’s geriátricos — atalhos de preenchimento:</span>
-            {GERIATRIC_PRESETS.map((preset) => (
-              <button key={preset} type="button" onClick={() => { setType("GERIATRIC"); setTitle(preset); }}>
-                {preset}
-              </button>
-            ))}
+            <button type="button" onClick={create} disabled={!title.trim() || saving}>{saving ? "Adicionando…" : "Adicionar à lista"}</button>
           </div>
         </div>
       ) : null}
 
       <div className={styles.columns}>
-        <section>
-          <h3>Problemas clínicos</h3>
+        <section aria-labelledby="clinical-problems-title">
+          <h3 id="clinical-problems-title">Problemas clínicos</h3>
           {clinical.length === 0 ? <p className={styles.empty}>Sem problemas clínicos registrados.</p> : clinical.map((problem) => (
             <ProblemCard key={problem.id} problem={problem} editable={editable} onChangeStatus={changeStatus} onDelete={deleteProblem} />
           ))}
         </section>
-        <section>
-          <h3>Problemas geriátricos</h3>
+        <section aria-labelledby="geriatric-problems-title">
+          <h3 id="geriatric-problems-title">Problemas geriátricos</h3>
           {geriatric.length === 0 ? <p className={styles.empty}>Sem problemas geriátricos registrados.</p> : geriatric.map((problem) => (
             <ProblemCard key={problem.id} problem={problem} editable={editable} onChangeStatus={changeStatus} onDelete={deleteProblem} />
           ))}
