@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildAgaReportModel, renderAgaReportText } from "../../src/domain/aga-report.ts";
+import { renderAccessibleAgaReportText } from "../../src/domain/accessible-aga-report-text.ts";
 
 const problems = [
   { id: "c1", patientId: "p1", type: "CLINICAL" as const, status: "ACTIVE" as const, title: "Hipertensão arterial" },
@@ -117,15 +118,17 @@ test("relatório familiar mantém vacinas em seção própria sem prescrição a
   assert.doesNotMatch(text, /aplicar|administrar|prescrever.*vacina/i);
 });
 
-test("relatório familiar orienta revisão da carteira quando status é desconhecido", () => {
+test("relatório familiar orienta revisão da carteira quando a situação vacinal ainda não foi revisada", () => {
   const report = buildAgaReportModel({
     patientId: "p1", consultationId: "c1", consultationStatus: "IN_REVIEW", patientName: "Teste",
     longitudinalProblems: [], longitudinalAssessments: [],
   });
+  const text = renderAccessibleAgaReportText(report);
 
   assert.equal(report.vaccinationPrevention.status, "UNKNOWN");
-  assert.match(renderAgaReportText(report), /status vacinal desconhecido/i);
-  assert.match(renderAgaReportText(report), /carteira de vacinação.*revisão/i);
+  assert.match(text, /carteira de vacinação ainda não (?:foi )?revisada/i);
+  assert.match(text, /carteira de vacinação.*revisão/i);
+  assert.doesNotMatch(text, /\bUNKNOWN\b|\bPENDING\b|\bUP_TO_DATE\b/i);
 });
 
 test("relatório mantém a tabela reconciliada de medicamentos como seção final", () => {

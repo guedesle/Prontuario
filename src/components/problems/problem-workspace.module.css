@@ -16,22 +16,46 @@
 .empty {
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .creator {
   display: grid;
-  gap: 12px;
-  margin: 16px 0 20px;
-  padding: 16px;
+  gap: 16px;
+  margin: 16px 0 22px;
+  padding: 18px;
   border: 1px solid #e5ddec;
   border-radius: 14px;
   background: #fdfcff;
 }
 
+.creatorIntro {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee7f4;
+}
+
+.creatorIntro > div {
+  display: grid;
+  gap: 4px;
+}
+
+.creatorIntro strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.creatorIntro span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .creatorFields {
   display: grid;
-  grid-template-columns: 180px minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  grid-template-columns: 170px minmax(240px, 1.2fr) minmax(220px, 1fr) auto;
   gap: 10px;
   align-items: end;
 }
@@ -45,10 +69,17 @@
   font-weight: 750;
 }
 
+.creatorFields small {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .creatorFields input,
 .creatorFields select,
 .statusControls select {
-  min-height: 40px;
+  min-height: 42px;
   padding: 8px 10px;
   border: 1px solid #dcd4e4;
   border-radius: 10px;
@@ -60,7 +91,7 @@
 .creatorFields button,
 .statusControls button,
 .presets button {
-  min-height: 40px;
+  min-height: 42px;
   padding: 8px 12px;
   border: 1px solid var(--primary);
   border-radius: 10px;
@@ -89,32 +120,60 @@
 }
 
 .presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  align-items: center;
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e9e0f0;
+  border-radius: 12px;
+  background: #fff;
 }
 
-.presets span {
+.presetsHeader {
+  display: grid;
+  gap: 3px;
+}
+
+.presetsHeader strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.presetsHeader span {
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 750;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .presets button {
-  min-height: 32px;
-  padding: 5px 9px;
+  min-height: 44px;
+  padding: 8px 10px;
   border-color: #d8cae5;
   background: #fff;
   color: var(--primary-strong);
   box-shadow: none;
   font-size: 10px;
+  line-height: 1.35;
+  text-align: left;
 }
 
 .presets button:hover:not(:disabled) {
   border-color: #c5add9;
   background: var(--primary-soft);
   color: var(--primary-strong);
+}
+
+.presets .presetSelected,
+.presets button[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 
 .columns {
@@ -195,7 +254,7 @@
   flex: 1 1 260px;
   gap: 8px;
   align-items: center;
-  min-height: 40px;
+  min-height: 42px;
   padding: 8px 10px;
   border: 1px solid #e2d8eb;
   border-radius: 10px;
@@ -213,11 +272,13 @@
 }
 
 .notice,
-.error {
+.error,
+.success {
   margin: 12px 0;
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 12px;
+  line-height: 1.45;
 }
 
 .notice {
@@ -232,6 +293,12 @@
   color: var(--danger);
 }
 
+.success {
+  border: 1px solid #cbded1;
+  background: #f3faf5;
+  color: #315d3d;
+}
+
 .creatorFields input:focus-visible,
 .creatorFields select:focus-visible,
 .creatorFields button:focus-visible,
@@ -243,7 +310,7 @@
   outline-offset: 2px;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1080px) {
   .creatorFields {
     grid-template-columns: 1fr 1fr;
   }
@@ -251,14 +318,23 @@
   .creatorFields button {
     width: fit-content;
   }
+
+  .presetGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
   .card { padding: 16px; }
 
   .creatorFields,
-  .columns {
+  .columns,
+  .presetGrid {
     grid-template-columns: 1fr;
+  }
+
+  .creatorFields button {
+    width: 100%;
   }
 
   .statusControls {
@@ -274,7 +350,8 @@
   .creator,
   .statusControls,
   .notice,
-  .error {
+  .error,
+  .success {
     display: none !important;
   }
 

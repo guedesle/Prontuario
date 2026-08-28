@@ -31,7 +31,7 @@ test("relatório final mantém documento familiar e adiciona condutas profission
   assert.doesNotMatch(consultationPage, /AgaReportPreview\s/);
   assert.match(reportTabs, /AgaReportDocumentPreview/);
   assert.match(reportTabs, /GeriatricConductWorkspace/);
-  assert.match(reportTabs, /Relatório paciente\s*\/\s*família/);
+  assert.match(reportTabs, /Relatório para paciente e família/);
   assert.match(reportTabs, /Condutas da consulta geriátrica/);
 
   assert.match(conductWorkspace, /\/api\/consultations\/\$\{consultationId\}\/note/);
@@ -45,7 +45,7 @@ test("relatório final mantém documento familiar e adiciona condutas profission
   assert.match(report, /Relatório de Avaliação Geriátrica/);
   assert.match(report, /Visão geral/);
   assert.match(report, /Pontos de atenção/);
-  assert.match(report, /Recomendação principal/);
+  assert.match(report, /Orientação principal/);
   assert.match(report, /ReportGlyph/);
   assert.match(report, /Problemas clínicos/);
   assert.match(report, /Problemas geriátricos/);
@@ -56,7 +56,7 @@ test("relatório final mantém documento familiar e adiciona condutas profission
   assert.doesNotMatch(report, /<th scope="col">Escala<\/th>/);
   assert.doesNotMatch(report, /displayResult/);
   assert.match(report, /CapacityDimensionHistoryChart/);
-  assert.match(report, /Evolução da capacidade intrínseca e da independência funcional/);
+  assert.match(report, /Evolução da capacidade e da independência funcional/);
   assert.match(report, /Equipe e encaminhamentos/);
   assert.match(report, /Quando procurar ajuda médica imediata/);
   assert.match(report, /Situações de urgência/);
@@ -66,7 +66,7 @@ test("relatório final mantém documento familiar e adiciona condutas profission
   assert.doesNotMatch(report, /Orientações por domínio de capacidade intrínseca/);
   assert.match(report, /Vacinas e prevenção/);
   assert.match(report, /Documento separado/);
-  assert.match(report, /Ver \/ imprimir plano de medicamentos/);
+  assert.match(report, /Ver ou imprimir plano de medicamentos/);
   assert.match(report, /\/consultations\/\$\{consultationId\}\/medications\/print/);
   assert.doesNotMatch(report, /Sem recomendação priorizada registrada/);
   assert.doesNotMatch(report, /Sem orientação prática adicional registrada/);

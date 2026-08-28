@@ -1,5 +1,6 @@
 import type { Prisma } from "../../generated/prisma/client";
-import { buildAgaReportModel, renderAgaReportText } from "../../domain/aga-report";
+import { buildAgaReportModel } from "../../domain/aga-report";
+import { renderAccessibleAgaReportText } from "../../domain/accessible-aga-report-text";
 import {
   consultationHorizon,
   isProblemLogicalDeletionNote,
@@ -268,7 +269,7 @@ export async function generateAgaReport(input: {
         includeTargetWhenEmpty: true,
       });
       const report = { ...safeReport, capacityHistory };
-      const text = renderAgaReportText(report);
+      const text = renderAccessibleAgaReportText(report);
       const snapshot = await createDocumentSnapshotInTransaction(tx, {
         consultationId: consultation.id,
         type: "AGA_REPORT",
