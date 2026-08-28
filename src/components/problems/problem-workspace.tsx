@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  GERIATRIC_PROBLEM_PRESETS,
+  type GeriatricProblemPreset,
+} from "@/domain/geriatric-problem-presets";
 import { canSubmitProblemStatusChange, type ProblemStatus } from "@/domain/problem-status-review";
 import styles from "./problem-workspace.module.css";
 
@@ -28,22 +32,6 @@ const STATUS_LABELS: Record<ProblemStatus, string> = {
   MONITORING: "Em acompanhamento",
   RESOLVED: "Resolvido",
 };
-
-const GERIATRIC_PRESETS = [
-  "Fragilidade",
-  "Sarcopenia",
-  "Quedas",
-  "Comprometimento cognitivo e demência",
-  "Delirium",
-  "Incontinência urinária e fecal",
-  "Imobilidade e dependência funcional",
-  "Depressão e isolamento social",
-  "Desnutrição/perda de peso não intencional e anorexia do envelhecimento",
-  "Comprometimento multissensorial — perda visual, auditiva, olfativa, gustativa e tátil",
-  "Polifarmácia — uso de ≥5 medicamentos",
-  "Multimorbidade — presença de ≥2 condições crônicas",
-  "Úlceras de pressão",
-] as const;
 
 function ProblemCard({
   problem,
@@ -211,7 +199,7 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
     setStatusMessage("Inclusão removida desta consulta. O registro de auditoria foi preservado.");
   }
 
-  function selectGeriatricPreset(preset: typeof GERIATRIC_PRESETS[number]) {
+  function selectGeriatricPreset(preset: GeriatricProblemPreset) {
     setType("GERIATRIC");
     setTitle(preset);
     setStatusMessage(null);
@@ -279,7 +267,7 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
               <span>Selecione um item para preencher o campo. Revise o texto antes de adicionar.</span>
             </div>
             <div className={styles.presetGrid}>
-              {GERIATRIC_PRESETS.map((preset) => {
+              {GERIATRIC_PROBLEM_PRESETS.map((preset) => {
                 const selected = type === "GERIATRIC" && title === preset;
                 return (
                   <button
