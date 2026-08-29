@@ -124,6 +124,11 @@ export function establishedImmobilityGuidance(
   };
 }
 
+/**
+ * A tabela de resultados deve resumir a prioridade sem repetir literalmente o plano de cuidados.
+ * Os detalhes operacionais de posicionamento, transferências e prevenção de complicações ficam
+ * concentrados no Plano de cuidados e orientações para a família.
+ */
 export function contextualizeImmobilityDomainGuidance(
   dimension: string,
   baseGuidance: readonly string[],
@@ -133,8 +138,12 @@ export function contextualizeImmobilityDomainGuidance(
     return [...baseGuidance];
   }
 
-  const guidance = establishedImmobilityGuidance(context);
-  return [...guidance.now, ...guidance.caregiver];
+  const stage = context.source === "FAST_7C_OR_HIGHER"
+    ? `FAST ${context.fastStage ?? "7c"}`
+    : "imobilidade registrada";
+  return [
+    `${stage}: há limitação de mobilidade estabelecida. As orientações práticas de posicionamento, transferências assistidas, proteção da pele e prevenção de complicações estão consolidadas no Plano de cuidados e orientações para a família.`,
+  ];
 }
 
 export function hasGastrostomyMedicationRoute(items: readonly ContextMedicationInput[]): boolean {
@@ -178,25 +187,37 @@ export function uniqueContextualGuidance(items: readonly string[]): string[] {
   return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
 }
 
-const INDEPENDENT_MOBILITY_PATTERNS: readonly RegExp[] = [
-  /\bcaminh(?:ar|ada|adas|adas|amento|amentos)\b/i,
+const INCOMPATIBLE_IMMOBILITY_PATTERNS: readonly RegExp[] = [
+  /\bcaminh(?:ar|ada|adas|amento|amentos)\b/i,
   /\bmarcha\b/i,
-  /\bdeambul(?:ar|ação|acao)\b/i,
+  /\bdeambul(?:ar|acao)\b/i,
   /\blevantar[- ]?se\b/i,
   /\blevantar\s+e\s+sentar\b/i,
   /\bagachamento\b/i,
   /\bsubir\s+(?:degrau|degraus|escada|escadas)\b/i,
+  /\btreino\s+de\s+forca\b/i,
+  /\bexercicios?\s+resistid/i,
+  /\bcarga\s+progressiva\b/i,
+  /\batividades?.{0,30}\bexijam\s+forca\b/i,
+  /\bforca.{0,40}\bmembros\b/i,
+  /\bcarregar\s+objetos?\b/i,
+  /\bpesar\s+o\s+paciente.{0,100}\bmesma\s+balanca\b/i,
 ];
 
-function suppressIndependentMobility(items: readonly string[], immobility: EstablishedImmobilityContext): string[] {
+function suppressIncompatibleImmobilityAdvice(
+  items: readonly string[],
+  immobility: EstablishedImmobilityContext,
+): string[] {
   if (!immobility.established) return [...items];
-  return items.filter((item) => !INDEPENDENT_MOBILITY_PATTERNS.some((pattern) => pattern.test(normalized(item))));
+  return items.filter((item) => !INCOMPATIBLE_IMMOBILITY_PATTERNS.some((pattern) => pattern.test(normalized(item))));
 }
 
 /**
  * Aplica contexto ao plano familiar sem apagar orientações de outros domínios.
- * Em imobilidade estabelecida, remove apenas metas automáticas de marcha/deambulação/ortostatismo
- * incompatíveis e acrescenta cuidado assistido. Para GTT, acrescenta cuidados de gastrostomia.
+ * Em imobilidade estabelecida, remove metas automáticas de marcha/deambulação e também
+ * prescrições genéricas de treino resistido ou pesagem que exigiriam transferências incompatíveis
+ * com o estado funcional. O plano passa a priorizar mobilização/posicionamento assistidos.
+ * Para GTT, acrescenta cuidados de gastrostomia.
  */
 export function applyContextualFamilyCarePlan(input: {
   plan: FamilyCarePlanShape;
@@ -212,13 +233,13 @@ export function applyContextualFamilyCarePlan(input: {
     now: uniqueContextualGuidance([
       ...immobilityGuidance.now,
       ...gastrostomyGuidance.now,
-      ...suppressIndependentMobility(input.plan.now, input.immobility),
+      ...suppressIncompatibleImmobilityAdvice(input.plan.now, input.immobility),
     ]),
-    mediumTerm: suppressIndependentMobility(input.plan.mediumTerm, input.immobility),
+    mediumTerm: suppressIncompatibleImmobilityAdvice(input.plan.mediumTerm, input.immobility),
     caregiver: uniqueContextualGuidance([
       ...immobilityGuidance.caregiver,
       ...gastrostomyGuidance.caregiver,
-      ...suppressIndependentMobility(input.plan.caregiver, input.immobility),
+      ...suppressIncompatibleImmobilityAdvice(input.plan.caregiver, input.immobility),
     ]),
     referrals: [...input.plan.referrals],
     contact: uniqueContextualGuidance([

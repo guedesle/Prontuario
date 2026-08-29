@@ -90,17 +90,13 @@ test("relatório visual usa linguagem acessível e não imprime status bruto ou 
   assert.doesNotMatch(reportDocument, /<dd>\{scale\.source\.status\}/);
 });
 
-test("abas do relatório expõem relações semânticas e navegação por teclado", () => {
-  const tabs = source("src/components/reports/report-workspace-tabs.tsx");
-  const tabsCss = source("src/components/reports/report-workspace-tabs.module.css");
+test("relatório final é superfície única para a família e não restaura editor profissional duplicado", () => {
+  const workspace = source("src/components/reports/report-workspace-tabs.tsx");
 
-  assert.match(tabs, /role="tablist"/);
-  assert.match(tabs, /aria-controls="family-report-panel"/);
-  assert.match(tabs, /aria-controls="geriatric-conduct-panel"/);
-  assert.match(tabs, /role="tabpanel"/);
-  assert.match(tabs, /aria-labelledby=/);
-  assert.match(tabs, /ArrowRight/);
-  assert.match(tabs, /ArrowLeft/);
-  assert.match(tabs, /tabIndex=\{tab === "family" \? 0 : -1\}/);
-  assert.match(tabsCss, /button:focus-visible/);
+  assert.match(workspace, /AgaReportDocumentPreview/);
+  assert.match(workspace, /Relatório final da consulta/);
+  assert.doesNotMatch(workspace, /GeriatricConductWorkspace/);
+  assert.doesNotMatch(workspace, /geriatric-conduct-panel/);
+  assert.doesNotMatch(workspace, /role="tablist"/);
+  assert.doesNotMatch(workspace, /ArrowRight|ArrowLeft/);
 });

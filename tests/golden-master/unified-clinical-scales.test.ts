@@ -93,12 +93,20 @@ test("all approved dimension labels resolve explicitly", () => {
   }
 });
 
-test("consultation page renders one scale workspace instead of three independent panels", () => {
+test("consultation page delegates to one lazy unified scale workspace instead of three independent panels", () => {
   const page = readFileSync("src/app/consultations/[id]/page.tsx", "utf8");
-  assert.match(page, /ClinicalScalesWorkspace/);
-  assert.doesNotMatch(page, /<AgaCoreScales/);
-  assert.doesNotMatch(page, /<ComplementaryScoreScales/);
-  assert.doesNotMatch(page, /<OncogeriatricScales/);
+  const consultationWorkspace = readFileSync("src/components/consultations/consultation-workspace.tsx", "utf8");
+
+  assert.match(page, /<ConsultationWorkspace/);
+  assert.doesNotMatch(page, /<ClinicalScalesWorkspace/);
+  assert.match(consultationWorkspace, /const ClinicalScalesWorkspace = dynamic/);
+  assert.equal((consultationWorkspace.match(/<ClinicalScalesWorkspace/g) ?? []).length, 1);
+
+  for (const source of [page, consultationWorkspace]) {
+    assert.doesNotMatch(source, /<AgaCoreScales/);
+    assert.doesNotMatch(source, /<ComplementaryScoreScales/);
+    assert.doesNotMatch(source, /<OncogeriatricScales/);
+  }
 });
 
 test("unified workspace exposes checkbox selection and current-consultation status", () => {

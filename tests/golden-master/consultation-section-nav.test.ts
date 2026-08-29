@@ -2,26 +2,27 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("consulta expõe sidebar premium com identidade da sessão, todas as etapas e comportamento responsivo aprovado", () => {
+test("consulta expõe navegação por etapas responsiva sem montar todas as áreas e preserva identidade profissional", () => {
   const pageSource = readFileSync(
     new URL("../../src/app/consultations/[id]/page.tsx", import.meta.url),
     "utf8",
   );
-  const pageStyles = readFileSync(
-    new URL("../../src/app/consultations/[id]/page.module.css", import.meta.url),
+  const workspaceSource = readFileSync(
+    new URL("../../src/components/consultations/consultation-workspace.tsx", import.meta.url),
     "utf8",
   );
-  const navSource = readFileSync(
-    new URL("../../src/components/consultations/consultation-section-nav.tsx", import.meta.url),
-    "utf8",
-  );
-  const navStyles = readFileSync(
-    new URL("../../src/components/consultations/consultation-section-nav.module.css", import.meta.url),
+  const workspaceStyles = readFileSync(
+    new URL("../../src/components/consultations/consultation-workspace.module.css", import.meta.url),
     "utf8",
   );
 
+  assert.match(pageSource, /ConsultationWorkspace/);
+  assert.match(pageSource, /id="resumo-consulta"/);
+  assert.match(pageSource, /buildProfessionalIdentity/);
+  assert.match(pageSource, /professionalIdentity=\{professionalIdentity\}/);
+  assert.doesNotMatch(pageSource, /natalia-mendes-logo\.svg/);
+
   for (const id of [
-    "resumo-consulta",
     "problemas",
     "medicamentos",
     "soap",
@@ -29,31 +30,31 @@ test("consulta expõe sidebar premium com identidade da sessão, todas as etapas
     "relatorio",
     "finalizacao",
   ]) {
-    assert.equal(pageSource.includes(`id="${id}"`), true);
-    assert.equal(navSource.includes(`id: "${id}"`), true);
+    assert.equal(workspaceSource.includes(`id: "${id}"`), true);
+    assert.equal(workspaceSource.includes(`id="${id}"`), true);
   }
 
-  assert.match(pageSource, /ConsultationSectionNav/);
-  assert.match(pageSource, /professionalIdentity/);
-  assert.match(navSource, /IntersectionObserver/);
-  assert.match(navSource, /aria-current/);
-  assert.match(navSource, /aria-label="Seções do preenchimento da consulta"/);
-  assert.match(navSource, /professionalIdentity/);
-  assert.match(navSource, /professionalIdentity\.logoPath/);
-  assert.doesNotMatch(navSource, /src=["']\/brand\/natalia-mendes-logo\.svg["']/);
-  assert.match(navSource, /patientName/);
+  assert.match(workspaceSource, /aria-label="Navegação da consulta"/);
+  assert.match(workspaceSource, /aria-label="Áreas do prontuário"/);
+  assert.match(workspaceSource, /aria-current=\{active === section\.id \? "step" : undefined\}/);
+  assert.match(workspaceSource, /useState<WorkspaceSectionId>\("soap"\)/);
+  assert.match(workspaceSource, /new Set\(\["soap"\]\)/);
+  assert.match(workspaceSource, /dynamic\(/);
+  assert.match(workspaceSource, /visited\.has\("problemas"\)/);
+  assert.match(workspaceSource, /visited\.has\("medicamentos"\)/);
+  assert.match(workspaceSource, /visited\.has\("escalas"\)/);
+  assert.match(workspaceSource, /visited\.has\("relatorio"\)/);
+  assert.match(workspaceSource, /visited\.has\("finalizacao"\)/);
+  assert.match(workspaceSource, /hidden=\{active !==/);
+  assert.match(workspaceSource, /professionalIdentity: ProfessionalIdentity/);
+  assert.match(workspaceSource, /ReportWorkspaceTabs consultationId=\{consultationId\} professionalIdentity=\{professionalIdentity\}/);
+  assert.doesNotMatch(workspaceSource, /IntersectionObserver/);
 
-  // Desktop: sidebar premium acompanha a página dentro da viewport.
-  assert.match(pageStyles, /\.sidebarColumn\s*\{[\s\S]*position:\s*sticky/);
-  assert.match(pageStyles, /\.sidebarColumn\s*\{[\s\S]*top:\s*18px/);
-  assert.match(pageStyles, /max-height:\s*calc\(100vh - 36px\)/);
-  assert.match(pageStyles, /overflow-y:\s*auto/);
-
-  // Tablet/mobile: mantém acesso persistente às etapas, mas o conteúdo do nav
-  // vira faixa horizontal compacta e rolável, sem esconder conteúdo clínico.
-  assert.match(pageStyles, /@media \(max-width:\s*980px\)[\s\S]*\.sidebarColumn[\s\S]*position:\s*sticky/);
-  assert.match(pageStyles, /@media \(max-width:\s*980px\)[\s\S]*top:\s*8px/);
-  assert.match(navStyles, /@media \(max-width:\s*980px\)[\s\S]*overflow-x:\s*auto/);
-  assert.match(navStyles, /scroll-snap-type:\s*x proximity/);
-  assert.match(navStyles, /\.active/);
+  assert.match(workspaceStyles, /\.navigation\s*\{[\s\S]*position:\s*sticky/);
+  assert.match(workspaceStyles, /\.navigation\s*\{[\s\S]*top:\s*14px/);
+  assert.match(workspaceStyles, /grid-template-columns:\s*230px minmax\(0, 1fr\)/);
+  assert.match(workspaceStyles, /@media \(max-width:\s*980px\)[\s\S]*\.navigation[\s\S]*position:\s*sticky/);
+  assert.match(workspaceStyles, /@media \(max-width:\s*980px\)[\s\S]*top:\s*8px/);
+  assert.match(workspaceStyles, /@media \(max-width:\s*620px\)[\s\S]*\.sectionList[\s\S]*overflow-x:\s*auto/);
+  assert.match(workspaceStyles, /\.sectionList button\.active/);
 });

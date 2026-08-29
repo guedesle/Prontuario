@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   applyContextualFamilyCarePlan,
+  contextualizeImmobilityDomainGuidance,
   deriveEstablishedImmobilityContext,
   gastrostomyFamilyGuidance,
   hasGastrostomyMedicationRoute,
@@ -13,7 +14,7 @@ const fastScale = (score: number) => ({
   result: { score },
 });
 
-test("FAST 7c ou superior estabelece imobilidade e elimina meta automática de marcha independente", () => {
+test("FAST 7c ou superior estabelece imobilidade e elimina metas incompatíveis", () => {
   const immobility = deriveEstablishedImmobilityContext({ scales: [fastScale(7.3)] });
   assert.equal(immobility.established, true);
   assert.equal(immobility.source, "FAST_7C_OR_HIGHER");
@@ -21,9 +22,14 @@ test("FAST 7c ou superior estabelece imobilidade e elimina meta automática de m
 
   const contextual = applyContextualFamilyCarePlan({
     plan: {
-      now: ["Caminhar 20 minutos por dia.", "Manter rotina de sono."],
+      now: [
+        "Caminhar 20 minutos por dia.",
+        "Iniciar treino de força (exercício resistido) para membros superiores e inferiores, 2 a 3 vezes por semana, com carga progressiva.",
+        "Pesar o paciente uma vez por mês, sempre na mesma balança e no mesmo horário, e anotar em um caderno.",
+        "Manter rotina de sono.",
+      ],
       mediumTerm: ["Treinar marcha de forma independente."],
-      caregiver: ["Estimular caminhadas diárias."],
+      caregiver: ["Estimular caminhadas diárias e atividades que exijam força."],
       referrals: ["Fisioterapia"],
       contact: [],
       urgent: [],
@@ -34,8 +40,10 @@ test("FAST 7c ou superior estabelece imobilidade e elimina meta automática de m
 
   const text = [...contextual.now, ...contextual.mediumTerm, ...contextual.caregiver].join(" ");
   assert.doesNotMatch(text, /caminhar 20|minutos.*caminh|marcha de forma independente|estimular caminhadas/i);
+  assert.doesNotMatch(text, /treino de força|exercício resistido|carga progressiva|mesma balança/i);
   assert.match(text, /FAST 7c/i);
   assert.match(text, /transferências seguras/i);
+  assert.match(text, /Manter rotina de sono/i);
 });
 
 test("problema geriátrico Imobilidade aplica as mesmas prioridades sem inventar FAST", () => {
@@ -48,12 +56,39 @@ test("problema geriátrico Imobilidade aplica as mesmas prioridades sem inventar
   assert.equal(immobility.fastScore, undefined);
 
   const contextual = applyContextualFamilyCarePlan({
-    plan: { now: [], mediumTerm: [], caregiver: [], referrals: [], contact: [], urgent: [] },
+    plan: {
+      now: ["Iniciar treino de força para membros superiores e inferiores 3 vezes por semana."],
+      mediumTerm: [],
+      caregiver: [],
+      referrals: [],
+      contact: [],
+      urgent: [],
+    },
     immobility,
     gastrostomyPresent: false,
   });
   assert.match(contextual.now.join(" "), /imobilidade está registrada como problema geriátrico/i);
   assert.match(contextual.caregiver.join(" "), /transferências/i);
+  assert.doesNotMatch(contextual.now.join(" "), /treino de força/i);
+});
+
+test("tabela resume imobilidade sem repetir literalmente o plano detalhado", () => {
+  const immobility = deriveEstablishedImmobilityContext({ scales: [fastScale(7.4)] });
+  const summary = contextualizeImmobilityDomainGuidance(
+    "funcionalidade",
+    ["orientação genérica"],
+    immobility,
+  );
+  const detailed = applyContextualFamilyCarePlan({
+    plan: { now: [], mediumTerm: [], caregiver: [], referrals: [], contact: [], urgent: [] },
+    immobility,
+    gastrostomyPresent: false,
+  });
+
+  assert.equal(summary.length, 1);
+  assert.match(summary[0]!, /consolidadas no Plano de cuidados/i);
+  assert.ok(!detailed.now.includes(summary[0]!));
+  assert.ok(!detailed.caregiver.includes(summary[0]!));
 });
 
 test("via GTT ativa cuidados específicos de gastrostomia sem inventar dieta, volume ou diluição", () => {

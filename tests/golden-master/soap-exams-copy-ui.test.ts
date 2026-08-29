@@ -26,7 +26,11 @@ test("cópias separada e combinada preservam o fluxo aprovado e possuem fallback
 });
 
 test("cópia do SOAP não remove a salvaguarda da reconciliação medicamentosa", () => {
-  assert.match(editor, /const canCopySoap = medicationLoadState === "ready" && medicationProvenance\.canCopySoap/);
+  assert.match(editor, /async function medicationsForCopy\(\): Promise<MedicationItem\[\] \| null>/);
+  assert.match(editor, /const provenance = summarizeSoapMedicationProvenance\(items\)/);
+  assert.match(editor, /if \(!provenance\.canCopySoap\) \{[\s\S]*?return null;/);
+  assert.match(editor, /async function copyCombinedReport\(\) \{[\s\S]*?const items = await medicationsForCopy\(\);[\s\S]*?if \(!items\) return;/);
+  assert.match(editor, /async function copySoap\(\) \{[\s\S]*?const items = await medicationsForCopy\(\);[\s\S]*?if \(!items\) return;/);
   assert.match(editor, /A cópia do SOAP permanece bloqueada/);
   assert.match(editor, /Exames e escalas podem ser copiados separadamente/);
   assert.doesNotMatch(editor, /const canCopyExams = !dirty/);
