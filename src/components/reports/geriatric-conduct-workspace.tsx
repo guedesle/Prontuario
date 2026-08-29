@@ -24,7 +24,7 @@ type PlanSuggestion = {
 
 type NoteView = {
   consultationId: string;
-  consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED";
+  consultationStatus: "DRAFT" | "IN_REVIEW"" | "FINALIZED";
   updatedAt: string;
   noteVersion: string;
   fields: {
@@ -155,17 +155,19 @@ export function GeriatricConductWorkspace({ consultationId }: { consultationId: 
       {activeProblems.map((problem, index) => {
         const suggestion = view.planSuggestions.find((item) => item.problemId === problem.id);
         const visibleSuggestion = suggestion && !dismissedSuggestions.has(problem.id) ? suggestion : null;
-        return <label className={styles.problem} key={problem.id}>
-          <span><b>{index + 1}. {problem.title}</b><small>{problem.type === "GERIATRIC" ? "Problema geriátrico" : "Problema clínico"} · {problem.status}</small></span>
+        const textareaId = `conduct-plan-${problem.id}`;
+        return <article className={styles.problem} key={problem.id}>
+          <div className={styles.problemHeading}><b>{index + 1}. {problem.title}</b><small>{problem.type === "GERIATRIC" ? "Problema geriátrico" : "Problema clínico"} · {problem.status}</small></div>
           {visibleSuggestion ? <aside className={suggestionStyles.card} aria-label={`Sugestão de plano para ${problem.title}`}>
             <div className={suggestionStyles.header}><strong>Sugestão baseada na avaliação desta consulta</strong><span className={suggestionStyles.badge}>Rascunho · revisão médica</span></div>
             <p className={suggestionStyles.evidence}>Origem: {visibleSuggestion.evidence.map((item) => `${item.scaleCode} ${item.scoreText}${item.classification ? ` — ${item.classification}` : ""}`).join("; ")}.</p>
             <ul className={suggestionStyles.actionsList}>{visibleSuggestion.actions.map((action) => <li key={action}>{action}</li>)}</ul>
             <p className={suggestionStyles.sources}>Fontes: {visibleSuggestion.sources.map((source) => `${source.label} (PMID ${source.pmid})`).join("; ")}.</p>
-            <div className={suggestionStyles.controls}><button type="button" disabled={finalized} onClick={(event) => { event.preventDefault(); applySuggestion(visibleSuggestion); }}>Adicionar ao rascunho</button><button type="button" onClick={(event) => { event.preventDefault(); setDismissedSuggestions((current) => new Set([...current, problem.id])); }}>Ocultar sugestão</button></div>
+            <div className={suggestionStyles.controls}><button type="button" disabled={finalized} onClick={() => applySuggestion(visibleSuggestion)}>Adicionar ao rascunho</button><button type="button" onClick={() => setDismissedSuggestions((current) => new Set([...current, problem.id]))}>Ocultar sugestão</button></div>
           </aside> : null}
-          <textarea value={plans[problem.id] ?? ""} disabled={finalized} onChange={(event) => updatePlan(problem.id, event.target.value)} rows={5} placeholder="Uma conduta por linha. Revise clinicamente antes de salvar." />
-        </label>;
+          <label className={styles.planLabel} htmlFor={textareaId}>Condutas — uma por linha</label>
+          <textarea id={textareaId} value={plans[problem.id] ?? ""} disabled={finalized} onChange={(event) => updatePlan(problem.id, event.target.value)} rows={5} placeholder="Uma conduta por linha. Revise clinicamente antes de salvar." />
+        </article>;
       })}
     </div>}
 
