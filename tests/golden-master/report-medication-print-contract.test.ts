@@ -42,7 +42,9 @@ test("plano e condutas têm editor único no SOAP, relatório permanece familiar
   assert.match(soap, /P — Plano e condutas/);
   assert.match(soap, /Plano e condutas em um só lugar/);
   assert.match(soap, /planSuggestions/);
-  assert.match(soap, /Adicionar ao rascunho/);
+  assert.match(soap, /buildProfessionalPlanDraft/);
+  assert.doesNotMatch(soap, /Adicionar ao rascunho/);
+  assert.match(soap, /As orientações sugeridas já aparecem no rascunho quando ainda não há plano salvo/);
   assert.match(soap, /planByProblem/);
   assert.match(soap, /Salvar evolução e plano/);
   assert.match(soap, /expectedNoteVersion/);
