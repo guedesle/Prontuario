@@ -21,11 +21,13 @@ test("SOAP concentra plano e condutas em um único editor com revisão médica",
   assert.match(soap, /Plano e condutas em um só lugar/);
   assert.match(soap, /planByProblem/);
   assert.match(soap, /planSuggestions/);
-  assert.match(soap, /Adicionar ao rascunho/);
+  assert.match(soap, /buildProfessionalPlanDraft/);
+  assert.doesNotMatch(soap, /Adicionar ao rascunho/);
   assert.match(soap, /requiresPhysicianReview/);
   assert.match(soap, /setProblemPlan/);
   assert.match(soap, /Salvar evolução e plano/);
-  assert.match(soap, /Nada é aplicado automaticamente|nada é aplicado automaticamente/);
+  assert.match(soap, /As orientações sugeridas já aparecem no rascunho quando ainda não há plano salvo/);
+  assert.doesNotMatch(soap, /Nada é aplicado automaticamente|nada é aplicado automaticamente/);
   assert.match(soap, /expectedNoteVersion/);
   assert.match(soap, /FINALIZED/);
 
