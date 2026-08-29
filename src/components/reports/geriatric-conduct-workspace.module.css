@@ -59,16 +59,30 @@
 
 .problem {
   display: grid;
-  gap: 8px;
+  align-content: start;
+  gap: 9px;
+  min-width: 0;
   padding: 14px;
   border: 1px solid #e6ddec;
   border-radius: 12px;
   background: #fdfcff;
 }
 
-.problem > span { display: grid; gap: 2px; }
-.problem b { color: var(--primary-strong); font-size: 12px; }
-.problem small { color: var(--muted); font-size: 10px; }
+.problemHeading {
+  display: grid;
+  gap: 2px;
+}
+
+.problemHeading b { color: var(--primary-strong); font-size: 12px; }
+.problemHeading small { color: var(--muted); font-size: 10px; }
+
+.planLabel {
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .problem textarea {
   width: 100%;
   resize: vertical;
@@ -80,6 +94,12 @@
   font: inherit;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.problem textarea:focus-visible,
+.heading button:focus-visible {
+  outline: 3px solid rgb(107 85 217 / 22%);
+  outline-offset: 2px;
 }
 
 .notice,
