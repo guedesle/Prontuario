@@ -3,7 +3,7 @@ import test from "node:test";
 import { buildAgaReportModel } from "../../src/domain/aga-report.ts";
 import { buildReportDomainSummaries } from "../../src/domain/report-domain-summary.ts";
 
-function functionalState(scaleCode: "barthel" | "lawton", score: number) {
+function functionalState(scaleCode: "katz" | "barthel" | "lawton", score: number) {
   const report = buildAgaReportModel({
     patientId: `patient-${scaleCode}-${score}`,
     consultationId: "consultation-current",
@@ -26,6 +26,14 @@ function functionalState(scaleCode: "barthel" | "lawton", score: number) {
     .find((domain) => domain.code === "funcionalidade");
 }
 
+test("Katz abaixo de 6 marca Funcionalidade como alterada mesmo com cor legada inconsistente", () => {
+  for (const score of [5, 2]) {
+    const functionality = functionalState("katz", score);
+    assert.equal(functionality?.state, "altered");
+    assert.equal(functionality?.stateLabel, "Alteração identificada — requer atenção");
+  }
+});
+
 test("Barthel abaixo de 100 marca Funcionalidade como alterada mesmo com cor legada inconsistente", () => {
   const functionality = functionalState("barthel", 95);
   assert.equal(functionality?.state, "altered");
@@ -39,6 +47,7 @@ test("Lawton abaixo de 21 marca Funcionalidade como alterada mesmo com cor legad
 });
 
 test("independência funcional plena permanece sem alteração se não houver outro sinal", () => {
+  assert.equal(functionalState("katz", 6)?.state, "preserved");
   assert.equal(functionalState("barthel", 100)?.state, "preserved");
   assert.equal(functionalState("lawton", 21)?.state, "preserved");
 });

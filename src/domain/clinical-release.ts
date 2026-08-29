@@ -1,1 +1,1 @@
-export const CLINICAL_RELEASE_ID = "2026-08-29-plan-unificado-performance-clinical-v5" as const;
+export const CLINICAL_RELEASE_ID = "2026-08-29-katz-functional-report-v1" as const;

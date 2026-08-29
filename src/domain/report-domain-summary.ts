@@ -177,6 +177,7 @@ function unique(items: readonly string[]): string[] {
 function functionalDependenceDetected(scales: readonly AgaScaleReportSection[]): boolean {
   return scales.some((scale) => {
     if (!scale.assessedInTargetConsultation || typeof scale.result.score !== "number") return false;
+    if (scale.code === "katz") return scale.result.score < 6;
     if (scale.code === "barthel") return scale.result.score < 100;
     if (scale.code === "lawton") return scale.result.score < 21;
     return false;
@@ -236,12 +237,16 @@ export function buildReportDomainSummaries(
       genericGuidance,
       functionalContext,
     );
+    // Imobilidade contextualiza mobilidade, mas não pode apagar a orientação de
+    // Funcionalidade derivada de Katz/Barthel/Lawton.
     const guidance = unique(
-      contextualizeImmobilityDomainGuidance(
-        dimension,
-        functionallyContextualized,
-        immobilityContext,
-      ),
+      dimension === "funcionalidade"
+        ? functionallyContextualized
+        : contextualizeImmobilityDomainGuidance(
+            dimension,
+            functionallyContextualized,
+            immobilityContext,
+          ),
     ).slice(0, 5);
     const requiresMedicalGuidance = (state === "altered" || state === "attention") && guidance.length === 0;
     const evidenceReferences = alteredIntrinsicGuidance?.evidenceReferences

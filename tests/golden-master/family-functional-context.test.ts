@@ -11,7 +11,7 @@ function scale(code: string, score: number): AgaScaleReportSection {
     code,
     version: "test",
     name: code,
-    dimension: code === "barthel" || code === "lawton" ? "funcionalidade" : "cognicao",
+    dimension: code === "katz" || code === "barthel" || code === "lawton" ? "funcionalidade" : "cognicao",
     assessedInTargetConsultation: true,
     lastKnown: { consultationId: "c1", appliedAt: "2026-08-28T12:00:00.000Z", score, version: "test" },
     collectedData: [],
@@ -40,30 +40,67 @@ function scale(code: string, score: number): AgaScaleReportSection {
   };
 }
 
-test("FAST 7d tem precedência e transforma orientação funcional em cuidado integral", () => {
+test("FAST 7d não apaga dependência em ABVD identificada pelo Katz", () => {
   const context = deriveFamilyFunctionalContext([
     scale("fast", 7.4),
+    scale("katz", 2),
     scale("barthel", 100),
     scale("lawton", 21),
   ]);
 
   assert.equal(context.level, "advanced-dementia");
   assert.equal(context.fastStage, "7d");
+  assert.equal(context.katzScore, 2);
   assert.match(context.sourceSummary, /FAST 7d/);
+  assert.match(context.sourceSummary, /Katz 2/);
 
-  const guidance = contextualFamilyGuidance("funcionalidade", [
-    "Facilite as atividades preservando a participação segura.",
-  ], context).join(" ");
+  const guidance = contextualFamilyGuidance("funcionalidade", ["Orientação genérica"], context).join(" ");
+  assert.match(guidance, /dependência importante para atividades básicas/i);
+  assert.match(guidance, /banho, vestir-se, higiene, alimentação e transferências/i);
+  assert.doesNotMatch(guidance, /Orientação genérica/i);
+});
 
+test("FAST continua sendo fallback funcional quando Katz Barthel e Lawton não foram aplicados", () => {
+  const context = deriveFamilyFunctionalContext([scale("fast", 7.4)]);
+  const guidance = contextualFamilyGuidance("funcionalidade", ["Orientação genérica"], context).join(" ");
   assert.match(guidance, /assistência integral/i);
   assert.match(guidance, /conforto, segurança e dignidade/i);
-  assert.doesNotMatch(guidance, /ajuda apenas na medida necessária/i);
-  assert.doesNotMatch(guidance, /preservando a participação segura/i);
+});
+
+test("Katz com dependência severa eleva orientação para ajuda nas atividades básicas", () => {
+  const context = deriveFamilyFunctionalContext([
+    scale("fast", 3),
+    scale("katz", 2),
+    scale("barthel", 100),
+    scale("lawton", 21),
+  ]);
+
+  assert.equal(context.level, "high-dependence");
+  assert.equal(context.katzScore, 2);
+  assert.match(context.sourceSummary, /Katz 2/);
+  const guidance = contextualFamilyGuidance("funcionalidade", ["Orientação genérica"], context).join(" ");
+  assert.match(guidance, /dependência importante/i);
+  assert.match(guidance, /banho, vestir-se, higiene, alimentação e transferências/i);
+});
+
+test("Katz com dependência moderada orienta ajuda e supervisão em ABVD", () => {
+  const context = deriveFamilyFunctionalContext([
+    scale("fast", 3),
+    scale("katz", 4),
+    scale("barthel", 100),
+    scale("lawton", 21),
+  ]);
+
+  assert.equal(context.level, "adl-support");
+  const guidance = contextualFamilyGuidance("funcionalidade", ["Orientação genérica"], context).join(" ");
+  assert.match(guidance, /atividades básicas/i);
+  assert.match(guidance, /supervisão ou ajuda física/i);
 });
 
 test("Barthel grave pode elevar necessidade de ajuda mesmo sem FAST avançado", () => {
   const context = deriveFamilyFunctionalContext([
     scale("fast", 4),
+    scale("katz", 6),
     scale("barthel", 25),
     scale("lawton", 21),
   ]);
@@ -77,6 +114,7 @@ test("Barthel grave pode elevar necessidade de ajuda mesmo sem FAST avançado", 
 test("Lawton alterado contextualiza AIVD sem transformar dependência instrumental em dependência básica", () => {
   const context = deriveFamilyFunctionalContext([
     scale("fast", 3),
+    scale("katz", 6),
     scale("barthel", 100),
     scale("lawton", 15),
   ]);
