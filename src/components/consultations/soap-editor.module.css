@@ -220,6 +220,142 @@
   font-weight: 400;
 }
 
+.vaccinePanel {
+  display: grid;
+  gap: 14px;
+}
+
+.vaccineStatus {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid #e0d5e9;
+  border-radius: 12px;
+  background: #faf7fd;
+}
+
+.vaccineStatus > div {
+  display: grid;
+  gap: 3px;
+}
+
+.vaccineStatus strong {
+  color: var(--primary-strong);
+  font-size: 12px;
+}
+
+.vaccineStatus span,
+.vaccineGroup > div:first-child span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.vaccineStatus[data-status="PENDING"] {
+  border-color: #e7c97f;
+  background: #fffaf0;
+}
+
+.vaccineStatus[data-status="UP_TO_DATE"] {
+  border-color: #b9d9c6;
+  background: var(--success-soft);
+}
+
+.vaccineGroup {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #eee7f2;
+}
+
+.vaccineGroup > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.vaccineGroup > div:first-child strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.vaccineGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vaccineGrid .checkRow {
+  width: 100%;
+  min-width: 0;
+  margin: 0 !important;
+}
+
+.planSummaryIntro {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #d9c9e6;
+  border-left: 4px solid var(--primary);
+  border-radius: 11px;
+  background: #faf7fd;
+}
+
+.planSummaryIntro strong {
+  color: var(--primary-strong);
+  font-size: 12px;
+}
+
+.planSummaryIntro span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.planSummaryIntro a {
+  width: fit-content;
+  margin-top: 2px;
+  color: var(--primary-strong);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.planSummaryList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.planSummaryList > li {
+  padding: 9px 10px;
+  border: 1px solid #ece5f0;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.planSummaryList strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.planSummaryList ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.planSummaryList > li > span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .examSection {
   grid-column: 1 / -1;
 }
@@ -359,13 +495,18 @@
     grid-template-columns: 1fr;
   }
 
-  .copyPanel {
+  .copyPanel,
+  .vaccineStatus {
     align-items: stretch;
     flex-direction: column;
   }
 
   .copyActions {
     justify-content: flex-start;
+  }
+
+  .vaccineGrid {
+    grid-template-columns: 1fr;
   }
 
   .examHeading {
