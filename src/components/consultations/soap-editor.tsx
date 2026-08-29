@@ -19,19 +19,9 @@ import {
 } from "@/domain/clinical-copy-report";
 import type { ClinicalExamHistoryItem } from "@/domain/consultation-exams";
 import { scaleCatalogEntry } from "@/domain/scale-catalog";
-import suggestionStyles from "./professional-plan-suggestion.module.css";
 import styles from "./soap-editor.module.css";
 
 type Problem = { id: string; type: "CLINICAL" | "GERIATRIC"; status: "ACTIVE" | "STABLE" | "MONITORING" | "RESOLVED"; title: string };
-type PlanSuggestion = {
-  problemId: string;
-  problemTitle: string;
-  proposalKey: string;
-  actions: string[];
-  evidence: Array<{ scaleCode: string; scaleVersion: string; scoreText: string; classification?: string }>;
-  sources: Array<{ pmid: string; label: string }>;
-  requiresPhysicianReview: true;
-};
 type NoteView = {
   consultationId: string;
   consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED";
@@ -41,7 +31,6 @@ type NoteView = {
   fields: { subjective?: string; physicalExam?: string; vitalSigns?: string; anthropometry?: string; vaccinationReview?: { status: VaccinationReviewStatus; pendingVaccines?: readonly string[] }; planByProblem?: Record<string, readonly string[]> };
   exams: { current: string; history: ClinicalExamHistoryItem[] };
   problems: Problem[];
-  planSuggestions: PlanSuggestion[];
 };
 type MedicationItem = {
   medicationId: string;
@@ -65,15 +54,11 @@ type Draft = {
   examsText: string;
   vaccinationReviewed: boolean;
   pendingVaccines: string[];
-  otherPendingVaccinesText: string;
+  legacyPendingVaccines: string[];
   planTextByProblem: Record<string, string>;
 };
 
 const KNOWN_VACCINE_NAMES = new Set(GERIATRIC_VACCINE_CHECKLIST.map((item) => item.name));
-
-function uniqueTextLines(value: string): string[] {
-  return [...new Set(value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean))];
-}
 
 function draftFromView(view: NoteView): Draft {
   const review = view.fields.vaccinationReview;
@@ -86,7 +71,7 @@ function draftFromView(view: NoteView): Draft {
     examsText: view.exams.current,
     vaccinationReviewed: review?.status !== undefined && review.status !== "UNKNOWN",
     pendingVaccines: pending.filter((name) => KNOWN_VACCINE_NAMES.has(name)),
-    otherPendingVaccinesText: pending.filter((name) => !KNOWN_VACCINE_NAMES.has(name)).join("\n"),
+    legacyPendingVaccines: pending.filter((name) => !KNOWN_VACCINE_NAMES.has(name)),
     planTextByProblem: Object.fromEntries(Object.entries(view.fields.planByProblem ?? {}).map(([id, actions]) => [id, actions.join("\n")])),
   };
 }
@@ -118,17 +103,15 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{ kind: "error" | "success"; text: string } | null>(null);
 
-  async function load(options: { preserveDismissed?: boolean } = {}) {
+  async function load() {
     setLoading(true); setFeedback(null);
     try {
       const response = await fetch(`/api/consultations/${consultationId}/note`, { cache: "no-store" });
       const body = await response.json().catch(() => null) as (NoteView & { message?: string }) | null;
       if (!response.ok || !body) throw new Error(body?.message || "Não foi possível carregar o SOAP.");
       setView(body); setDraft(draftFromView(body)); setDirty(false);
-      if (!options.preserveDismissed) setDismissedSuggestions(new Set());
     } catch (error) { setFeedback({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível carregar o SOAP." }); }
     finally { setLoading(false); }
   }
@@ -144,7 +127,6 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
       setFeedback({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível carregar as medicações." });
     }
   }
-
   async function loadScaleResults() {
     setScaleLoadState("loading");
     try {
@@ -163,7 +145,13 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
     function onProblemsChanged(event: Event) {
       const detail = (event as CustomEvent<{ consultationId?: string }>).detail;
       if (detail?.consultationId !== consultationId) return;
-      if (dirty) { setFeedback({ kind: "error", text: "A lista de problemas mudou enquanto há alterações não salvas no SOAP. Salve ou recarregue antes de continuar o plano." }); return; }
+      if (dirty) { setFeedback({ kind: "error", text: "A lista de problemas mudou enquanto há alterações não salvas no SOAP. Salve ou recarregue antes de continuar." }); return; }
+      void load();
+    }
+    function onNoteChanged(event: Event) {
+      const detail = (event as CustomEvent<{ consultationId?: string }>).detail;
+      if (detail?.consultationId !== consultationId) return;
+      if (dirty) { setFeedback({ kind: "error", text: "As condutas foram atualizadas enquanto há alterações não salvas no SOAP. Salve ou recarregue antes de continuar para evitar sobrescrita." }); return; }
       void load();
     }
     function onMedicationsChanged(event: Event) {
@@ -174,14 +162,16 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
       const detail = (event as CustomEvent<{ consultationId?: string }>).detail;
       if (detail?.consultationId !== consultationId) return;
       void loadScaleResults();
-      if (dirty) { setFeedback({ kind: "error", text: "Uma escala foi atualizada enquanto o SOAP possui alterações não salvas. Salve ou recarregue o SOAP antes de atualizar sugestões." }); return; }
+      if (dirty) { setFeedback({ kind: "error", text: "Uma escala foi atualizada enquanto o SOAP possui alterações não salvas. Salve ou recarregue o SOAP antes de continuar." }); return; }
       void load();
     }
     window.addEventListener("clinical-problems-changed", onProblemsChanged);
+    window.addEventListener("clinical-note-changed", onNoteChanged);
     window.addEventListener("clinical-medications-changed", onMedicationsChanged);
     window.addEventListener("clinical-scales-changed", onScalesChanged);
     return () => {
       window.removeEventListener("clinical-problems-changed", onProblemsChanged);
+      window.removeEventListener("clinical-note-changed", onNoteChanged);
       window.removeEventListener("clinical-medications-changed", onMedicationsChanged);
       window.removeEventListener("clinical-scales-changed", onScalesChanged);
     };
@@ -203,12 +193,12 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
   const canCopyCombined = canCopySoap && scaleLoadState === "ready";
   const canCopyExams = Boolean(draft?.examsText.trim() || view?.exams.history.length);
   const canCopyScales = scaleLoadState === "ready" && Boolean(completedScalesText);
-  function setField<K extends "subjective" | "physicalExam" | "vitalSigns" | "anthropometry" | "examsText" | "otherPendingVaccinesText">(key: K, value: Draft[K]) { setDraft((current) => current ? { ...current, [key]: value } : current); setDirty(true); setFeedback(null); }
+  function setField<K extends "subjective" | "physicalExam" | "vitalSigns" | "anthropometry" | "examsText">(key: K, value: Draft[K]) { setDraft((current) => current ? { ...current, [key]: value } : current); setDirty(true); setFeedback(null); }
   function setVaccinationReviewed(checked: boolean) {
     setDraft((current) => current ? {
       ...current,
       vaccinationReviewed: checked,
-      ...(checked ? {} : { pendingVaccines: [], otherPendingVaccinesText: "" }),
+      ...(checked ? {} : { pendingVaccines: [], legacyPendingVaccines: [] }),
     } : current);
     setDirty(true); setFeedback(null);
   }
@@ -221,19 +211,6 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
     });
     setDirty(true); setFeedback(null);
   }
-  function setProblemPlan(problemId: string, value: string) { setDraft((current) => current ? { ...current, planTextByProblem: { ...current.planTextByProblem, [problemId]: value } } : current); setDirty(true); setFeedback(null); }
-  function applySuggestion(suggestion: PlanSuggestion) {
-    if (!draft) return;
-    const existing = actionsFromText(draft.planTextByProblem[suggestion.problemId] ?? "");
-    const merged = [...existing];
-    for (const action of suggestion.actions) if (!merged.includes(action)) merged.push(action);
-    setProblemPlan(suggestion.problemId, merged.join("\n"));
-    setDismissedSuggestions((current) => new Set([...current, suggestion.problemId]));
-    setFeedback({ kind: "success", text: "Sugestão adicionada somente ao rascunho local do SOAP. Revise e edite antes de salvar." });
-  }
-  function dismissSuggestion(problemId: string) {
-    setDismissedSuggestions((current) => new Set([...current, problemId]));
-  }
 
   async function save() {
     if (!view || !draft || saving || view.consultationStatus === "FINALIZED") return;
@@ -242,12 +219,12 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
       const planByProblem = Object.fromEntries(activeProblems.map((problem) => [problem.id, actionsFromText(draft.planTextByProblem[problem.id] ?? "")]));
       const vaccinationReview = deriveVaccinationReview({
         reviewed: draft.vaccinationReviewed,
-        pendingVaccines: [...draft.pendingVaccines, ...uniqueTextLines(draft.otherPendingVaccinesText)],
+        pendingVaccines: [...draft.pendingVaccines, ...draft.legacyPendingVaccines],
       });
       const response = await fetch(`/api/consultations/${consultationId}/note`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ expectedUpdatedAt: view.updatedAt, expectedNoteVersion: view.noteVersion, subjective: draft.subjective, physicalExam: draft.physicalExam, vitalSigns: draft.vitalSigns, anthropometry: draft.anthropometry, examsText: draft.examsText, vaccinationReview, planByProblem }) });
       const body = await response.json().catch(() => null) as (NoteView & { message?: string }) | null;
       if (!response.ok || !body) throw new Error(body?.message || "Não foi possível salvar o SOAP.");
-      setView(body); setDraft(draftFromView(body)); setDirty(false); setFeedback({ kind: "success", text: "SOAP, exames, vacinas e condutas salvos nesta consulta." });
+      setView(body); setDraft(draftFromView(body)); setDirty(false); setFeedback({ kind: "success", text: "SOAP, exames e vacinas salvos nesta consulta. As condutas permanecem sincronizadas com o P — Plano." });
       window.dispatchEvent(new CustomEvent("clinical-note-changed", { detail: { consultationId } }));
     } catch (error) { setFeedback({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível salvar o SOAP." }); }
     finally { setSaving(false); }
@@ -304,7 +281,8 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
   const finalized = view.consultationStatus === "FINALIZED";
   const routineVaccines = GERIATRIC_VACCINE_CHECKLIST.filter((item) => item.group === "ROTINA");
   const specialVaccines = GERIATRIC_VACCINE_CHECKLIST.filter((item) => item.group === "SITUACOES_ESPECIAIS");
-  const derivedVaccinationStatus = deriveVaccinationReview({ reviewed: draft.vaccinationReviewed, pendingVaccines: [...draft.pendingVaccines, ...uniqueTextLines(draft.otherPendingVaccinesText)] }).status;
+  const derivedVaccinationStatus = deriveVaccinationReview({ reviewed: draft.vaccinationReviewed, pendingVaccines: [...draft.pendingVaccines, ...draft.legacyPendingVaccines] }).status;
+  const vaccinationStatusLabel = derivedVaccinationStatus === "PENDING" ? `${draft.pendingVaccines.length + draft.legacyPendingVaccines.length} pendência(s) documentada(s)` : derivedVaccinationStatus === "UP_TO_DATE" ? "Carteira revisada — sem pendências registradas" : "Carteira ainda não revisada";
 
   return <section className={styles.card} aria-labelledby="soap-editor-title">
     <div className={styles.heading}><div><p className="eyebrow">Prontuário</p><h2 id="soap-editor-title">Evolução SOAP</h2><p className={styles.muted}>Avaliação usa problemas confirmados; Objetivo incorpora {medicationProvenance.explicitActiveCount} medicamento(s) em uso com status explicitamente reconciliado nesta trajetória.</p></div><div className={styles.actions}><button type="button" onClick={save} disabled={!dirty || saving || finalized}>{saving ? "Salvando…" : "Salvar SOAP e exames"}</button></div></div>
@@ -328,34 +306,15 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
     <div className={styles.soapGrid}>
       <section className={styles.soapSection}><h3>S — Subjetivo</h3><label>Motivo da consulta, HDA e informações da paciente/acompanhante<textarea value={draft.subjective} disabled={finalized} onChange={(event) => setField("subjective", event.target.value)} rows={7} /></label></section>
       <section className={styles.soapSection}><h3>O — Objetivo</h3><label>Exame físico<textarea value={draft.physicalExam} disabled={finalized} onChange={(event) => setField("physicalExam", event.target.value)} rows={4} /></label><label>Sinais vitais<textarea value={draft.vitalSigns} disabled={finalized} onChange={(event) => setField("vitalSigns", event.target.value)} rows={3} /></label><label>Antropometria<textarea value={draft.anthropometry} disabled={finalized} onChange={(event) => setField("anthropometry", event.target.value)} rows={3} /></label>
-        <fieldset><legend>Vacinas e prevenção</legend>
-          <label className={styles.checkRow}><input type="checkbox" checked={draft.vaccinationReviewed} disabled={finalized} onChange={(event) => setVaccinationReviewed(event.target.checked)} /><span>Carteira/status vacinal revisado nesta consulta</span></label>
-          <p className={styles.muted}>Marque abaixo apenas as vacinas identificadas como pendentes após a revisão. O sistema deriva o status automaticamente: nenhuma revisão = desconhecido; revisão sem pendências = sem pendências; qualquer checkbox pendente = vacinas pendentes.</p>
-          <strong>Rotina no calendário do idoso</strong>
-          <div className={styles.copyActions}>{routineVaccines.map((item) => <label key={item.id} className={styles.checkRow}><input type="checkbox" checked={draft.pendingVaccines.includes(item.name)} disabled={finalized} onChange={(event) => setVaccinePending(item.name, event.target.checked)} /><span><b>{item.name}</b><small>{item.note}</small></span></label>)}</div>
-          <strong>Situações especiais</strong>
-          <div className={styles.copyActions}>{specialVaccines.map((item) => <label key={item.id} className={styles.checkRow}><input type="checkbox" checked={draft.pendingVaccines.includes(item.name)} disabled={finalized} onChange={(event) => setVaccinePending(item.name, event.target.checked)} /><span><b>{item.name}</b><small>{item.note}</small></span></label>)}</div>
-          <label>Outras pendências vacinais documentadas — uma por linha<textarea value={draft.otherPendingVaccinesText} disabled={finalized} onChange={(event) => { setDraft((current) => current ? { ...current, vaccinationReviewed: true, otherPendingVaccinesText: event.target.value } : current); setDirty(true); setFeedback(null); }} rows={3} /></label>
-          <p className={styles.muted}>Status que será salvo: <strong>{derivedVaccinationStatus === "PENDING" ? "Vacinas pendentes registradas" : derivedVaccinationStatus === "UP_TO_DATE" ? "Sem pendências registradas" : "Status desconhecido"}</strong>. Checklist baseado no calendário SBIm Idoso 2026/2027; não gera prescrição, produto, dose ou esquema automático.</p>
+        <fieldset className={styles.vaccinePanel}><legend>Vacinas e prevenção</legend>
+          <div className={styles.vaccineStatus} data-status={derivedVaccinationStatus}><div><strong>{vaccinationStatusLabel}</strong><span>O checklist registra somente a situação observada após conferência; não gera prescrição, produto, dose ou esquema.</span></div><label className={styles.checkRow}><input type="checkbox" checked={draft.vaccinationReviewed} disabled={finalized} onChange={(event) => setVaccinationReviewed(event.target.checked)} /><span>Carteira/status vacinal revisado nesta consulta</span></label></div>
+          <p className={styles.muted}>Após revisar a carteira, marque somente as vacinas cuja pendência foi documentada. Sem revisão, o status permanece desconhecido; revisão sem itens marcados significa nenhuma pendência registrada nesta consulta.</p>
+          <section className={styles.vaccineGroup} aria-labelledby="routine-vaccines-title"><div><strong id="routine-vaccines-title">Calendário de rotina do idoso</strong><span>Itens mais frequentes para conferência na consulta.</span></div><div className={styles.vaccineGrid}>{routineVaccines.map((item) => <label key={item.id} className={styles.checkRow}><input type="checkbox" checked={draft.pendingVaccines.includes(item.name)} disabled={finalized} onChange={(event) => setVaccinePending(item.name, event.target.checked)} /><span><b>{item.name}</b><small>{item.note}</small></span></label>)}</div></section>
+          <section className={styles.vaccineGroup} aria-labelledby="special-vaccines-title"><div><strong id="special-vaccines-title">Situações especiais</strong><span>Conferir apenas quando houver contexto clínico ou epidemiológico pertinente.</span></div><div className={styles.vaccineGrid}>{specialVaccines.map((item) => <label key={item.id} className={styles.checkRow}><input type="checkbox" checked={draft.pendingVaccines.includes(item.name)} disabled={finalized} onChange={(event) => setVaccinePending(item.name, event.target.checked)} /><span><b>{item.name}</b><small>{item.note}</small></span></label>)}</div></section>
         </fieldset><p className={styles.muted}>Medicações em uso entram automaticamente apenas na cópia do SOAP quando o status deriva de histórico explicitamente reconciliado; não são duplicadas neste JSON.</p></section>
       <section className={`${styles.soapSection} ${styles.examSection}`} aria-labelledby="clinical-exams-title"><div className={styles.examHeading}><h3 id="clinical-exams-title">Exames laboratoriais e de imagem</h3><p className={styles.muted}>O registro atual permanece separado; os exames anteriores aparecem somente como contexto longitudinal.</p></div><div className={styles.examLayout}><label>Exames desta consulta<textarea value={draft.examsText} disabled={finalized} onChange={(event) => setField("examsText", event.target.value)} rows={8} placeholder="Registre a data, o tipo de exame e os resultados relevantes." /></label><div>{view.exams.history.length > 0 ? <div className={styles.examHistory} aria-label="Exames de consultas anteriores"><strong>Exames de consultas anteriores</strong>{view.exams.history.map((item) => <article key={item.id}><time dateTime={item.consultationOccurredAt}>{new Date(item.consultationOccurredAt).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</time><p>{item.content}</p></article>)}</div> : <p className={styles.emptyHistory}>Nenhum exame registrado em consultas anteriores.</p>}</div></div></section>
       <section className={styles.soapSection}><h3>A — Avaliação</h3>{activeProblems.length === 0 ? <p className={styles.muted}>Sem problemas ativos registrados.</p> : <ol className={styles.problemList}>{activeProblems.map((problem) => <li key={problem.id}><strong>{problem.title}</strong><span>{problem.type === "GERIATRIC" ? "Problema geriátrico" : "Problema clínico"} · {problem.status}</span></li>)}</ol>}</section>
-      <section className={styles.soapSection}><h3>P — Plano por problema</h3>{activeProblems.length === 0 ? <p className={styles.muted}>Cadastre/confirme problemas para vincular condutas.</p> : activeProblems.map((problem) => {
-        const suggestion = view.planSuggestions.find((item) => item.problemId === problem.id);
-        const visibleSuggestion = suggestion && !dismissedSuggestions.has(problem.id) ? suggestion : null;
-        return <div key={problem.id} className={styles.planField}>
-          <strong>{problem.title}</strong>
-          <span>Uma ação por linha. Nada é aplicado automaticamente.</span>
-          {visibleSuggestion ? <aside className={suggestionStyles.card} aria-label={`Sugestão de plano para ${problem.title}`}>
-            <div className={suggestionStyles.header}><strong>Sugestão baseada na avaliação desta consulta</strong><span className={suggestionStyles.badge}>Rascunho · revisão médica</span></div>
-            <p className={suggestionStyles.evidence}>Origem: {visibleSuggestion.evidence.map((item) => `${item.scaleCode} ${item.scoreText}${item.classification ? ` — ${item.classification}` : ""}`).join("; ")}.</p>
-            <ul className={suggestionStyles.actionsList}>{visibleSuggestion.actions.map((action) => <li key={action}>{action}</li>)}</ul>
-            <p className={suggestionStyles.sources}>Fontes: {visibleSuggestion.sources.map((source) => `${source.label} (PMID ${source.pmid})`).join("; ")}.</p>
-            <div className={suggestionStyles.controls}><button type="button" disabled={finalized} onClick={() => applySuggestion(visibleSuggestion)}>Adicionar ao rascunho</button><button type="button" onClick={() => dismissSuggestion(problem.id)}>Ocultar sugestão</button></div>
-          </aside> : null}
-          <textarea aria-label={`Plano para ${problem.title}`} value={draft.planTextByProblem[problem.id] ?? ""} disabled={finalized} onChange={(event) => setProblemPlan(problem.id, event.target.value)} rows={4} />
-        </div>;
-      })}</section>
+      <section className={styles.soapSection}><h3>P — Plano</h3><div className={styles.planSummaryIntro}><strong>Fonte única: Condutas da consulta geriátrica</strong><span>Para evitar duplicidade, o plano não é mais editado duas vezes. Edite as condutas no bloco de relatório/condutas; o SOAP usa exatamente o conteúdo salvo ali.</span><a href="#relatorio">Ir para Relatório e condutas</a></div>{activeProblems.length === 0 ? <p className={styles.muted}>Cadastre/confirme problemas para vincular condutas.</p> : <ol className={styles.planSummaryList}>{activeProblems.map((problem) => { const actions = actionsFromText(draft.planTextByProblem[problem.id] ?? ""); return <li key={problem.id}><strong>{problem.title}</strong>{actions.length > 0 ? <ul>{actions.map((action) => <li key={action}>{action}</li>)}</ul> : <span>Sem conduta registrada.</span>}</li>; })}</ol>}</section>
     </div>
   </section>;
 }

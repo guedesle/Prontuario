@@ -59,6 +59,7 @@ export function ReportWorkspaceTabs({ consultationId }: { consultationId: string
       </button>
     </div>
     <div
+      className={styles.panel}
       id={tab === "family" ? "family-report-panel" : "geriatric-conduct-panel"}
       role="tabpanel"
       aria-labelledby={tab === "family" ? "family-report-tab" : "geriatric-conduct-tab"}

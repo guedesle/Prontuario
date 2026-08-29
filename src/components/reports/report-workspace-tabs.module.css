@@ -34,10 +34,26 @@
   outline-offset: 2px;
 }
 
+.panel > section > :global(.no-print):first-child {
+  position: sticky;
+  top: 8px;
+  z-index: 8;
+  box-shadow: 0 8px 24px rgb(51 35 63 / 10%);
+}
+
 @media (max-width: 620px) {
   .tabs { display: grid; width: 100%; }
+
+  .panel > section > :global(.no-print):first-child {
+    top: 6px;
+  }
 }
 
 @media print {
   .tabs { display: none !important; }
+
+  .panel > section > :global(.no-print):first-child {
+    position: static;
+    box-shadow: none;
+  }
 }

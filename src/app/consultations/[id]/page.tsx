@@ -111,6 +111,10 @@ export default async function ConsultationPage({ params }: { params: Promise<{ i
 
           <section id="medicamentos" className={`consultation-section ${styles.sectionAnchor}`} aria-label="Medicamentos">
             <MedicationWorkspace consultationId={id} patientName={context.patientName} />
+            <div className={styles.documentActionBar} aria-label="Ações da tabela de medicamentos">
+              <div><strong>Tabela de medicamentos</strong><span>Abra o documento separado para revisar e imprimir. As salvaguardas de identidade e reconciliação continuam valendo.</span></div>
+              <a className={styles.documentAction} href={`/consultations/${id}/medications/print`} target="_blank" rel="noreferrer">Abrir e imprimir tabela</a>
+            </div>
           </section>
 
           <section id="soap" className={`consultation-section ${styles.sectionAnchor}`} aria-label="SOAP e AGA">
