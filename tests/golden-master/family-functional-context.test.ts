@@ -29,7 +29,13 @@ function scale(code: string, score: number): AgaScaleReportSection {
       vsPrevious: "Sem comparação",
       vsBaseline: "insufficient-data",
     },
-    chartSeries: { scaleCode: code, scaleVersion: "test", points: [] },
+    chartSeries: {
+      patientId: "p1",
+      scaleCode: code,
+      points: [],
+      segments: [],
+      hasMultipleVersions: false,
+    },
     source: { status: "needs-review", note: "test" },
   };
 }
