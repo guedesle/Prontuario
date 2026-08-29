@@ -13,7 +13,7 @@ import {
 test("CAM usa quatro características estruturadas e aplica o algoritmo automaticamente", () => {
   assert.equal(CAM_STRUCTURED_DEFINITION.fields.length, 4);
   assert.ok(CAM_STRUCTURED_DEFINITION.fields.every((field) => field.choices.length === 2));
-  assert.ok(CAM_STRUCTURED_DEFINITION.fields.every((field) => field.id !== "status"));
+  assert.equal(CAM_STRUCTURED_DEFINITION.fields.map((field) => String(field.id)).includes("status"), false);
 
   const positive = scoreCamStructured({
     acuteOrFluctuating: 1,
@@ -39,7 +39,7 @@ test("CAM usa quatro características estruturadas e aplica o algoritmo automati
 test("LACE usa L A C E estruturados e calcula o total sem digitação manual do escore", () => {
   assert.equal(LACE_STRUCTURED_DEFINITION.fields.length, 4);
   assert.ok(LACE_STRUCTURED_DEFINITION.fields.every((field) => field.choices.length >= 2));
-  assert.ok(LACE_STRUCTURED_DEFINITION.fields.every((field) => field.id !== "score"));
+  assert.equal(LACE_STRUCTURED_DEFINITION.fields.map((field) => String(field.id)).includes("score"), false);
 
   const scored = scoreLaceStructured({
     lengthOfStayPoints: 7,
