@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MEDICATION_MOMENT_LABELS, type MedicationMoment } from "@/domain/medication-plan";
+import { buildProfessionalPlanDraft } from "@/domain/professional-plan-draft";
 import {
   isExplicitActiveMedication,
   summarizeSoapMedicationProvenance,
@@ -108,9 +109,11 @@ function draftFromView(view: NoteView): Draft {
     vaccinationReviewed: review?.status !== undefined && review.status !== "UNKNOWN",
     pendingVaccines: pending.filter((name) => KNOWN_VACCINE_NAMES.has(name)),
     legacyPendingVaccines: pending.filter((name) => !KNOWN_VACCINE_NAMES.has(name)),
-    planTextByProblem: Object.fromEntries(
-      Object.entries(view.fields.planByProblem ?? {}).map(([id, actions]) => [id, actions.join("\n")]),
-    ),
+    planTextByProblem: buildProfessionalPlanDraft({
+      savedPlanByProblem: view.fields.planByProblem,
+      suggestions: view.planSuggestions,
+      seedSuggestions: view.consultationStatus !== "FINALIZED",
+    }),
   };
 }
 
@@ -333,16 +336,6 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
     } : current);
     setDirty(true);
     setFeedback(null);
-  }
-
-  function applySuggestion(suggestion: PlanSuggestion) {
-    if (!draft) return;
-    const existing = actionsFromText(draft.planTextByProblem[suggestion.problemId] ?? "");
-    const merged = [...existing];
-    for (const action of suggestion.actions) if (!merged.includes(action)) merged.push(action);
-    setProblemPlan(suggestion.problemId, merged.join("\n"));
-    setDismissedSuggestions((current) => new Set([...current, suggestion.problemId]));
-    setFeedback({ kind: "success", text: "Sugestão adicionada ao rascunho do plano. Revise e edite antes de salvar." });
   }
 
   async function save() {
@@ -600,7 +593,7 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
           <h3 id="plan-title">P — Plano e condutas</h3>
           <div className={styles.planSummaryIntro}>
             <strong>Plano e condutas em um só lugar</strong>
-            <span>Registre aqui as condutas por problema. As sugestões são apenas rascunhos de apoio: nada é aplicado automaticamente e tudo deve ser revisado antes de salvar.</span>
+            <span>As orientações sugeridas já aparecem no rascunho quando ainda não há plano salvo. Revise e edite antes de salvar; abrir a consulta não grava nenhuma conduta.</span>
           </div>
           {activeProblems.length === 0 ? <p className={styles.muted}>Cadastre ou confirme problemas para vincular condutas.</p> : activeProblems.map((problem, index) => {
             const suggestion = view.planSuggestions.find((item) => item.problemId === problem.id);
@@ -616,7 +609,6 @@ export function SoapEditor({ consultationId }: { consultationId: string }) {
                     <ul className={suggestionStyles.actionsList}>{visibleSuggestion.actions.map((action) => <li key={action}>{action}</li>)}</ul>
                     <p className={suggestionStyles.sources}>Fontes: {visibleSuggestion.sources.map((source) => `${source.label} (PMID ${source.pmid})`).join("; ")}.</p>
                     <div className={suggestionStyles.controls}>
-                      <button type="button" disabled={finalized} onClick={() => applySuggestion(visibleSuggestion)}>Adicionar ao rascunho</button>
                       <button type="button" onClick={() => setDismissedSuggestions((current) => new Set([...current, problem.id]))}>Ocultar sugestão</button>
                     </div>
                   </aside>
