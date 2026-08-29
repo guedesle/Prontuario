@@ -7,6 +7,7 @@ import {
   hasDisplayableLongitudinalHistory,
   type CapacityDimensionHistory,
 } from "@/domain/capacity-dimension-history";
+import type { ProfessionalIdentity } from "@/domain/professional-identity";
 import { CapacityDimensionHistoryChart } from "@/components/reports/capacity-dimension-history-chart";
 import {
   buildReportDomainSummaries,
@@ -32,8 +33,6 @@ type ReportGlyphName =
   | "cognition"
   | "home"
   | "support";
-
-const BRAND_LOGO_PATH = "/brand/natalia-mendes-logo.svg";
 
 function formatDate(value?: string): string {
   if (!value) return "Data não registrada";
@@ -140,18 +139,24 @@ function DomainSummaryTable({ domains }: { domains: ReportDomainSummary[] }) {
   );
 }
 
-function PhysicianSignature() {
+function PhysicianSignature({ identity }: { identity: ProfessionalIdentity }) {
   return (
     <div className={styles.signature} aria-label="Identificação profissional e espaço para assinatura">
       <span className={styles.signatureLine} aria-hidden="true" />
-      <strong>Dra. Natalia Mendes</strong>
-      <span>CRM-BA 27416 · RQE 24673</span>
+      <strong>{identity.displayName}</strong>
+      {identity.registrationLine ? <span>{identity.registrationLine}</span> : null}
       <small>Assinatura e carimbo</small>
     </div>
   );
 }
 
-export function AgaReportDocumentPreview({ consultationId }: { consultationId: string }) {
+export function AgaReportDocumentPreview({
+  consultationId,
+  professionalIdentity,
+}: {
+  consultationId: string;
+  professionalIdentity: ProfessionalIdentity;
+}) {
   const [generated, setGenerated] = useState<GeneratedReportResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -247,10 +252,10 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
           <article className={styles.document}>
             <header className={styles.header}>
               <div className={styles.brandBlock}>
-                <img src={BRAND_LOGO_PATH} alt="Natalia Mendes — Médica Geriatra" />
+                {professionalIdentity.logoPath ? <img src={professionalIdentity.logoPath} alt={professionalIdentity.logoAlt ?? professionalIdentity.displayName} /> : null}
                 <div>
-                  <strong>Dra. Natalia Mendes</strong>
-                  <span>Médica Geriatra</span>
+                  <strong>{professionalIdentity.displayName}</strong>
+                  <span>{professionalIdentity.roleLabel}</span>
                 </div>
               </div>
               <div className={styles.titleBlock}>
@@ -416,7 +421,7 @@ export function AgaReportDocumentPreview({ consultationId }: { consultationId: s
 
             <footer className={styles.footer}>
               <p>Documento de apoio à continuidade do cuidado. Dúvidas ou intercorrências devem ser discutidas com a equipe responsável.</p>
-              <PhysicianSignature />
+              <PhysicianSignature identity={professionalIdentity} />
               <p className={`${styles.technicalMeta} no-print`}>Versão do relatório {generated.snapshot.version} · estrutura técnica {generated.report.schemaVersion}</p>
             </footer>
           </article>

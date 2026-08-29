@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   GERIATRIC_PROBLEM_PRESETS,
   type GeriatricProblemPreset,
@@ -144,10 +144,10 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
   const [type, setType] = useState<ProblemType>("CLINICAL");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [selectedGeriatricPreset, setSelectedGeriatricPreset] = useState<GeriatricProblemPreset | null>(null);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const titleInputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     setLoading(true);
@@ -199,11 +199,20 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
     setStatusMessage("Inclusão removida desta consulta. O registro de auditoria foi preservado.");
   }
 
+  function changeType(nextType: ProblemType) {
+    setType(nextType);
+    setTitle("");
+    setDescription("");
+    setSelectedGeriatricPreset(null);
+    setStatusMessage(null);
+  }
+
   function selectGeriatricPreset(preset: GeriatricProblemPreset) {
     setType("GERIATRIC");
+    setSelectedGeriatricPreset(preset);
     setTitle(preset);
+    setDescription("");
     setStatusMessage(null);
-    window.requestAnimationFrame(() => titleInputRef.current?.focus());
   }
 
   async function create() {
@@ -222,6 +231,7 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
       applyView(next);
       setTitle("");
       setDescription("");
+      setSelectedGeriatricPreset(null);
       setStatusMessage(`${problemTitle} foi incluído na lista. Revise a situação clínica quando necessário.`);
     } catch (cause) {
       setFeedback(cause instanceof Error ? cause.message : "Não foi possível criar o problema.");
@@ -257,18 +267,18 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
           <div className={styles.creatorIntro}>
             <div>
               <strong>Adicionar problema</strong>
-              <span>Use um atalho geriátrico ou escreva um problema clínico. Nada é incluído automaticamente.</span>
+              <span>Selecione um problema geriátrico ou registre um problema clínico. Nada é incluído automaticamente.</span>
             </div>
           </div>
 
           <div className={styles.presets} aria-labelledby="geriatric-presets-title">
             <div className={styles.presetsHeader}>
-              <strong id="geriatric-presets-title">Problemas geriátricos frequentes</strong>
-              <span>Selecione um item para preencher o campo. Revise o texto antes de adicionar.</span>
+              <strong id="geriatric-presets-title">Problemas geriátricos</strong>
+              <span>Ao selecionar um item, será aberta uma caixa de texto opcional para registrar contexto clínico específico.</span>
             </div>
             <div className={styles.presetGrid}>
               {GERIATRIC_PROBLEM_PRESETS.map((preset) => {
-                const selected = type === "GERIATRIC" && title === preset;
+                const selected = type === "GERIATRIC" && selectedGeriatricPreset === preset;
                 return (
                   <button
                     key={preset}
@@ -287,21 +297,51 @@ export function ProblemWorkspace({ consultationId }: { consultationId: string })
           <div className={styles.creatorFields}>
             <label>
               Categoria
-              <select value={type} onChange={(event) => setType(event.target.value as ProblemType)}>
+              <select value={type} onChange={(event) => changeType(event.target.value as ProblemType)}>
                 <option value="CLINICAL">Problema clínico</option>
                 <option value="GERIATRIC">Problema geriátrico</option>
               </select>
             </label>
-            <label className={styles.titleField}>
-              Problema
-              <input ref={titleInputRef} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Hipertensão arterial" maxLength={500} aria-describedby="problem-title-help" />
-              <small id="problem-title-help">Confirme o termo antes de adicionar à lista longitudinal.</small>
-            </label>
-            <label className={styles.descriptionField}>
-              Contexto opcional
-              <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Observação breve, sem repetir a história clínica" />
-            </label>
-            <button type="button" onClick={create} disabled={!title.trim() || saving}>{saving ? "Adicionando…" : "Adicionar à lista"}</button>
+
+            {type === "CLINICAL" ? (
+              <>
+                <label className={styles.titleField}>
+                  Problema
+                  <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Hipertensão arterial" maxLength={500} aria-describedby="problem-title-help" />
+                  <small id="problem-title-help">Confirme o termo antes de adicionar à lista longitudinal.</small>
+                </label>
+                <label className={styles.descriptionField}>
+                  Contexto opcional
+                  <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Observação breve, sem repetir a história clínica" maxLength={1500} />
+                </label>
+              </>
+            ) : selectedGeriatricPreset ? (
+              <>
+                <label className={styles.titleField}>
+                  Problema geriátrico selecionado
+                  <input value={selectedGeriatricPreset} readOnly aria-readonly="true" />
+                  <small>O título padronizado será preservado na lista longitudinal.</small>
+                </label>
+                <label className={styles.descriptionField}>
+                  Detalhes do problema selecionado (opcional)
+                  <textarea
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Ex.: contexto, repercussão funcional ou observação clínica pertinente"
+                    maxLength={1500}
+                    rows={3}
+                  />
+                </label>
+              </>
+            ) : (
+              <div className={styles.selectionHint} role="status">
+                Selecione acima um problema geriátrico para liberar a caixa de texto complementar.
+              </div>
+            )}
+
+            <button type="button" onClick={create} disabled={!title.trim() || saving}>
+              {saving ? "Adicionando…" : "Adicionar à lista"}
+            </button>
           </div>
         </div>
       ) : null}

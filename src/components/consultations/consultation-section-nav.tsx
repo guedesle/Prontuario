@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { ProfessionalIdentity } from "@/domain/professional-identity";
 import styles from "./consultation-section-nav.module.css";
 
 const sections = [
@@ -18,6 +19,7 @@ interface ConsultationSectionNavProps {
   patientBirthDateLabel: string;
   consultationDateLabel: string;
   consultationStatusLabel: string;
+  professionalIdentity: ProfessionalIdentity;
 }
 
 function initials(name: string): string {
@@ -33,6 +35,7 @@ export function ConsultationSectionNav({
   patientBirthDateLabel,
   consultationDateLabel,
   consultationStatusLabel,
+  professionalIdentity,
 }: ConsultationSectionNavProps) {
   const [activeId, setActiveId] = useState<(typeof sections)[number]["id"]>(sections[0].id);
   const patientInitials = useMemo(() => initials(patientName), [patientName]);
@@ -66,8 +69,15 @@ export function ConsultationSectionNav({
 
   return (
     <nav className={styles.nav} aria-label="Seções do preenchimento da consulta">
-      <div className={styles.brand}>
-        <img src="/brand/natalia-mendes-logo.svg" alt="Natalia Mendes — Médica Geriatra" />
+      <div className={styles.brand} aria-label="Profissional autenticado">
+        {professionalIdentity.logoPath ? (
+          <img src={professionalIdentity.logoPath} alt={professionalIdentity.logoAlt ?? professionalIdentity.displayName} />
+        ) : (
+          <span className={styles.professionalIdentity}>
+            <strong>{professionalIdentity.displayName}</strong>
+            <small>{professionalIdentity.roleLabel}</small>
+          </span>
+        )}
       </div>
 
       <section className={styles.patientCard} aria-label="Paciente da consulta atual">

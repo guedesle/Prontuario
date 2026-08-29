@@ -55,7 +55,7 @@
 
 .creatorFields {
   display: grid;
-  grid-template-columns: 170px minmax(240px, 1.2fr) minmax(220px, 1fr) auto;
+  grid-template-columns: 170px minmax(240px, 1.2fr) minmax(240px, 1fr) auto;
   gap: 10px;
   align-items: end;
 }
@@ -78,6 +78,7 @@
 
 .creatorFields input,
 .creatorFields select,
+.creatorFields textarea,
 .statusControls select {
   min-height: 42px;
   padding: 8px 10px;
@@ -86,6 +87,30 @@
   background: #fff;
   color: var(--ink);
   font: inherit;
+}
+
+.creatorFields textarea {
+  min-height: 76px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.creatorFields input[readonly] {
+  background: #f8f5fb;
+  color: var(--primary-strong);
+  font-weight: 800;
+}
+
+.selectionHint {
+  grid-column: span 2;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px dashed #d8cae5;
+  border-radius: 10px;
+  background: #fbf9fd;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .creatorFields button,
@@ -301,6 +326,7 @@
 
 .creatorFields input:focus-visible,
 .creatorFields select:focus-visible,
+.creatorFields textarea:focus-visible,
 .creatorFields button:focus-visible,
 .statusControls select:focus-visible,
 .statusControls button:focus-visible,
@@ -313,6 +339,10 @@
 @media (max-width: 1080px) {
   .creatorFields {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .selectionHint {
+    grid-column: 1 / -1;
   }
 
   .creatorFields button {
@@ -331,6 +361,10 @@
   .columns,
   .presetGrid {
     grid-template-columns: 1fr;
+  }
+
+  .selectionHint {
+    grid-column: auto;
   }
 
   .creatorFields button {

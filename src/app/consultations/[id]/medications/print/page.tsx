@@ -4,8 +4,6 @@ import { MEDICATION_MOMENTS, MEDICATION_MOMENT_LABELS } from "@/domain/medicatio
 import { getMedicationPlanDocument } from "@/server/clinical/medication-plan-document";
 import styles from "./page.module.css";
 
-const BRAND_LOGO_PATH = "/brand/natalia-mendes-logo.svg";
-
 function formatDate(value: string | null): string {
   if (!value) return "Não registrada";
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(value));
@@ -17,6 +15,7 @@ export default async function MedicationPlanPrintPage({ params }: { params: Prom
   if (!document) notFound();
 
   const blocked = document.status !== "READY" || document.needsIdentityReview;
+  const professionalIdentity = document.professionalIdentity;
 
   return (
     <main className={styles.pageShell}>
@@ -28,10 +27,10 @@ export default async function MedicationPlanPrintPage({ params }: { params: Prom
       <article className={styles.document} aria-labelledby="medication-plan-title">
         <header className={styles.header}>
           <div className={styles.brandBlock}>
-            <img src={BRAND_LOGO_PATH} alt="Natalia Mendes — Médica Geriatra" />
+            {professionalIdentity.logoPath ? <img src={professionalIdentity.logoPath} alt={professionalIdentity.logoAlt ?? professionalIdentity.displayName} /> : null}
             <div>
-              <strong>Dra. Natalia Mendes</strong>
-              <span>Médica Geriatra</span>
+              <strong>{professionalIdentity.displayName}</strong>
+              <span>{professionalIdentity.roleLabel}</span>
             </div>
           </div>
           <div className={styles.titleBlock}>
@@ -104,8 +103,8 @@ export default async function MedicationPlanPrintPage({ params }: { params: Prom
         <footer className={styles.footer}>
           <div className={styles.signature}>
             <span aria-hidden="true" />
-            <strong>Dra. Natalia Mendes</strong>
-            <p>CRM-BA 27416 · RQE 24673</p>
+            <strong>{professionalIdentity.displayName}</strong>
+            {professionalIdentity.registrationLine ? <p>{professionalIdentity.registrationLine}</p> : null}
             <small>Assinatura e carimbo</small>
           </div>
         </footer>

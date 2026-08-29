@@ -1,4 +1,5 @@
 import { PatientFinder } from "@/components/patients/patient-finder";
+import { buildProfessionalIdentity } from "@/domain/professional-identity";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
 
 const modules = [
@@ -13,13 +14,25 @@ const modules = [
 ];
 
 export default async function Home() {
-  await requireAuthenticatedUser("patient.read");
+  const { user } = await requireAuthenticatedUser("patient.read");
+  const professionalIdentity = buildProfessionalIdentity({
+    name: user.name,
+    email: user.email,
+    brandOwnerEmail: process.env.PROFESSIONAL_BRAND_OWNER_EMAIL,
+  });
 
   return (
     <main className="shell home-shell">
       <header className="hero home-hero">
         <div className="home-brand-row">
-          <img className="home-brand-logo" src="/brand/natalia-mendes-logo.svg" alt="Natalia Mendes — Médica Geriatra" />
+          {professionalIdentity.logoPath ? (
+            <img className="home-brand-logo" src={professionalIdentity.logoPath} alt={professionalIdentity.logoAlt ?? professionalIdentity.displayName} />
+          ) : (
+            <div className="home-session-identity" aria-label="Profissional autenticado">
+              <strong>{professionalIdentity.displayName}</strong>
+              <span>{professionalIdentity.roleLabel}</span>
+            </div>
+          )}
           <span className="home-product-badge">Prontuário Aprimorado</span>
         </div>
         <p className="eyebrow">Prática clínica · continuidade do cuidado</p>

@@ -3,6 +3,10 @@ import {
   buildMedicationPlanSnapshotModel,
   MedicationPlanSnapshotError,
 } from "../../domain/medication-plan-snapshot.ts";
+import {
+  buildProfessionalIdentity,
+  type ProfessionalIdentity,
+} from "../../domain/professional-identity.ts";
 import { requireAuthenticatedUser } from "../auth/require-user.ts";
 import { prisma } from "../db.ts";
 import { medicationDocumentWorkspaceContext } from "./medication-document-workspace.ts";
@@ -14,13 +18,19 @@ export interface MedicationPlanDocument {
   patientBirthDate: string | null;
   consultationDate: string;
   needsIdentityReview: boolean;
+  professionalIdentity: ProfessionalIdentity;
   status: "READY" | "REQUIRES_REVIEW";
   message: string;
   plan?: MedicationPlanViewModel;
 }
 
 export async function getMedicationPlanDocument(consultationId: string): Promise<MedicationPlanDocument | null> {
-  await requireAuthenticatedUser("document.generate");
+  const { user } = await requireAuthenticatedUser("document.generate");
+  const professionalIdentity = buildProfessionalIdentity({
+    name: user.name,
+    email: user.email,
+    brandOwnerEmail: process.env.PROFESSIONAL_BRAND_OWNER_EMAIL,
+  });
 
   return prisma.$transaction(async (tx) => {
     const consultation = await tx.consultation.findUnique({
@@ -66,6 +76,7 @@ export async function getMedicationPlanDocument(consultationId: string): Promise
         patientBirthDate,
         consultationDate: consultation.occurredAt.toISOString(),
         needsIdentityReview: consultation.patient.needsIdentityReview,
+        professionalIdentity,
         status: "READY" as const,
         message: "Plano de medicamentos pronto para revisão e impressão.",
         plan: snapshot.plan,
@@ -85,6 +96,7 @@ export async function getMedicationPlanDocument(consultationId: string): Promise
             patientBirthDate,
             consultationDate: consultation.occurredAt.toISOString(),
             needsIdentityReview: consultation.patient.needsIdentityReview,
+            professionalIdentity,
             status: "REQUIRES_REVIEW" as const,
             message,
           };

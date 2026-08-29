@@ -70,9 +70,11 @@ function lawtonLevel(score: number): FamilyFunctionalCareLevel {
 /**
  * Define o nível de apoio que contextualiza as orientações familiares.
  * Hierarquia clínica deliberada:
- * 1. FAST determina a gravidade funcional associada à demência, sobretudo nos estágios avançados.
- * 2. Barthel pode elevar a necessidade de ajuda nas ABVD por qualquer causa.
- * 3. Lawton acrescenta dependência nas AIVD, sem reduzir uma dependência já identificada.
+ * 1. FAST é a primeira âncora e determina a gravidade funcional associada à demência.
+ * 2. Barthel vem depois e pode acrescentar maior necessidade de ajuda nas ABVD, sem reduzir
+ *    nem contradizer uma limitação já estabelecida pelo FAST.
+ * 3. Lawton vem em seguida e acrescenta dependência nas AIVD, sem reduzir uma dependência
+ *    previamente identificada.
  *
  * O contexto apenas adapta linguagem e prioridades de cuidado. Não cria diagnóstico,
  * não altera pontuação de escala e não gera prescrição.
@@ -127,7 +129,7 @@ const ADVANCED_DEMENTIA_GUIDANCE: Readonly<Record<string, readonly string[]>> = 
     "Confusão ou sonolência de início recente, agitação muito diferente do padrão habitual ou redução abrupta da interação merece avaliação clínica.",
   ],
   mobilidade: [
-    "Se a pessoa não caminha ou não se senta sem apoio, o foco deixa de ser caminhar de forma independente e passa a ser posicionamento seguro, transferências assistidas e prevenção de complicações da imobilidade.",
+    "Na demência avançada, adapte a mobilidade ao desempenho funcional já estabelecido. Use assistência compatível com a capacidade atual e não proponha marcha independente quando ela já não fizer parte do desempenho habitual.",
     "Mude a posição e realize mobilização apenas conforme tolerância e orientações já recebidas, observando dor, falta de ar, fadiga e segurança do cuidador.",
     "Mantenha o ambiente livre para permitir aproximação segura do cuidador e dos equipamentos de apoio já utilizados.",
   ],
@@ -196,6 +198,7 @@ const IADL_SUPPORT_GUIDANCE: Readonly<Record<string, readonly string[]>> = {
  * Substitui orientação genérica por orientação coerente com o grau de dependência.
  * Para FAST 7.x, a linguagem é deliberadamente centrada em cuidado integral,
  * conforto e prevenção de complicações, evitando recomendações de autonomia incompatíveis.
+ * FAST 7c ou superior recebe, em seguida, a orientação específica de imobilidade.
  */
 export function contextualFamilyGuidance(
   dimension: string,

@@ -3,6 +3,10 @@ import {
   contextualFamilyGuidance,
   deriveFamilyFunctionalContext,
 } from "./family-functional-context.ts";
+import {
+  contextualizeImmobilityDomainGuidance,
+  deriveEstablishedImmobilityContext,
+} from "./family-contextual-care.ts";
 import type {
   IntrinsicCapacityDomainCode,
   IntrinsicCapacityEvidenceReference,
@@ -170,9 +174,21 @@ function unique(items: readonly string[]): string[] {
   return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
 }
 
-function stateFor(scales: readonly AgaScaleReportSection[]): ReportDomainState {
+function functionalDependenceDetected(scales: readonly AgaScaleReportSection[]): boolean {
+  return scales.some((scale) => {
+    if (!scale.assessedInTargetConsultation || typeof scale.result.score !== "number") return false;
+    if (scale.code === "barthel") return scale.result.score < 100;
+    if (scale.code === "lawton") return scale.result.score < 21;
+    return false;
+  });
+}
+
+function stateFor(scales: readonly AgaScaleReportSection[], dimension: string): ReportDomainState {
   const current = scales.filter((scale) => scale.assessedInTargetConsultation);
   if (current.length === 0) return "not-assessed";
+  // ABVD ou AIVD comprometida é alteração funcional, independentemente de uma cor
+  // técnica ausente/inconsistente em registros legados.
+  if (dimension === "funcionalidade" && functionalDependenceDetected(current)) return "altered";
   if (current.some((scale) => scale.clinicalColor === "vermelho")) return "altered";
   if (current.some((scale) => scale.clinicalColor === "amarelo")) return "attention";
   return "preserved";
@@ -197,12 +213,13 @@ export function buildReportDomainSummaries(
   }
 
   const functionalContext = deriveFamilyFunctionalContext(scales);
+  const immobilityContext = deriveEstablishedImmobilityContext({ scales });
 
   return DIMENSION_ORDER.flatMap((dimension): ReportDomainSummary[] => {
     const dimensionScales = grouped.get(dimension);
     if (!dimensionScales?.length) return [];
 
-    const state = stateFor(dimensionScales);
+    const state = stateFor(dimensionScales, dimension);
     const intrinsicCode = INTRINSIC_DOMAIN_FOR_DIMENSION[dimension];
     const alteredIntrinsicGuidance = intrinsicCode
       ? intrinsicCapacity.alteredDomains.find((domain) => domain.code === intrinsicCode)
@@ -214,8 +231,17 @@ export function buildReportDomainSummaries(
     const genericGuidance = unique([
       ...(alteredIntrinsicGuidance?.actions ?? intrinsicGuidance?.actions ?? domainGuidance?.actions ?? []),
     ]);
+    const functionallyContextualized = contextualFamilyGuidance(
+      dimension,
+      genericGuidance,
+      functionalContext,
+    );
     const guidance = unique(
-      contextualFamilyGuidance(dimension, genericGuidance, functionalContext),
+      contextualizeImmobilityDomainGuidance(
+        dimension,
+        functionallyContextualized,
+        immobilityContext,
+      ),
     ).slice(0, 5);
     const requiresMedicalGuidance = (state === "altered" || state === "attention") && guidance.length === 0;
     const evidenceReferences = alteredIntrinsicGuidance?.evidenceReferences
