@@ -249,16 +249,24 @@ export async function generateAgaReport(input: {
         vaccinationReview: vaccinationReviewFromObjective(consultation.objective),
         medicationPlan,
       });
+      const contextualCarePlan = applyContextualFamilyCarePlan({
+        plan: clinicalReport.carePlan,
+        immobility: deriveEstablishedImmobilityContext({
+          scales: clinicalReport.assessedScales,
+          geriatricProblems: clinicalReport.geriatricProblems,
+        }),
+        gastrostomyPresent,
+      });
       const contextualReport = {
         ...clinicalReport,
-        carePlan: applyContextualFamilyCarePlan({
-          plan: clinicalReport.carePlan,
-          immobility: deriveEstablishedImmobilityContext({
-            scales: clinicalReport.assessedScales,
-            geriatricProblems: clinicalReport.geriatricProblems,
-          }),
-          gastrostomyPresent,
-        }),
+        carePlan: {
+          now: [...contextualCarePlan.now],
+          mediumTerm: [...contextualCarePlan.mediumTerm],
+          caregiver: [...contextualCarePlan.caregiver],
+          referrals: [...contextualCarePlan.referrals],
+          contact: [...contextualCarePlan.contact],
+          urgent: [...contextualCarePlan.urgent],
+        },
       };
       const safeReport = sanitizeFamilyReportModel(contextualReport);
       const capacityHistory = buildCapacityDimensionHistory({
