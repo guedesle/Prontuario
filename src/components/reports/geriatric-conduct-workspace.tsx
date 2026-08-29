@@ -24,7 +24,7 @@ type PlanSuggestion = {
 
 type NoteView = {
   consultationId: string;
-  consultationStatus: "DRAFT" | "IN_REVIEW"" | "FINALIZED";
+  consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED";
   updatedAt: string;
   noteVersion: string;
   fields: {
