@@ -12,6 +12,7 @@ export interface FamilyFunctionalContext {
   sourceSummary: string;
   fastStage?: string;
   fastScore?: number;
+  katzScore?: number;
   barthelScore?: number;
   lawtonScore?: number;
 }
@@ -57,6 +58,12 @@ function fastLevel(score: number): FamilyFunctionalCareLevel {
   return "independent";
 }
 
+function katzLevel(score: number): FamilyFunctionalCareLevel {
+  if (score <= 2) return "high-dependence";
+  if (score <= 5) return "adl-support";
+  return "independent";
+}
+
 function barthelLevel(score: number): FamilyFunctionalCareLevel {
   if (score <= 35) return "high-dependence";
   if (score <= 95) return "adl-support";
@@ -71,10 +78,9 @@ function lawtonLevel(score: number): FamilyFunctionalCareLevel {
  * Define o nível de apoio que contextualiza as orientações familiares.
  * Hierarquia clínica deliberada:
  * 1. FAST é a primeira âncora e determina a gravidade funcional associada à demência.
- * 2. Barthel vem depois e pode acrescentar maior necessidade de ajuda nas ABVD, sem reduzir
- *    nem contradizer uma limitação já estabelecida pelo FAST.
- * 3. Lawton vem em seguida e acrescenta dependência nas AIVD, sem reduzir uma dependência
- *    previamente identificada.
+ * 2. Katz e Barthel acrescentam a necessidade de ajuda nas ABVD, sem reduzir nem contradizer
+ *    uma limitação já estabelecida por outro instrumento funcional.
+ * 3. Lawton acrescenta dependência nas AIVD, sem reduzir uma dependência previamente identificada.
  *
  * O contexto apenas adapta linguagem e prioridades de cuidado. Não cria diagnóstico,
  * não altera pontuação de escala e não gera prescrição.
@@ -83,10 +89,12 @@ export function deriveFamilyFunctionalContext(
   scales: readonly AgaScaleReportSection[],
 ): FamilyFunctionalContext {
   const fast = currentScale(scales, "fast");
+  const katz = currentScale(scales, "katz");
   const barthel = currentScale(scales, "barthel");
   const lawton = currentScale(scales, "lawton");
 
   const fastScore = fast?.result.score ?? undefined;
+  const katzScore = katz?.result.score ?? undefined;
   const barthelScore = barthel?.result.score ?? undefined;
   const lawtonScore = lawton?.result.score ?? undefined;
 
@@ -96,6 +104,10 @@ export function deriveFamilyFunctionalContext(
   if (typeof fastScore === "number") {
     level = maxLevel(level, fastLevel(fastScore));
     sources.push(`FAST ${fastStageLabel(fastScore)}`);
+  }
+  if (typeof katzScore === "number") {
+    level = maxLevel(level, katzLevel(katzScore));
+    sources.push(`Katz ${katzScore}`);
   }
   if (typeof barthelScore === "number") {
     level = maxLevel(level, barthelLevel(barthelScore));
@@ -108,8 +120,9 @@ export function deriveFamilyFunctionalContext(
 
   return {
     level,
-    sourceSummary: sources.length > 0 ? sources.join(" · ") : "Funcionalidade não estratificada por FAST, Barthel ou Lawton nesta consulta",
+    sourceSummary: sources.length > 0 ? sources.join(" · ") : "Funcionalidade não estratificada por FAST, Katz, Barthel ou Lawton nesta consulta",
     ...(typeof fastScore === "number" ? { fastScore, fastStage: fastStageLabel(fastScore) } : {}),
+    ...(typeof katzScore === "number" ? { katzScore } : {}),
     ...(typeof barthelScore === "number" ? { barthelScore } : {}),
     ...(typeof lawtonScore === "number" ? { lawtonScore } : {}),
   };
