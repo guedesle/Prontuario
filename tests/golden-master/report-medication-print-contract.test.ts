@@ -19,7 +19,7 @@ async function text(url: URL) {
   return readFile(url, "utf8");
 }
 
-test("plano e condutas têm editor único no SOAP e relatório permanece familiar", async () => {
+test("plano e condutas têm editor único no SOAP, relatório permanece familiar e usa identidade autenticada", async () => {
   const [consultationPage, consultationWorkspace, soap, reportTabs, report, css] = await Promise.all([
     text(files.consultationPage),
     text(files.consultationWorkspace),
@@ -32,6 +32,8 @@ test("plano e condutas têm editor único no SOAP e relatório permanece familia
   assert.match(consultationPage, /ConsultationWorkspace/);
   assert.doesNotMatch(consultationPage, /ProblemWorkspace/);
   assert.doesNotMatch(consultationPage, /ClinicalScalesWorkspace/);
+  assert.match(consultationPage, /buildProfessionalIdentity/);
+  assert.match(consultationPage, /professionalIdentity=\{professionalIdentity\}/);
   assert.match(consultationWorkspace, /dynamic\(/);
   assert.match(consultationWorkspace, /Evolução e plano/);
   assert.match(consultationWorkspace, /Abrimos somente a etapa em uso/);
@@ -48,6 +50,8 @@ test("plano e condutas têm editor único no SOAP e relatório permanece familia
   assert.doesNotMatch(soap, /Ir para Relatório e condutas/);
 
   assert.match(reportTabs, /AgaReportDocumentPreview/);
+  assert.match(reportTabs, /professionalIdentity: ProfessionalIdentity/);
+  assert.match(reportTabs, /professionalIdentity=\{professionalIdentity\}/);
   assert.doesNotMatch(reportTabs, /GeriatricConductWorkspace/);
   assert.doesNotMatch(reportTabs, /Condutas da consulta geriátrica/);
   assert.doesNotMatch(report, /GeriatricConductWorkspace/);
@@ -87,6 +91,13 @@ test("plano e condutas têm editor único no SOAP e relatório permanece familia
   assert.doesNotMatch(report, /data-print-scope/);
   assert.doesNotMatch(report, /Acompanhar conforme avaliação clínica/);
 
+  assert.match(report, /professionalIdentity\.displayName/);
+  assert.match(report, /professionalIdentity\.logoPath \?/);
+  assert.match(report, /identity\.registrationLine \?/);
+  assert.doesNotMatch(report, /Dra\. Natalia Mendes/);
+  assert.doesNotMatch(report, /CRM-BA 27416/);
+  assert.doesNotMatch(report, /RQE 24673/);
+
   assert.match(css, /\.executiveGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(css, /\.glyph\s*\{/);
   assert.match(css, /\.domainTable\s*\{[\s\S]*?table-layout:\s*fixed/);
@@ -99,7 +110,7 @@ test("plano e condutas têm editor único no SOAP e relatório permanece familia
   assert.match(css, /\.toolbar,\s*\n\s*\.reviewGate\s*\{\s*\n\s*display:\s*none !important/s);
 });
 
-test("plano de medicamentos é rota própria, read-only e vinculada à consulta", async () => {
+test("plano de medicamentos é rota própria, read-only, vinculado à consulta e à médica autenticada", async () => {
   const [page, css, server, readCore] = await Promise.all([
     text(files.medicationPage),
     text(files.medicationCss),
@@ -112,13 +123,19 @@ test("plano de medicamentos é rota própria, read-only e vinculada à consulta"
   assert.match(page, /Data de referência/);
   assert.match(page, /MEDICATION_MOMENTS\.map/);
   assert.match(page, /Esta tabela organiza o cuidado e não substitui a receita médica/);
-  assert.match(page, /Dra\. Natalia Mendes/);
-  assert.match(page, /CRM-BA 27416/);
-  assert.match(page, /RQE 24673/);
+  assert.match(page, /document\.professionalIdentity/);
+  assert.match(page, /professionalIdentity\.displayName/);
+  assert.match(page, /professionalIdentity\.logoPath \?/);
+  assert.match(page, /professionalIdentity\.registrationLine \?/);
+  assert.doesNotMatch(page, /Dra\. Natalia Mendes/);
+  assert.doesNotMatch(page, /CRM-BA 27416/);
+  assert.doesNotMatch(page, /RQE 24673/);
   assert.doesNotMatch(page, /<input/);
   assert.doesNotMatch(page, /contentEditable/);
 
   assert.match(server, /requireAuthenticatedUser\("document\.generate"\)/);
+  assert.match(server, /buildProfessionalIdentity/);
+  assert.match(server, /professionalIdentity/);
   assert.match(server, /where:\s*\{\s*id:\s*consultationId\s*\}/s);
   assert.match(server, /consultation\.patient\.id !== consultation\.patientId/);
   assert.match(server, /medicationDocumentWorkspaceContext\(tx, consultation\.id\)/);
