@@ -14,6 +14,11 @@ import type { LongitudinalAssessment } from "../../domain/clinical-change-summar
 import { assertDocumentContextIntegrity } from "../../domain/document-context-integrity";
 import { withDocumentSnapshotWriteRetry } from "../../domain/document-snapshot-versioning";
 import { sanitizeFamilyReportModel } from "../../domain/family-care-safety";
+import {
+  applyContextualFamilyCarePlan,
+  deriveEstablishedImmobilityContext,
+  hasGastrostomyMedicationRoute,
+} from "../../domain/family-contextual-care";
 import { parseObjectiveNote } from "../../domain/consultation-note-contract";
 import {
   buildMedicationPlanSnapshotModel,
@@ -211,6 +216,7 @@ export async function generateAgaReport(input: {
       });
 
       const medicationWorkspace = (await workspaceContext(tx, consultation.id)).view;
+      const gastrostomyPresent = hasGastrostomyMedicationRoute(medicationWorkspace.items);
       let medicationPlan;
       try {
         const medicationSnapshot = buildMedicationPlanSnapshotModel({
@@ -243,7 +249,18 @@ export async function generateAgaReport(input: {
         vaccinationReview: vaccinationReviewFromObjective(consultation.objective),
         medicationPlan,
       });
-      const safeReport = sanitizeFamilyReportModel(clinicalReport);
+      const contextualReport = {
+        ...clinicalReport,
+        carePlan: applyContextualFamilyCarePlan({
+          plan: clinicalReport.carePlan,
+          immobility: deriveEstablishedImmobilityContext({
+            scales: clinicalReport.assessedScales,
+            geriatricProblems: clinicalReport.geriatricProblems,
+          }),
+          gastrostomyPresent,
+        }),
+      };
+      const safeReport = sanitizeFamilyReportModel(contextualReport);
       const capacityHistory = buildCapacityDimensionHistory({
         patientId: consultation.patientId,
         consultations: horizon,
