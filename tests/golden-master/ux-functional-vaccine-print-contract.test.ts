@@ -4,31 +4,34 @@ import test from "node:test";
 
 const files = {
   soap: new URL("../../src/components/consultations/soap-editor.tsx", import.meta.url),
-  conduct: new URL("../../src/components/reports/geriatric-conduct-workspace.tsx", import.meta.url),
   consultationPage: new URL("../../src/app/consultations/[id]/page.tsx", import.meta.url),
+  consultationWorkspace: new URL("../../src/components/consultations/consultation-workspace.tsx", import.meta.url),
+  reportTabs: new URL("../../src/components/reports/report-workspace-tabs.tsx", import.meta.url),
   report: new URL("../../src/components/reports/aga-report-document-preview.tsx", import.meta.url),
-  reportTabsCss: new URL("../../src/components/reports/report-workspace-tabs.module.css", import.meta.url),
 };
 
 async function text(url: URL): Promise<string> {
   return readFile(url, "utf8");
 }
 
-test("condutas são o único editor do plano e SOAP mantém P como resumo sincronizado", async () => {
-  const [soap, conduct] = await Promise.all([text(files.soap), text(files.conduct)]);
+test("SOAP concentra plano e condutas em um único editor com revisão médica", async () => {
+  const [soap, reportTabs] = await Promise.all([text(files.soap), text(files.reportTabs)]);
 
-  assert.match(conduct, /fonte única do plano/i);
-  assert.match(conduct, /planByProblem/);
-  assert.match(conduct, /Adicionar ao rascunho/);
-  assert.match(conduct, /requiresPhysicianReview/);
-  assert.match(conduct, /Salvar condutas/);
-  assert.match(conduct, /clinical-note-changed/);
+  assert.match(soap, /P — Plano e condutas/);
+  assert.match(soap, /Plano e condutas em um só lugar/);
+  assert.match(soap, /planByProblem/);
+  assert.match(soap, /planSuggestions/);
+  assert.match(soap, /Adicionar ao rascunho/);
+  assert.match(soap, /requiresPhysicianReview/);
+  assert.match(soap, /setProblemPlan/);
+  assert.match(soap, /Salvar evolução e plano/);
+  assert.match(soap, /Nada é aplicado automaticamente|nada é aplicado automaticamente/);
+  assert.match(soap, /expectedNoteVersion/);
+  assert.match(soap, /FINALIZED/);
 
-  assert.match(soap, /Fonte única: Condutas da consulta geriátrica/);
-  assert.match(soap, /planSummaryList/);
-  assert.doesNotMatch(soap, /Sugestão baseada na avaliação desta consulta/);
-  assert.doesNotMatch(soap, /setProblemPlan/);
-  assert.doesNotMatch(soap, /className=\{styles\.planField\}.*textarea/s);
+  assert.match(reportTabs, /AgaReportDocumentPreview/);
+  assert.doesNotMatch(reportTabs, /GeriatricConductWorkspace/);
+  assert.doesNotMatch(reportTabs, /Condutas da consulta geriátrica/);
 });
 
 test("vacinas usam checklist organizado e não expõem campo livre de outras pendências", async () => {
@@ -45,18 +48,18 @@ test("vacinas usam checklist organizado e não expõem campo livre de outras pen
 });
 
 test("impressão do relatório e da tabela de medicamentos permanece acessível sem remover salvaguardas", async () => {
-  const [page, report, tabsCss] = await Promise.all([
+  const [page, workspace, report] = await Promise.all([
     text(files.consultationPage),
+    text(files.consultationWorkspace),
     text(files.report),
-    text(files.reportTabsCss),
   ]);
 
-  assert.match(page, /Abrir e imprimir tabela/);
-  assert.match(page, /\/consultations\/\$\{id\}\/medications\/print/);
-  assert.match(page, /salvaguardas de identidade e reconciliação/i);
+  assert.match(page, /ConsultationWorkspace/);
+  assert.match(workspace, /Abrir e imprimir tabela/);
+  assert.match(workspace, /\/consultations\/\$\{consultationId\}\/medications\/print/);
+  assert.match(workspace, /salvaguardas de identidade e reconciliação/i);
 
   assert.match(report, /Imprimir relatório/);
   assert.match(report, /disabled=\{!generated \|\| !clinicalReviewConfirmed\}/);
-  assert.match(tabsCss, /position:\s*sticky/);
-  assert.match(tabsCss, /:global\(\.no-print\):first-child/);
+  assert.match(report, /Revisão clínica antes de compartilhar/);
 });
