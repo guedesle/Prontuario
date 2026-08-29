@@ -1,12 +1,18 @@
 import { notFound } from "next/navigation";
 import { ConsultationWorkspace } from "@/components/consultations/consultation-workspace";
 import { buildConsultationContextViewModel } from "@/domain/consultation-context";
+import { buildProfessionalIdentity } from "@/domain/professional-identity";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
 import { prisma } from "@/server/db";
 import styles from "./page.module.css";
 
 export default async function ConsultationPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAuthenticatedUser("patient.read");
+  const { user } = await requireAuthenticatedUser("patient.read");
+  const professionalIdentity = buildProfessionalIdentity({
+    name: user.name,
+    email: user.email,
+    brandOwnerEmail: process.env.PROFESSIONAL_BRAND_OWNER_EMAIL,
+  });
   const { id } = await params;
   const consultation = await prisma.consultation.findUnique({
     where: { id },
@@ -89,7 +95,11 @@ export default async function ConsultationPage({ params }: { params: Promise<{ i
           </header>
         </section>
 
-        <ConsultationWorkspace consultationId={id} patientName={context.patientName} />
+        <ConsultationWorkspace
+          consultationId={id}
+          patientName={context.patientName}
+          professionalIdentity={professionalIdentity}
+        />
       </div>
     </main>
   );
