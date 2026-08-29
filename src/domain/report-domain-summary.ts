@@ -237,12 +237,16 @@ export function buildReportDomainSummaries(
       genericGuidance,
       functionalContext,
     );
+    // Imobilidade contextualiza mobilidade, mas não pode apagar a orientação de
+    // Funcionalidade derivada de Katz/Barthel/Lawton.
     const guidance = unique(
-      contextualizeImmobilityDomainGuidance(
-        dimension,
-        functionallyContextualized,
-        immobilityContext,
-      ),
+      dimension === "funcionalidade"
+        ? functionallyContextualized
+        : contextualizeImmobilityDomainGuidance(
+            dimension,
+            functionallyContextualized,
+            immobilityContext,
+          ),
     ).slice(0, 5);
     const requiresMedicalGuidance = (state === "altered" || state === "attention") && guidance.length === 0;
     const evidenceReferences = alteredIntrinsicGuidance?.evidenceReferences
