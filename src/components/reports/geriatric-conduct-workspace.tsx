@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { VaccinationReview } from "@/domain/vaccination-prevention";
+import suggestionStyles from "../consultations/professional-plan-suggestion.module.css";
 import styles from "./geriatric-conduct-workspace.module.css";
 
 type Problem = {
@@ -9,6 +10,16 @@ type Problem = {
   type: "CLINICAL" | "GERIATRIC";
   status: "ACTIVE" | "STABLE" | "MONITORING" | "RESOLVED";
   title: string;
+};
+
+type PlanSuggestion = {
+  problemId: string;
+  problemTitle: string;
+  proposalKey: string;
+  actions: string[];
+  evidence: Array<{ scaleCode: string; scaleVersion: string; scoreText: string; classification?: string }>;
+  sources: Array<{ pmid: string; label: string }>;
+  requiresPhysicianReview: true;
 };
 
 type NoteView = {
@@ -26,6 +37,7 @@ type NoteView = {
   };
   exams: { current: string };
   problems: Problem[];
+  planSuggestions: PlanSuggestion[];
 };
 
 function lines(value: string): string[] {
@@ -38,6 +50,7 @@ export function GeriatricConductWorkspace({ consultationId }: { consultationId: 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [feedback, setFeedback] = useState<{ kind: "error" | "success"; text: string } | null>(null);
 
   async function load() {
@@ -77,6 +90,15 @@ export function GeriatricConductWorkspace({ consultationId }: { consultationId: 
     setFeedback(null);
   }
 
+  function applySuggestion(suggestion: PlanSuggestion) {
+    const existing = lines(plans[suggestion.problemId] ?? "");
+    const merged = [...existing];
+    for (const action of suggestion.actions) if (!merged.includes(action)) merged.push(action);
+    updatePlan(suggestion.problemId, merged.join("\n"));
+    setDismissedSuggestions((current) => new Set([...current, suggestion.problemId]));
+    setFeedback({ kind: "success", text: "Sugestão adicionada ao rascunho das condutas. Revise e edite antes de salvar." });
+  }
+
   async function save() {
     if (!view || saving || finalized) return;
     setSaving(true);
@@ -103,7 +125,7 @@ export function GeriatricConductWorkspace({ consultationId }: { consultationId: 
       setView(body);
       setPlans(Object.fromEntries(Object.entries(body.fields.planByProblem ?? {}).map(([id, actions]) => [id, actions.join("\n")])));
       setDirty(false);
-      setFeedback({ kind: "success", text: "Condutas da consulta geriátrica salvas e sincronizadas com o P — Plano do SOAP." });
+      setFeedback({ kind: "success", text: "Condutas salvas. O P — Plano do SOAP foi sincronizado automaticamente." });
       window.dispatchEvent(new CustomEvent("clinical-note-changed", { detail: { consultationId } }));
     } catch (error) {
       setFeedback({ kind: "error", text: error instanceof Error ? error.message : "Não foi possível salvar as condutas." });
@@ -115,12 +137,12 @@ export function GeriatricConductWorkspace({ consultationId }: { consultationId: 
   if (loading) return <section className={styles.card}><p>Carregando condutas…</p></section>;
   if (!view) return <section className={styles.card}><p role="alert">{feedback?.text ?? "Condutas indisponíveis."}</p></section>;
 
-  return <section className={styles.card} aria-labelledby="geriatric-conduct-title">
+  return <section id="condutas-profissionais" className={styles.card} aria-labelledby="geriatric-conduct-title">
     <header className={styles.heading}>
       <div>
-        <p className={styles.eyebrow}>Área médica · não compartilhada automaticamente</p>
+        <p className={styles.eyebrow}>Área médica · fonte única do plano</p>
         <h3 id="geriatric-conduct-title">Condutas da consulta geriátrica</h3>
-        <p>Defina e revise as condutas orientadas nesta consulta. Este conteúdo usa a mesma fonte do <strong>P — Plano por problema</strong> do SOAP, evitando registros divergentes.</p>
+        <p>Registre aqui as condutas por problema. O <strong>P — Plano</strong> da evolução SOAP é preenchido a partir desta mesma fonte, evitando dois editores concorrentes e registros divergentes.</p>
       </div>
       <button type="button" onClick={() => void save()} disabled={!dirty || saving || finalized}>{saving ? "Salvando…" : "Salvar condutas"}</button>
     </header>
@@ -130,12 +152,23 @@ export function GeriatricConductWorkspace({ consultationId }: { consultationId: 
     {feedback ? <p className={feedback.kind === "error" ? styles.error : styles.success} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.text}</p> : null}
 
     {activeProblems.length === 0 ? <p className={styles.empty}>Não há problemas ativos confirmados para vincular condutas.</p> : <div className={styles.grid}>
-      {activeProblems.map((problem, index) => <label className={styles.problem} key={problem.id}>
-        <span><b>{index + 1}. {problem.title}</b><small>{problem.type === "GERIATRIC" ? "Problema geriátrico" : "Problema clínico"} · {problem.status}</small></span>
-        <textarea value={plans[problem.id] ?? ""} disabled={finalized} onChange={(event) => updatePlan(problem.id, event.target.value)} rows={5} placeholder="Uma conduta por linha. O médico pode editar livremente após revisão clínica." />
-      </label>)}
+      {activeProblems.map((problem, index) => {
+        const suggestion = view.planSuggestions.find((item) => item.problemId === problem.id);
+        const visibleSuggestion = suggestion && !dismissedSuggestions.has(problem.id) ? suggestion : null;
+        return <label className={styles.problem} key={problem.id}>
+          <span><b>{index + 1}. {problem.title}</b><small>{problem.type === "GERIATRIC" ? "Problema geriátrico" : "Problema clínico"} · {problem.status}</small></span>
+          {visibleSuggestion ? <aside className={suggestionStyles.card} aria-label={`Sugestão de plano para ${problem.title}`}>
+            <div className={suggestionStyles.header}><strong>Sugestão baseada na avaliação desta consulta</strong><span className={suggestionStyles.badge}>Rascunho · revisão médica</span></div>
+            <p className={suggestionStyles.evidence}>Origem: {visibleSuggestion.evidence.map((item) => `${item.scaleCode} ${item.scoreText}${item.classification ? ` — ${item.classification}` : ""}`).join("; ")}.</p>
+            <ul className={suggestionStyles.actionsList}>{visibleSuggestion.actions.map((action) => <li key={action}>{action}</li>)}</ul>
+            <p className={suggestionStyles.sources}>Fontes: {visibleSuggestion.sources.map((source) => `${source.label} (PMID ${source.pmid})`).join("; ")}.</p>
+            <div className={suggestionStyles.controls}><button type="button" disabled={finalized} onClick={(event) => { event.preventDefault(); applySuggestion(visibleSuggestion); }}>Adicionar ao rascunho</button><button type="button" onClick={(event) => { event.preventDefault(); setDismissedSuggestions((current) => new Set([...current, problem.id])); }}>Ocultar sugestão</button></div>
+          </aside> : null}
+          <textarea value={plans[problem.id] ?? ""} disabled={finalized} onChange={(event) => updatePlan(problem.id, event.target.value)} rows={5} placeholder="Uma conduta por linha. Revise clinicamente antes de salvar." />
+        </label>;
+      })}
     </div>}
 
-    <footer className={styles.footer}>Esta aba é profissional. As orientações destinadas a paciente/família permanecem no relatório familiar e passam pelas salvaguardas que removem prescrição e mudanças de medicamentos.</footer>
+    <footer className={styles.footer}>Esta aba é profissional. As orientações destinadas a paciente/família permanecem no relatório familiar e continuam sujeitas às salvaguardas que impedem prescrição ou mudanças automáticas de medicamentos.</footer>
   </section>;
 }
