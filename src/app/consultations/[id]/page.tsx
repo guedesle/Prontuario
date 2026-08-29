@@ -56,6 +56,7 @@ export default async function ConsultationPage({ params }: { params: Promise<{ i
             patientBirthDateLabel={context.patientBirthDateLabel}
             consultationDateLabel={context.consultationDateLabel}
             consultationStatusLabel={context.consultationStatusLabel}
+            professionalIdentity={professionalIdentity}
           />
         </aside>
 
