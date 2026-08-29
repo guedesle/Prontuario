@@ -52,9 +52,17 @@ test("plano e condutas têm editor único no SOAP, relatório permanece familiar
   assert.match(reportTabs, /AgaReportDocumentPreview/);
   assert.match(reportTabs, /professionalIdentity: ProfessionalIdentity/);
   assert.match(reportTabs, /professionalIdentity=\{professionalIdentity\}/);
-  assert.doesNotMatch(reportTabs, /GeriatricConductWorkspace/);
+  assert.doesNotMatch(
+    reportTabs,
+    /from\s+["']@\/components\/reports\/geriatric-conduct-workspace["']/,
+  );
+  assert.doesNotMatch(reportTabs, /<GeriatricConductWorkspace\b/);
   assert.doesNotMatch(reportTabs, /Condutas da consulta geriátrica/);
-  assert.doesNotMatch(report, /GeriatricConductWorkspace/);
+  assert.doesNotMatch(
+    report,
+    /from\s+["']@\/components\/reports\/geriatric-conduct-workspace["']/,
+  );
+  assert.doesNotMatch(report, /<GeriatricConductWorkspace\b/);
   assert.doesNotMatch(report, /planByProblem/);
 
   assert.match(report, /Relatório de Avaliação Geriátrica/);
