@@ -17,32 +17,32 @@ test("PA-CDS mantém tokens clinical premium e não restaura paleta marrom antig
   assert.doesNotMatch(globals, /--primary:\s*#896d72/);
 });
 
-test("entrada e consulta preservam marca, paciente, hook global e navegação lateral aprovada", () => {
+test("entrada e consulta preservam identidade por sessão, paciente e navegação progressiva aprovada", () => {
   const home = source("src/app/page.tsx");
   const consultation = source("src/app/consultations/[id]/page.tsx");
-  const nav = source("src/components/consultations/consultation-section-nav.tsx");
-  const navCss = source("src/components/consultations/consultation-section-nav.module.css");
+  const workspace = source("src/components/consultations/consultation-workspace.tsx");
+  const workspaceCss = source("src/components/consultations/consultation-workspace.module.css");
 
-  assert.match(home, /natalia-mendes-logo\.svg/);
+  assert.match(home, /buildProfessionalIdentity|professionalIdentity/);
+  assert.match(home, /professionalIdentity\.logoPath/);
+  assert.doesNotMatch(home, /src=["']\/brand\/natalia-mendes-logo\.svg["']/);
   assert.match(home, /Localize o paciente/);
-  assert.match(consultation, /ConsultationSectionNav/);
+  assert.match(consultation, /ConsultationWorkspace/);
   assert.match(consultation, /shell consultation-shell/);
-  assert.match(consultation, /consultation-layout/);
-  assert.match(consultation, /consultation-sidebar/);
   assert.match(consultation, /consultation-content/);
-  assert.match(consultation, /consultation-report-section/);
   assert.match(consultation, /patientName=\{context\.patientName\}/);
-  assert.match(nav, /Natalia Mendes — Médica Geriatra/);
-  assert.match(nav, /patientName/);
-  assert.match(nav, /Resumo/);
-  assert.match(nav, /Problemas/);
-  assert.match(nav, /Medicamentos/);
-  assert.match(nav, /SOAP \/ AGA/);
-  assert.match(nav, /Escalas clínicas/);
-  assert.match(nav, /Relatório final/);
-  assert.match(nav, /Revisão e finalização/);
-  assert.match(navCss, /\.patientCard/);
-  assert.match(navCss, /background:\s*var\(--primary\)/);
+  assert.match(consultation, /professionalIdentity=\{professionalIdentity\}/);
+  assert.doesNotMatch(consultation, /natalia-mendes-logo\.svg/);
+  assert.match(workspace, /Consulta em etapas/);
+  assert.match(workspace, /Problemas/);
+  assert.match(workspace, /Medicamentos/);
+  assert.match(workspace, /Evolução e plano/);
+  assert.match(workspace, /Escalas clínicas/);
+  assert.match(workspace, /Relatório final/);
+  assert.match(workspace, /Finalizar consulta/);
+  assert.match(workspace, /professionalIdentity: ProfessionalIdentity/);
+  assert.match(workspaceCss, /\.navigation/);
+  assert.match(workspaceCss, /position:\s*sticky/);
 });
 
 test("escala clínica permanece caixa única por domínio no padrão aprovado", () => {
@@ -69,9 +69,6 @@ test("relatório e impressão carregam camada premium e preservam relatório ani
   assert.match(overrides, /--care-accent:\s*var\(--primary\)/);
   assert.match(overrides, /\.care-report-header h1/);
   assert.match(overrides, /\.medication-final-table thead th/);
-  assert.match(overrides, /\.consultation-shell > \.consultation-layout/);
-  assert.match(overrides, /\.consultation-content > \.consultation-section:not\(\.consultation-report-section\)/);
-  assert.match(overrides, /\.consultation-content > \.consultation-report-section/);
   assert.match(branding, /report-brand-logo/);
   assert.match(branding, /professional-signature/);
 });
