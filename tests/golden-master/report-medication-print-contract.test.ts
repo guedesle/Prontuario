@@ -4,8 +4,9 @@ import test from "node:test";
 
 const files = {
   consultationPage: new URL("../../src/app/consultations/[id]/page.tsx", import.meta.url),
+  consultationWorkspace: new URL("../../src/components/consultations/consultation-workspace.tsx", import.meta.url),
+  soap: new URL("../../src/components/consultations/soap-editor.tsx", import.meta.url),
   reportTabs: new URL("../../src/components/reports/report-workspace-tabs.tsx", import.meta.url),
-  conductWorkspace: new URL("../../src/components/reports/geriatric-conduct-workspace.tsx", import.meta.url),
   report: new URL("../../src/components/reports/aga-report-document-preview.tsx", import.meta.url),
   reportCss: new URL("../../src/components/reports/aga-report-document-preview.module.css", import.meta.url),
   medicationPage: new URL("../../src/app/consultations/[id]/medications/print/page.tsx", import.meta.url),
@@ -18,27 +19,37 @@ async function text(url: URL) {
   return readFile(url, "utf8");
 }
 
-test("relatório final mantém documento familiar e adiciona condutas profissionais em aba separada", async () => {
-  const [consultationPage, reportTabs, conductWorkspace, report, css] = await Promise.all([
+test("plano e condutas têm editor único no SOAP e relatório permanece familiar", async () => {
+  const [consultationPage, consultationWorkspace, soap, reportTabs, report, css] = await Promise.all([
     text(files.consultationPage),
+    text(files.consultationWorkspace),
+    text(files.soap),
     text(files.reportTabs),
-    text(files.conductWorkspace),
     text(files.report),
     text(files.reportCss),
   ]);
 
-  assert.match(consultationPage, /ReportWorkspaceTabs/);
-  assert.doesNotMatch(consultationPage, /AgaReportPreview\s/);
-  assert.match(reportTabs, /AgaReportDocumentPreview/);
-  assert.match(reportTabs, /GeriatricConductWorkspace/);
-  assert.match(reportTabs, /Relatório para paciente e família/);
-  assert.match(reportTabs, /Condutas da consulta geriátrica/);
+  assert.match(consultationPage, /ConsultationWorkspace/);
+  assert.doesNotMatch(consultationPage, /ProblemWorkspace/);
+  assert.doesNotMatch(consultationPage, /ClinicalScalesWorkspace/);
+  assert.match(consultationWorkspace, /dynamic\(/);
+  assert.match(consultationWorkspace, /Evolução e plano/);
+  assert.match(consultationWorkspace, /Abrimos somente a etapa em uso/);
+  assert.match(consultationWorkspace, /ReportWorkspaceTabs/);
 
-  assert.match(conductWorkspace, /\/api\/consultations\/\$\{consultationId\}\/note/);
-  assert.match(conductWorkspace, /planByProblem/);
-  assert.match(conductWorkspace, /Salvar condutas/);
-  assert.match(conductWorkspace, /expectedNoteVersion/);
-  assert.match(conductWorkspace, /Consulta finalizada/);
+  assert.match(soap, /P — Plano e condutas/);
+  assert.match(soap, /Plano e condutas em um só lugar/);
+  assert.match(soap, /planSuggestions/);
+  assert.match(soap, /Adicionar ao rascunho/);
+  assert.match(soap, /planByProblem/);
+  assert.match(soap, /Salvar evolução e plano/);
+  assert.match(soap, /expectedNoteVersion/);
+  assert.match(soap, /Consulta finalizada/);
+  assert.doesNotMatch(soap, /Ir para Relatório e condutas/);
+
+  assert.match(reportTabs, /AgaReportDocumentPreview/);
+  assert.doesNotMatch(reportTabs, /GeriatricConductWorkspace/);
+  assert.doesNotMatch(reportTabs, /Condutas da consulta geriátrica/);
   assert.doesNotMatch(report, /GeriatricConductWorkspace/);
   assert.doesNotMatch(report, /planByProblem/);
 
