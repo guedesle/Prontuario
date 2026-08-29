@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("consulta expõe navegação por etapas responsiva sem montar todas as áreas de uma vez", () => {
+test("consulta expõe navegação por etapas responsiva sem montar todas as áreas e preserva identidade profissional", () => {
   const pageSource = readFileSync(
     new URL("../../src/app/consultations/[id]/page.tsx", import.meta.url),
     "utf8",
@@ -18,6 +18,9 @@ test("consulta expõe navegação por etapas responsiva sem montar todas as áre
 
   assert.match(pageSource, /ConsultationWorkspace/);
   assert.match(pageSource, /id="resumo-consulta"/);
+  assert.match(pageSource, /buildProfessionalIdentity/);
+  assert.match(pageSource, /professionalIdentity=\{professionalIdentity\}/);
+  assert.doesNotMatch(pageSource, /natalia-mendes-logo\.svg/);
 
   for (const id of [
     "problemas",
@@ -43,14 +46,13 @@ test("consulta expõe navegação por etapas responsiva sem montar todas as áre
   assert.match(workspaceSource, /visited\.has\("relatorio"\)/);
   assert.match(workspaceSource, /visited\.has\("finalizacao"\)/);
   assert.match(workspaceSource, /hidden=\{active !==/);
+  assert.match(workspaceSource, /professionalIdentity: ProfessionalIdentity/);
+  assert.match(workspaceSource, /ReportWorkspaceTabs consultationId=\{consultationId\} professionalIdentity=\{professionalIdentity\}/);
   assert.doesNotMatch(workspaceSource, /IntersectionObserver/);
 
-  // Desktop: navegação por etapas permanece acessível e fixa na viewport.
   assert.match(workspaceStyles, /\.navigation\s*\{[\s\S]*position:\s*sticky/);
   assert.match(workspaceStyles, /\.navigation\s*\{[\s\S]*top:\s*14px/);
   assert.match(workspaceStyles, /grid-template-columns:\s*230px minmax\(0, 1fr\)/);
-
-  // Tablet/mobile: a navegação permanece acessível, compacta e rolável.
   assert.match(workspaceStyles, /@media \(max-width:\s*980px\)[\s\S]*\.navigation[\s\S]*position:\s*sticky/);
   assert.match(workspaceStyles, /@media \(max-width:\s*980px\)[\s\S]*top:\s*8px/);
   assert.match(workspaceStyles, /@media \(max-width:\s*620px\)[\s\S]*\.sectionList[\s\S]*overflow-x:\s*auto/);
