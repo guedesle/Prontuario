@@ -109,3 +109,47 @@ test("tabela inclui somente domínios avaliados na consulta alvo e nunca usa ori
   assert.doesNotMatch(text, /Manter o plano de cuidado já acordado/);
   assert.doesNotMatch(text, /orientação individual deste domínio/i);
 });
+
+test("FAST 7d com Katz dependente nunca exibe Funcionalidade como preservada", () => {
+  const report = buildAgaReportModel({
+    patientId: "patient-katz-fast7d",
+    consultationId: "consultation-current",
+    consultationStatus: "IN_REVIEW",
+    patientName: "Paciente Sintético",
+    longitudinalProblems: [],
+    longitudinalAssessments: [
+      {
+        patientId: "patient-katz-fast7d",
+        consultationId: "consultation-current",
+        scaleCode: "fast",
+        scaleVersion: "1.0",
+        score: 7.4,
+        scoreText: "7d",
+        classification: "FAST 7d",
+        color: "verde",
+        appliedAt: "2026-08-29",
+      },
+      {
+        patientId: "patient-katz-fast7d",
+        consultationId: "consultation-current",
+        scaleCode: "katz",
+        scaleVersion: "1.0",
+        score: 0,
+        scoreText: "0",
+        classification: "registro legado",
+        color: "verde",
+        appliedAt: "2026-08-29",
+      },
+    ],
+  });
+
+  const functionality = buildReportDomainSummaries(report.assessedScales, report.intrinsicCapacity)
+    .find((domain) => domain.code === "funcionalidade");
+
+  assert.equal(functionality?.state, "altered");
+  assert.equal(functionality?.stateLabel, "Alteração identificada — requer atenção");
+  const guidance = functionality?.guidance.join(" ") ?? "";
+  assert.match(guidance, /assistência integral/i);
+  assert.match(guidance, /conforto, segurança e dignidade/i);
+  assert.doesNotMatch(guidance, /ajuda apenas na medida necessária/i);
+});
