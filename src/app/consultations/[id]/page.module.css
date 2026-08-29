@@ -198,6 +198,55 @@
   text-align: right;
 }
 
+.documentActionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: -8px;
+  padding: 14px 16px;
+  border: 1px solid #d9c9e6;
+  border-radius: 14px;
+  background: #faf7fd;
+}
+
+.documentActionBar > div {
+  display: grid;
+  gap: 3px;
+}
+
+.documentActionBar strong {
+  color: var(--primary-strong);
+  font-size: 13px;
+}
+
+.documentActionBar span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.documentAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  flex: 0 0 auto;
+  padding: 9px 14px;
+  border: 1px solid var(--primary);
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.documentAction:focus-visible {
+  outline: 3px solid rgb(107 85 217 / 22%);
+  outline-offset: 2px;
+}
+
 @media (max-width: 1080px) {
   .consultationLayout {
     grid-template-columns: 230px minmax(0, 1fr);
@@ -256,10 +305,15 @@
     grid-template-columns: 1fr;
   }
 
-  .heroFooter {
+  .heroFooter,
+  .documentActionBar {
     align-items: flex-start;
     flex-direction: column;
     gap: 10px;
+  }
+
+  .documentAction {
+    width: 100%;
   }
 
   .intro {
