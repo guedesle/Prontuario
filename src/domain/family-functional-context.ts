@@ -74,13 +74,22 @@ function lawtonLevel(score: number): FamilyFunctionalCareLevel {
   return score < 21 ? "iadl-support" : "independent";
 }
 
+function functionalScaleLevel(context: FamilyFunctionalContext): FamilyFunctionalCareLevel | undefined {
+  let level: FamilyFunctionalCareLevel | undefined;
+  const add = (candidate: FamilyFunctionalCareLevel) => {
+    level = level === undefined ? candidate : maxLevel(level, candidate);
+  };
+
+  if (typeof context.katzScore === "number") add(katzLevel(context.katzScore));
+  if (typeof context.barthelScore === "number") add(barthelLevel(context.barthelScore));
+  if (typeof context.lawtonScore === "number") add(lawtonLevel(context.lawtonScore));
+  return level;
+}
+
 /**
  * Define o nível de apoio que contextualiza as orientações familiares.
- * Hierarquia clínica deliberada:
- * 1. FAST é a primeira âncora e determina a gravidade funcional associada à demência.
- * 2. Katz e Barthel acrescentam a necessidade de ajuda nas ABVD, sem reduzir nem contradizer
- *    uma limitação já estabelecida por outro instrumento funcional.
- * 3. Lawton acrescenta dependência nas AIVD, sem reduzir uma dependência previamente identificada.
+ * FAST contextualiza demência e mobilidade. Katz/Barthel (ABVD) e Lawton (AIVD)
+ * permanecem as âncoras específicas da linha Funcionalidade quando foram aplicados.
  *
  * O contexto apenas adapta linguagem e prioridades de cuidado. Não cria diagnóstico,
  * não altera pontuação de escala e não gera prescrição.
@@ -209,22 +218,24 @@ const IADL_SUPPORT_GUIDANCE: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * Substitui orientação genérica por orientação coerente com o grau de dependência.
- * Para FAST 7.x, a linguagem é deliberadamente centrada em cuidado integral,
- * conforto e prevenção de complicações, evitando recomendações de autonomia incompatíveis.
- * FAST 7c ou superior recebe, em seguida, a orientação específica de imobilidade.
+ * Na linha Funcionalidade, Katz/Barthel/Lawton têm precedência quando foram aplicados;
+ * FAST é usado como fallback apenas quando não há escala funcional específica na consulta.
  */
 export function contextualFamilyGuidance(
   dimension: string,
   baseGuidance: readonly string[],
   context: FamilyFunctionalContext,
 ): string[] {
-  const contextual = context.level === "advanced-dementia"
+  const guidanceLevel = dimension === "funcionalidade"
+    ? functionalScaleLevel(context) ?? context.level
+    : context.level;
+  const contextual = guidanceLevel === "advanced-dementia"
     ? ADVANCED_DEMENTIA_GUIDANCE[dimension]
-    : context.level === "high-dependence"
+    : guidanceLevel === "high-dependence"
       ? HIGH_DEPENDENCE_GUIDANCE[dimension]
-      : context.level === "adl-support"
+      : guidanceLevel === "adl-support"
         ? ADL_SUPPORT_GUIDANCE[dimension]
-        : context.level === "iadl-support"
+        : guidanceLevel === "iadl-support"
           ? IADL_SUPPORT_GUIDANCE[dimension]
           : undefined;
 
