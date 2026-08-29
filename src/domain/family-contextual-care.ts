@@ -29,6 +29,15 @@ export interface ContextualFamilyCareGuidance {
   contact: string[];
 }
 
+export interface FamilyCarePlanShape {
+  now: readonly string[];
+  mediumTerm: readonly string[];
+  caregiver: readonly string[];
+  referrals: readonly string[];
+  contact: readonly string[];
+  urgent: readonly string[];
+}
+
 function normalized(value: string): string {
   return value
     .normalize("NFKD")
@@ -167,4 +176,56 @@ export function gastrostomyFamilyGuidance(): ContextualFamilyCareGuidance {
 
 export function uniqueContextualGuidance(items: readonly string[]): string[] {
   return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
+}
+
+const INDEPENDENT_MOBILITY_PATTERNS: readonly RegExp[] = [
+  /\bcaminh(?:ar|ada|adas|adas|amento|amentos)\b/i,
+  /\bmarcha\b/i,
+  /\bdeambul(?:ar|ação|acao)\b/i,
+  /\blevantar[- ]?se\b/i,
+  /\blevantar\s+e\s+sentar\b/i,
+  /\bagachamento\b/i,
+  /\bsubir\s+(?:degrau|degraus|escada|escadas)\b/i,
+];
+
+function suppressIndependentMobility(items: readonly string[], immobility: EstablishedImmobilityContext): string[] {
+  if (!immobility.established) return [...items];
+  return items.filter((item) => !INDEPENDENT_MOBILITY_PATTERNS.some((pattern) => pattern.test(normalized(item))));
+}
+
+/**
+ * Aplica contexto ao plano familiar sem apagar orientações de outros domínios.
+ * Em imobilidade estabelecida, remove apenas metas automáticas de marcha/deambulação/ortostatismo
+ * incompatíveis e acrescenta cuidado assistido. Para GTT, acrescenta cuidados de gastrostomia.
+ */
+export function applyContextualFamilyCarePlan(input: {
+  plan: FamilyCarePlanShape;
+  immobility: EstablishedImmobilityContext;
+  gastrostomyPresent: boolean;
+}): FamilyCarePlanShape {
+  const immobilityGuidance = establishedImmobilityGuidance(input.immobility);
+  const gastrostomyGuidance = input.gastrostomyPresent
+    ? gastrostomyFamilyGuidance()
+    : { now: [], caregiver: [], contact: [] };
+
+  return {
+    now: uniqueContextualGuidance([
+      ...immobilityGuidance.now,
+      ...gastrostomyGuidance.now,
+      ...suppressIndependentMobility(input.plan.now, input.immobility),
+    ]),
+    mediumTerm: suppressIndependentMobility(input.plan.mediumTerm, input.immobility),
+    caregiver: uniqueContextualGuidance([
+      ...immobilityGuidance.caregiver,
+      ...gastrostomyGuidance.caregiver,
+      ...suppressIndependentMobility(input.plan.caregiver, input.immobility),
+    ]),
+    referrals: [...input.plan.referrals],
+    contact: uniqueContextualGuidance([
+      ...immobilityGuidance.contact,
+      ...gastrostomyGuidance.contact,
+      ...input.plan.contact,
+    ]),
+    urgent: [...input.plan.urgent],
+  };
 }
