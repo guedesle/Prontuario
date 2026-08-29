@@ -17,13 +17,15 @@ test("PA-CDS mantém tokens clinical premium e não restaura paleta marrom antig
   assert.doesNotMatch(globals, /--primary:\s*#896d72/);
 });
 
-test("entrada e consulta preservam marca, paciente, hook global e navegação lateral aprovada", () => {
+test("entrada e consulta preservam identidade por sessão, paciente, hook global e navegação lateral aprovada", () => {
   const home = source("src/app/page.tsx");
   const consultation = source("src/app/consultations/[id]/page.tsx");
   const nav = source("src/components/consultations/consultation-section-nav.tsx");
   const navCss = source("src/components/consultations/consultation-section-nav.module.css");
 
-  assert.match(home, /natalia-mendes-logo\.svg/);
+  assert.match(home, /buildProfessionalIdentity|professionalIdentity/);
+  assert.match(home, /professionalIdentity\.logoPath/);
+  assert.doesNotMatch(home, /src=["']\/brand\/natalia-mendes-logo\.svg["']/);
   assert.match(home, /Localize o paciente/);
   assert.match(consultation, /ConsultationSectionNav/);
   assert.match(consultation, /shell consultation-shell/);
@@ -32,7 +34,10 @@ test("entrada e consulta preservam marca, paciente, hook global e navegação la
   assert.match(consultation, /consultation-content/);
   assert.match(consultation, /consultation-report-section/);
   assert.match(consultation, /patientName=\{context\.patientName\}/);
-  assert.match(nav, /Natalia Mendes — Médica Geriatra/);
+  assert.match(consultation, /professionalIdentity/);
+  assert.match(nav, /professionalIdentity/);
+  assert.match(nav, /professionalIdentity\.logoPath/);
+  assert.doesNotMatch(nav, /src=["']\/brand\/natalia-mendes-logo\.svg["']/);
   assert.match(nav, /patientName/);
   assert.match(nav, /Resumo/);
   assert.match(nav, /Problemas/);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import type { ProfessionalIdentity } from "@/domain/professional-identity";
 import { AgaReportDocumentPreview } from "./aga-report-document-preview";
 import { GeriatricConductWorkspace } from "./geriatric-conduct-workspace";
 import styles from "./report-workspace-tabs.module.css";
@@ -9,7 +10,13 @@ type Tab = "family" | "conduct";
 
 const TAB_ORDER: readonly Tab[] = ["family", "conduct"];
 
-export function ReportWorkspaceTabs({ consultationId }: { consultationId: string }) {
+export function ReportWorkspaceTabs({
+  consultationId,
+  professionalIdentity,
+}: {
+  consultationId: string;
+  professionalIdentity: ProfessionalIdentity;
+}) {
   const [tab, setTab] = useState<Tab>("family");
   const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ family: null, conduct: null });
 
@@ -65,7 +72,7 @@ export function ReportWorkspaceTabs({ consultationId }: { consultationId: string
       aria-labelledby={tab === "family" ? "family-report-tab" : "geriatric-conduct-tab"}
     >
       {tab === "family"
-        ? <AgaReportDocumentPreview consultationId={consultationId} />
+        ? <AgaReportDocumentPreview consultationId={consultationId} professionalIdentity={professionalIdentity} />
         : <GeriatricConductWorkspace consultationId={consultationId} />}
     </div>
   </section>;

@@ -7,12 +7,18 @@ import { ProblemWorkspace } from "@/components/problems/problem-workspace";
 import { ReportWorkspaceTabs } from "@/components/reports/report-workspace-tabs";
 import { ClinicalScalesWorkspace } from "@/components/scales/clinical-scales-workspace";
 import { buildConsultationContextViewModel } from "@/domain/consultation-context";
+import { buildProfessionalIdentity } from "@/domain/professional-identity";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
 import { prisma } from "@/server/db";
 import styles from "./page.module.css";
 
 export default async function ConsultationPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAuthenticatedUser("patient.read");
+  const { user } = await requireAuthenticatedUser("patient.read");
+  const professionalIdentity = buildProfessionalIdentity({
+    name: user.name,
+    email: user.email,
+    brandOwnerEmail: process.env.PROFESSIONAL_BRAND_OWNER_EMAIL,
+  });
   const { id } = await params;
   const consultation = await prisma.consultation.findUnique({
     where: { id },
@@ -50,6 +56,7 @@ export default async function ConsultationPage({ params }: { params: Promise<{ i
             patientBirthDateLabel={context.patientBirthDateLabel}
             consultationDateLabel={context.consultationDateLabel}
             consultationStatusLabel={context.consultationStatusLabel}
+            professionalIdentity={professionalIdentity}
           />
         </aside>
 
@@ -126,7 +133,7 @@ export default async function ConsultationPage({ params }: { params: Promise<{ i
           </section>
 
           <section id="relatorio" className={`consultation-section consultation-report-section ${styles.sectionAnchor}`} aria-label="Relatório final e condutas">
-            <ReportWorkspaceTabs consultationId={id} />
+            <ReportWorkspaceTabs consultationId={id} professionalIdentity={professionalIdentity} />
           </section>
 
           <section id="finalizacao" className={`consultation-section ${styles.sectionAnchor}`} aria-label="Revisão e finalização">

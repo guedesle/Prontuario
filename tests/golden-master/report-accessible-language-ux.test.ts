@@ -17,18 +17,20 @@ function source(path: string): string {
 test("vocabulário geriátrico usa exatamente a lista aprovada e não restaura os atalhos antigos", () => {
   assert.deepEqual([...GERIATRIC_PROBLEM_PRESETS], [
     "Fragilidade",
+    "Comprometimento cognitivo",
+    "Imobilidade",
+    "Restrição da mobilidade",
+    "Comprometimento multissensorial",
+    "Lesão por pressão",
     "Sarcopenia",
-    "Quedas",
-    "Comprometimento cognitivo e demência",
+    "Desnutrição",
     "Delirium",
-    "Incontinência urinária e fecal",
-    "Imobilidade e dependência funcional",
-    "Depressão e isolamento social",
-    "Desnutrição/perda de peso não intencional e anorexia do envelhecimento",
-    "Comprometimento multissensorial — perda visual, auditiva, olfativa, gustativa e tátil",
-    "Polifarmácia — uso de ≥5 medicamentos",
-    "Multimorbidade — presença de ≥2 condições crônicas",
-    "Úlceras de pressão",
+    "Transtorno do humor",
+    "Ansiedade",
+    "Polifarmácia (>5 medicações)",
+    "Incontinência urinária",
+    "Incontinência fecal",
+    "Queda",
   ]);
 
   const workspace = source("src/components/problems/problem-workspace.tsx");
@@ -37,6 +39,8 @@ test("vocabulário geriátrico usa exatamente a lista aprovada e não restaura o
   assert.match(workspace, /aria-pressed=\{selected\}/);
   assert.match(workspace, /aria-live="polite"/);
   assert.match(workspace, /Confirme o termo antes de adicionar/);
+  assert.match(workspace, /Detalhes do problema selecionado \(opcional\)/);
+  assert.match(workspace, /<textarea/);
   assert.doesNotMatch(workspace, /Incapacidade cognitiva|Instabilidade postural|Insuficiência familiar|Incapacidade comunicativa/);
 });
 
@@ -58,7 +62,7 @@ test("texto exportado do relatório não expõe estados internos em inglês", ()
     longitudinalAssessments: [],
     longitudinalProblems: [
       { id: "c", patientId: "p1", type: "CLINICAL", status: "ACTIVE", title: "Hipertensão arterial" },
-      { id: "g", patientId: "p1", type: "GERIATRIC", status: "RESOLVED", title: "Quedas" },
+      { id: "g", patientId: "p1", type: "GERIATRIC", status: "RESOLVED", title: "Queda" },
     ],
     vaccinationReview: { status: "PENDING", pendingVaccines: ["Influenza"] },
   });
@@ -66,7 +70,7 @@ test("texto exportado do relatório não expõe estados internos em inglês", ()
   const text = renderAccessibleAgaReportText(report);
   assert.match(text, /Situação: Em preenchimento/);
   assert.match(text, /Hipertensão arterial \[Ativo\]/);
-  assert.match(text, /Quedas \[Resolvido\]/);
+  assert.match(text, /Queda \[Resolvido\]/);
   assert.match(text, /Há vacinas pendentes registradas/);
   assert.doesNotMatch(text, /\b(?:DRAFT|IN_REVIEW|FINALIZED|ACTIVE|STABLE|MONITORING|RESOLVED|PENDING|UNKNOWN|UP_TO_DATE|READY|REQUIRES_REVIEW|NOT_AVAILABLE)\b/);
   assert.doesNotMatch(text, /\bbaseline\b|pending-medical-review/i);

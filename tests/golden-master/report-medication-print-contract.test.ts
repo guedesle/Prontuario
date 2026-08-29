@@ -33,6 +33,7 @@ test("relatório final mantém documento familiar e adiciona condutas profission
   assert.match(reportTabs, /GeriatricConductWorkspace/);
   assert.match(reportTabs, /Relatório para paciente e família/);
   assert.match(reportTabs, /Condutas da consulta geriátrica/);
+  assert.match(reportTabs, /professionalIdentity/);
 
   assert.match(conductWorkspace, /\/api\/consultations\/\$\{consultationId\}\/note/);
   assert.match(conductWorkspace, /planByProblem/);
@@ -76,6 +77,13 @@ test("relatório final mantém documento familiar e adiciona condutas profission
   assert.doesNotMatch(report, /data-print-scope/);
   assert.doesNotMatch(report, /Acompanhar conforme avaliação clínica/);
 
+  assert.match(report, /professionalIdentity\.displayName/);
+  assert.match(report, /professionalIdentity\.logoPath \?/);
+  assert.match(report, /identity\.registrationLine \?/);
+  assert.doesNotMatch(report, /Dra\. Natalia Mendes/);
+  assert.doesNotMatch(report, /CRM-BA 27416/);
+  assert.doesNotMatch(report, /RQE 24673/);
+
   assert.match(css, /\.executiveGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
   assert.match(css, /\.glyph\s*\{/);
   assert.match(css, /\.domainTable\s*\{[\s\S]*?table-layout:\s*fixed/);
@@ -88,7 +96,7 @@ test("relatório final mantém documento familiar e adiciona condutas profission
   assert.match(css, /\.toolbar,\s*\n\s*\.reviewGate\s*\{\s*\n\s*display:\s*none !important/s);
 });
 
-test("plano de medicamentos é rota própria, read-only e vinculada à consulta", async () => {
+test("plano de medicamentos é rota própria, read-only, vinculado à consulta e à médica autenticada", async () => {
   const [page, css, server, readCore] = await Promise.all([
     text(files.medicationPage),
     text(files.medicationCss),
@@ -101,13 +109,19 @@ test("plano de medicamentos é rota própria, read-only e vinculada à consulta"
   assert.match(page, /Data de referência/);
   assert.match(page, /MEDICATION_MOMENTS\.map/);
   assert.match(page, /Esta tabela organiza o cuidado e não substitui a receita médica/);
-  assert.match(page, /Dra\. Natalia Mendes/);
-  assert.match(page, /CRM-BA 27416/);
-  assert.match(page, /RQE 24673/);
+  assert.match(page, /document\.professionalIdentity/);
+  assert.match(page, /professionalIdentity\.displayName/);
+  assert.match(page, /professionalIdentity\.logoPath \?/);
+  assert.match(page, /professionalIdentity\.registrationLine \?/);
+  assert.doesNotMatch(page, /Dra\. Natalia Mendes/);
+  assert.doesNotMatch(page, /CRM-BA 27416/);
+  assert.doesNotMatch(page, /RQE 24673/);
   assert.doesNotMatch(page, /<input/);
   assert.doesNotMatch(page, /contentEditable/);
 
   assert.match(server, /requireAuthenticatedUser\("document\.generate"\)/);
+  assert.match(server, /buildProfessionalIdentity/);
+  assert.match(server, /professionalIdentity/);
   assert.match(server, /where:\s*\{\s*id:\s*consultationId\s*\}/s);
   assert.match(server, /consultation\.patient\.id !== consultation\.patientId/);
   assert.match(server, /medicationDocumentWorkspaceContext\(tx, consultation\.id\)/);

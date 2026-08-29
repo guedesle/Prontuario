@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-test("consulta expõe sidebar premium com todas as etapas e comportamento responsivo aprovado", () => {
+test("consulta expõe sidebar premium com identidade da sessão, todas as etapas e comportamento responsivo aprovado", () => {
   const pageSource = readFileSync(
     new URL("../../src/app/consultations/[id]/page.tsx", import.meta.url),
     "utf8",
@@ -34,10 +34,13 @@ test("consulta expõe sidebar premium com todas as etapas e comportamento respon
   }
 
   assert.match(pageSource, /ConsultationSectionNav/);
+  assert.match(pageSource, /professionalIdentity/);
   assert.match(navSource, /IntersectionObserver/);
   assert.match(navSource, /aria-current/);
   assert.match(navSource, /aria-label="Seções do preenchimento da consulta"/);
-  assert.match(navSource, /natalia-mendes-logo\.svg/);
+  assert.match(navSource, /professionalIdentity/);
+  assert.match(navSource, /professionalIdentity\.logoPath/);
+  assert.doesNotMatch(navSource, /src=["']\/brand\/natalia-mendes-logo\.svg["']/);
   assert.match(navSource, /patientName/);
 
   // Desktop: sidebar premium acompanha a página dentro da viewport.

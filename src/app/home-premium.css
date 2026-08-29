@@ -28,6 +28,23 @@
   height: auto;
 }
 
+.home-session-identity {
+  display: grid;
+  gap: 3px;
+}
+
+.home-session-identity strong {
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.home-session-identity span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .home-product-badge {
   padding: 6px 10px;
   border: 1px solid #d9cae7;
