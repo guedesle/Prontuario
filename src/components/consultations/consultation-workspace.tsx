@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import type { ProfessionalIdentity } from "@/domain/professional-identity";
 import styles from "./consultation-workspace.module.css";
 
 type WorkspaceSectionId = "problemas" | "medicamentos" | "soap" | "escalas" | "relatorio" | "finalizacao";
@@ -57,7 +58,15 @@ function sectionFromHash(): WorkspaceSectionId | null {
   return SECTIONS.some((section) => section.id === value) ? value : null;
 }
 
-export function ConsultationWorkspace({ consultationId, patientName }: { consultationId: string; patientName: string }) {
+export function ConsultationWorkspace({
+  consultationId,
+  patientName,
+  professionalIdentity,
+}: {
+  consultationId: string;
+  patientName: string;
+  professionalIdentity: ProfessionalIdentity;
+}) {
   const [active, setActive] = useState<WorkspaceSectionId>("soap");
   const [visited, setVisited] = useState<Set<WorkspaceSectionId>>(() => new Set(["soap"]));
 
@@ -152,7 +161,7 @@ export function ConsultationWorkspace({ consultationId, patientName }: { consult
 
         {visited.has("relatorio") ? (
           <div id="relatorio" hidden={active !== "relatorio"} className={styles.panel}>
-            <ReportWorkspaceTabs consultationId={consultationId} />
+            <ReportWorkspaceTabs consultationId={consultationId} professionalIdentity={professionalIdentity} />
           </div>
         ) : null}
 
