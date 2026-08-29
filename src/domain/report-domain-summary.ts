@@ -1,4 +1,8 @@
 import type { AgaScaleReportSection } from "./aga-report.ts";
+import {
+  contextualFamilyGuidance,
+  deriveFamilyFunctionalContext,
+} from "./family-functional-context.ts";
 import type {
   IntrinsicCapacityDomainCode,
   IntrinsicCapacityEvidenceReference,
@@ -192,6 +196,8 @@ export function buildReportDomainSummaries(
     grouped.set(scale.dimension, items);
   }
 
+  const functionalContext = deriveFamilyFunctionalContext(scales);
+
   return DIMENSION_ORDER.flatMap((dimension): ReportDomainSummary[] => {
     const dimensionScales = grouped.get(dimension);
     if (!dimensionScales?.length) return [];
@@ -205,9 +211,12 @@ export function buildReportDomainSummaries(
       ? intrinsicCapacityGuidanceForDomain(intrinsicCode)
       : undefined;
     const domainGuidance = DOMAIN_GUIDANCE[dimension];
-    const guidance = unique([
+    const genericGuidance = unique([
       ...(alteredIntrinsicGuidance?.actions ?? intrinsicGuidance?.actions ?? domainGuidance?.actions ?? []),
-    ]).slice(0, 5);
+    ]);
+    const guidance = unique(
+      contextualFamilyGuidance(dimension, genericGuidance, functionalContext),
+    ).slice(0, 5);
     const requiresMedicalGuidance = (state === "altered" || state === "attention") && guidance.length === 0;
     const evidenceReferences = alteredIntrinsicGuidance?.evidenceReferences
       ?? intrinsicGuidance?.evidenceReferences
