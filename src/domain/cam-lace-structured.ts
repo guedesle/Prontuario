@@ -126,7 +126,7 @@ function exactChoice(raw: Record<string, unknown>, id: string, allowed: readonly
 }
 
 export function scoreCamStructured(raw: Record<string, unknown>) {
-  const allowedIds = new Set(CAM_STRUCTURED_DEFINITION.fields.map((field) => field.id));
+  const allowedIds = new Set<string>(CAM_STRUCTURED_DEFINITION.fields.map((field) => field.id));
   if (Object.keys(raw).some((id) => !allowedIds.has(id))) throw new Error("Resposta CAM contém campo não permitido.");
 
   const acuteOrFluctuating = exactChoice(raw, "acuteOrFluctuating", [0, 1]);
@@ -159,7 +159,7 @@ export function scoreCamStructured(raw: Record<string, unknown>) {
 }
 
 export function scoreLaceStructured(raw: Record<string, unknown>) {
-  const allowedIds = new Set(LACE_STRUCTURED_DEFINITION.fields.map((field) => field.id));
+  const allowedIds = new Set<string>(LACE_STRUCTURED_DEFINITION.fields.map((field) => field.id));
   if (Object.keys(raw).some((id) => !allowedIds.has(id))) throw new Error("Resposta LACE contém campo não permitido.");
 
   const lengthOfStayPoints = exactChoice(raw, "lengthOfStayPoints", [0, 1, 2, 3, 4, 5, 7]);
