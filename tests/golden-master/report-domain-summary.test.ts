@@ -110,7 +110,7 @@ test("tabela inclui somente domínios avaliados na consulta alvo e nunca usa ori
   assert.doesNotMatch(text, /orientação individual deste domínio/i);
 });
 
-test("FAST 7d com Katz dependente nunca exibe Funcionalidade como preservada", () => {
+test("FAST 7d com Katz dependente mantém alteração e orientação baseada em ABVD", () => {
   const report = buildAgaReportModel({
     patientId: "patient-katz-fast7d",
     consultationId: "consultation-current",
@@ -143,13 +143,18 @@ test("FAST 7d com Katz dependente nunca exibe Funcionalidade como preservada", (
     ],
   });
 
+  const katz = report.assessedScales.find((scale) => scale.code === "katz");
+  assert.equal(katz?.assessedInTargetConsultation, true);
+  assert.equal(katz?.result.score, 0);
+
   const functionality = buildReportDomainSummaries(report.assessedScales, report.intrinsicCapacity)
     .find((domain) => domain.code === "funcionalidade");
 
   assert.equal(functionality?.state, "altered");
   assert.equal(functionality?.stateLabel, "Alteração identificada — requer atenção");
   const guidance = functionality?.guidance.join(" ") ?? "";
-  assert.match(guidance, /assistência integral/i);
-  assert.match(guidance, /conforto, segurança e dignidade/i);
+  assert.match(guidance, /dependência importante para atividades básicas/i);
+  assert.match(guidance, /banho, vestir-se, higiene, alimentação e transferências/i);
+  assert.doesNotMatch(guidance, /consolidadas no Plano de cuidados/i);
   assert.doesNotMatch(guidance, /ajuda apenas na medida necessária/i);
 });
