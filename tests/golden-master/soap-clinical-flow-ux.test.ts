@@ -7,29 +7,31 @@ const styles = readFileSync("src/components/consultations/soap-editor.module.css
 const workspace = readFileSync("src/components/consultations/consultation-workspace.tsx", "utf8");
 
 test("evolução clínica usa fluxo vertical e deixa ações de cópia após o preenchimento", () => {
-  assert.match(styles, /\.card\s*\{[\s\S]*?display:\s*flex;[\s\S]*?flex-direction:\s*column;/);
-  assert.match(styles, /\.soapGrid\s*\{[\s\S]*?order:\s*20;[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\);/);
-  assert.match(styles, /\.copyPanel\s*\{[\s\S]*?order:\s*30;/);
+  assert.ok(styles.includes(".card {\n  display: flex;\n  flex-direction: column;"));
+  assert.ok(styles.includes(".soapGrid {\n  order: 20;"));
+  assert.ok(styles.includes("grid-template-columns: minmax(0, 1fr);"));
+  assert.ok(styles.includes(".copyPanel {\n  order: 30;"));
 });
 
 test("vacinas permanecem clinicamente intactas e ganham separação visual", () => {
-  assert.match(editor, /deriveVaccinationReview/);
-  assert.match(editor, /GERIATRIC_VACCINE_CHECKLIST/);
-  assert.match(editor, /Carteira\/status vacinal revisado nesta consulta/);
-  assert.match(styles, /\.vaccinePanel\s*\{[\s\S]*?border-left:\s*4px solid var\(--primary\)/);
+  assert.ok(editor.includes("deriveVaccinationReview"));
+  assert.ok(editor.includes("GERIATRIC_VACCINE_CHECKLIST"));
+  assert.ok(editor.includes("Carteira/status vacinal revisado nesta consulta"));
+  assert.ok(styles.includes(".vaccinePanel {"));
+  assert.ok(styles.includes("border-left: 4px solid var(--primary) !important;"));
 });
 
 test("campos e salvaguardas clínicas do SOAP continuam presentes", () => {
-  assert.match(editor, /S — Subjetivo/);
-  assert.match(editor, /O — Objetivo/);
-  assert.match(editor, /A — Avaliação/);
-  assert.match(editor, /P — Plano e condutas/);
-  assert.match(editor, /Exames laboratoriais e de imagem/);
-  assert.match(editor, /expectedNoteVersion:\s*view\.noteVersion/);
-  assert.match(editor, /summarizeSoapMedicationProvenance/);
+  assert.ok(editor.includes("S — Subjetivo"));
+  assert.ok(editor.includes("O — Objetivo"));
+  assert.ok(editor.includes("A — Avaliação"));
+  assert.ok(editor.includes("P — Plano e condutas"));
+  assert.ok(editor.includes("Exames laboratoriais e de imagem"));
+  assert.ok(editor.includes("expectedNoteVersion: view.noteVersion"));
+  assert.ok(editor.includes("summarizeSoapMedicationProvenance"));
 });
 
 test("navegação apresenta a etapa com nome mais simples sem mudar o id soap", () => {
-  assert.match(workspace, /id:\s*"soap",\s*label:\s*"Evolução clínica",\s*shortLabel:\s*"Evolução",\s*description:\s*"SOAP, exames, vacinas e plano por problema"/);
-  assert.match(workspace, /const \[active, setActive\] = useState<WorkspaceSectionId>\("soap"\)/);
+  assert.ok(workspace.includes('{ id: "soap", label: "Evolução clínica", shortLabel: "Evolução", description: "SOAP, exames, vacinas e plano por problema" }'));
+  assert.ok(workspace.includes('useState<WorkspaceSectionId>("soap")'));
 });
