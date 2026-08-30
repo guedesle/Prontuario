@@ -1,0 +1,201 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { buildAgaReportModel } from "../../src/domain/aga-report.ts";
+import { renderAccessibleAgaReportText } from "../../src/domain/accessible-aga-report-text.ts";
+import {
+  emptyAdvanceDirectiveTopics,
+  type AdvanceDirectiveRecordView,
+} from "../../src/domain/advance-directives.ts";
+import {
+  buildAgaReportEnrichment,
+  buildAdvanceDirectivesReportSection,
+  calculateAgeYearsAt,
+} from "../../src/domain/report-overview.ts";
+
+function directiveRecord(overrides: Partial<AdvanceDirectiveRecordView> = {}): AdvanceDirectiveRecordView {
+  return {
+    id: "directive-1",
+    consultationId: "consultation-previous",
+    consultationOccurredAt: "2026-06-01T12:00:00.000Z",
+    recordedByName: "Médica",
+    version: 1,
+    protocolVersion: "advance-directives-conversation-2026-08-v1",
+    createdAt: "2026-06-01T12:30:00.000Z",
+    disposition: "WANTS_TO_TALK",
+    participationMode: "PATIENT_DIRECT",
+    priorities: [],
+    topics: emptyAdvanceDirectiveTopics(),
+    documentStatus: "NOT_INFORMED",
+    reviewTrigger: "WHEN_PERSON_WANTS_OR_CONDITION_CHANGES",
+    ...overrides,
+  };
+}
+
+test("idade é calculada na data da consulta, não na data atual", () => {
+  assert.equal(calculateAgeYearsAt("1944-09-01", "2026-08-30"), 81);
+  assert.equal(calculateAgeYearsAt("1944-08-30", "2026-08-30"), 82);
+});
+
+test("visão geral respeita FAST > MEEM > MoCA > 10-CS e Katz > Barthel > Lawton", () => {
+  const report = buildAgaReportModel({
+    patientId: "patient-overview",
+    consultationId: "consultation-current",
+    consultationStatus: "IN_REVIEW",
+    patientName: "Paciente Sintético",
+    longitudinalProblems: [],
+    longitudinalAssessments: [
+      {
+        patientId: "patient-overview",
+        consultationId: "consultation-current",
+        scaleCode: "moca",
+        scaleVersion: "1.0",
+        score: 18,
+        scoreText: "18/30",
+        classification: "resultado registrado",
+        appliedAt: "2026-08-30",
+      },
+      {
+        patientId: "patient-overview",
+        consultationId: "consultation-current",
+        scaleCode: "meem",
+        scaleVersion: "1.0",
+        score: 22,
+        scoreText: "22/30",
+        classification: "resultado registrado",
+        appliedAt: "2026-08-30",
+      },
+      {
+        patientId: "patient-overview",
+        consultationId: "consultation-current",
+        scaleCode: "fast",
+        scaleVersion: "1.0",
+        score: 6.5,
+        scoreText: "6e",
+        classification: "FAST 6e",
+        appliedAt: "2026-08-30",
+      },
+      {
+        patientId: "patient-overview",
+        consultationId: "consultation-current",
+        scaleCode: "katz",
+        scaleVersion: "1.0",
+        score: 2,
+        scoreText: "2/6",
+        classification: "dependência importante",
+        appliedAt: "2026-08-30",
+      },
+      {
+        patientId: "patient-overview",
+        consultationId: "consultation-current",
+        scaleCode: "barthel",
+        scaleVersion: "1.0",
+        score: 35,
+        scoreText: "35/100",
+        appliedAt: "2026-08-30",
+      },
+      {
+        patientId: "patient-overview",
+        consultationId: "consultation-current",
+        scaleCode: "lawton",
+        scaleVersion: "1.0",
+        score: 7,
+        scoreText: "7/21",
+        appliedAt: "2026-08-30",
+      },
+    ],
+  });
+
+  const enrichment = buildAgaReportEnrichment({
+    patientBirthDate: "1944-09-01",
+    consultationDate: "2026-08-30",
+    scales: report.assessedScales,
+    gastrostomyPresent: true,
+    directiveHistory: [],
+  });
+
+  assert.equal(enrichment.overview.ageYears, 81);
+  assert.equal(enrichment.overview.cognition?.scaleCode, "fast");
+  assert.deepEqual(enrichment.overview.functionality.map((item) => item.scaleCode), ["katz", "barthel", "lawton"]);
+  assert.equal(enrichment.overview.device?.label, "Gastrostomia (GTT)");
+  assert.equal(enrichment.overview.advanceDirectives, undefined);
+});
+
+test("diretivas só entram no relatório quando há conteúdo registrado e não são apagadas por recusa posterior", () => {
+  const topics = emptyAdvanceDirectiveTopics();
+  topics.CARDIOPULMONARY_RESUSCITATION = {
+    status: "PREFERENCE_RECORDED",
+    note: "Preferência registrada para revisão clínica.",
+  };
+  const meaningful = directiveRecord({
+    whatMatters: "Permanecer próxima à família.",
+    priorities: ["SYMPTOM_RELIEF_AND_COMFORT"],
+    topics,
+    documentStatus: "PRESENTED",
+  });
+  const laterDeclined = directiveRecord({
+    id: "directive-2",
+    consultationId: "consultation-current",
+    consultationOccurredAt: "2026-08-30T12:00:00.000Z",
+    createdAt: "2026-08-30T12:30:00.000Z",
+    disposition: "DECLINED",
+    participationMode: undefined,
+    priorities: [],
+    topics: emptyAdvanceDirectiveTopics(),
+    documentStatus: "NOT_INFORMED",
+  });
+
+  const section = buildAdvanceDirectivesReportSection([laterDeclined, meaningful]);
+  assert.ok(section);
+  assert.equal(section.sourceConsultationId, "consultation-previous");
+  assert.equal(section.whatMatters, "Permanecer próxima à família.");
+  assert.equal(section.topics[0]?.status, "Preferência registrada");
+  assert.equal(section.history.length, 1);
+
+  const emptyConversation = directiveRecord({
+    id: "directive-empty",
+    whatMatters: undefined,
+    dignityAndComfort: undefined,
+    trustedPersonName: undefined,
+    priorities: [],
+    topics: emptyAdvanceDirectiveTopics(),
+    documentStatus: "NOT_INFORMED",
+  });
+  assert.equal(buildAdvanceDirectivesReportSection([laterDeclined, emptyConversation]), undefined);
+});
+
+test("exportação acessível usa visão geral estruturada e omite o fallback numérico", () => {
+  const report = buildAgaReportModel({
+    patientId: "patient-text",
+    consultationId: "consultation-current",
+    consultationStatus: "IN_REVIEW",
+    patientName: "Paciente Sintético",
+    longitudinalProblems: [],
+    longitudinalAssessments: [{
+      patientId: "patient-text",
+      consultationId: "consultation-current",
+      scaleCode: "fast",
+      scaleVersion: "1.0",
+      score: 6.5,
+      scoreText: "6e",
+      classification: "FAST 6e",
+      appliedAt: "2026-08-30",
+    }],
+  });
+  const topics = emptyAdvanceDirectiveTopics();
+  topics.HOSPITALIZATION_AND_PLACE_OF_CARE = { status: "UNCERTAIN_CONTEXT_DEPENDENT" };
+  const enrichment = buildAgaReportEnrichment({
+    patientBirthDate: "1944-08-30",
+    consultationDate: "2026-08-30",
+    scales: report.assessedScales,
+    gastrostomyPresent: true,
+    directiveHistory: [directiveRecord({ whatMatters: "Conforto e proximidade da família.", topics })],
+  });
+
+  const text = renderAccessibleAgaReportText({ ...report, ...enrichment });
+  assert.match(text, /VISÃO GERAL/);
+  assert.match(text, /Idade: 82 anos/);
+  assert.match(text, /Cognição — FAST: 6e — FAST 6e/);
+  assert.match(text, /Dispositivo: Gastrostomia \(GTT\)/);
+  assert.match(text, /DIRETIVAS ANTECIPADAS/);
+  assert.doesNotMatch(text, /Sem mudança numérica classificável/);
+});

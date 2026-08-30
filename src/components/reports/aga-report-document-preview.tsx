@@ -8,6 +8,11 @@ import {
   type CapacityDimensionHistory,
 } from "@/domain/capacity-dimension-history";
 import type { ProfessionalIdentity } from "@/domain/professional-identity";
+import type {
+  AgaAdvanceDirectivesReportSection,
+  AgaReportOverview,
+  AgaReportOverviewScaleItem,
+} from "@/domain/report-overview";
 import { CapacityDimensionHistoryChart } from "@/components/reports/capacity-dimension-history-chart";
 import {
   buildReportDomainSummaries,
@@ -16,7 +21,11 @@ import {
 import styles from "./aga-report-document-preview.module.css";
 
 interface GeneratedReportResponse {
-  report: AgaReportModel & { capacityHistory: CapacityDimensionHistory };
+  report: AgaReportModel & {
+    capacityHistory: CapacityDimensionHistory;
+    overview: AgaReportOverview;
+    advanceDirectives?: AgaAdvanceDirectivesReportSection;
+  };
   text: string;
   snapshot: { id: string; version: number };
 }
@@ -32,6 +41,8 @@ type ReportGlyphName =
   | "cognition"
   | "home"
   | "support";
+
+type ReportTab = "aga" | "directives";
 
 function formatDate(value?: string): string {
   if (!value) return "Data não registrada";
@@ -137,6 +148,119 @@ function PhysicianSignature({ identity }: { identity: ProfessionalIdentity }) {
   );
 }
 
+function scaleOverviewText(item: AgaReportOverviewScaleItem): string {
+  return `${item.value}${item.assessedInTargetConsultation ? "" : ` · último registro conhecido em ${formatDate(item.sourceDate)}`}`;
+}
+
+function OverviewContent({ overview }: { overview: AgaReportOverview }) {
+  return (
+    <ul className={styles.compactResults}>
+      {overview.ageYears !== undefined ? <li><strong>Idade:</strong> {overview.ageYears} anos</li> : null}
+      {overview.cognition ? (
+        <li><strong>Cognição — {overview.cognition.label}:</strong> {scaleOverviewText(overview.cognition)}</li>
+      ) : null}
+      {overview.functionality.map((item, index) => (
+        <li key={item.scaleCode}>
+          <strong>{index === 0 ? `Funcionalidade — ${item.label}` : item.label}:</strong> {scaleOverviewText(item)}
+        </li>
+      ))}
+      {overview.device ? <li><strong>Dispositivo:</strong> {overview.device.label}</li> : null}
+      {overview.advanceDirectives ? <li><strong>Diretivas antecipadas:</strong> {overview.advanceDirectives.label}</li> : null}
+    </ul>
+  );
+}
+
+function AdvanceDirectivesDocument({
+  section,
+  patientName,
+  professionalIdentity,
+}: {
+  section: AgaAdvanceDirectivesReportSection;
+  patientName: string;
+  professionalIdentity: ProfessionalIdentity;
+}) {
+  return (
+    <article className={styles.document}>
+      <header className={styles.header}>
+        <div className={styles.brandBlock}>
+          {professionalIdentity.logoPath ? <img src={professionalIdentity.logoPath} alt={professionalIdentity.logoAlt ?? professionalIdentity.displayName} /> : null}
+          <div>
+            <strong>{professionalIdentity.displayName}</strong>
+            <span>{professionalIdentity.roleLabel}</span>
+          </div>
+        </div>
+        <div className={styles.titleBlock}>
+          <p>Avaliação Geriátrica Ampla</p>
+          <h1>Diretivas antecipadas</h1>
+          <span>Preferências, valores e objetivos de cuidado registrados</span>
+        </div>
+        <dl className={styles.identity}>
+          <div><dt>Paciente</dt><dd>{patientName}</dd></div>
+          <div><dt>Consulta do registro</dt><dd>{formatDate(section.sourceConsultationDate)}</dd></div>
+        </dl>
+      </header>
+
+      <section className={styles.introNote}>
+        Registro longitudinal de conversa sobre preferências, valores e objetivos de cuidado. O conteúdo reproduz informações documentadas e deve ser revisto no contexto clínico atual.
+      </section>
+
+      {section.participation ? <section className={styles.section}>
+        <div className={styles.sectionHeading}><span>1</span><h2>Participação na conversa</h2></div>
+        <p>{section.participation}</p>
+      </section> : null}
+
+      {section.whatMatters ? <section className={styles.section}>
+        <div className={styles.sectionHeading}><span>2</span><h2>O que é importante para a pessoa</h2></div>
+        <p>{section.whatMatters}</p>
+      </section> : null}
+
+      {section.dignityAndComfort ? <section className={styles.section}>
+        <div className={styles.sectionHeading}><span>3</span><h2>Conforto, dignidade e sentido</h2></div>
+        <p>{section.dignityAndComfort}</p>
+      </section> : null}
+
+      {section.priorities.length > 0 ? <section className={styles.section}>
+        <div className={styles.sectionHeading}><span>4</span><h2>Prioridades registradas</h2></div>
+        <ul className={styles.compactList}>{section.priorities.map((item) => <li key={item}>{item}</li>)}</ul>
+      </section> : null}
+
+      {section.topics.length > 0 ? <section className={styles.section}>
+        <div className={styles.sectionHeading}><span>5</span><h2>Preferências discutidas</h2></div>
+        <div className={styles.problemGrid}>
+          {section.topics.map((topic) => <article key={topic.code}>
+            <h3>{topic.title}</h3>
+            <p>{topic.status}</p>
+            {topic.note ? <small>{topic.note}</small> : null}
+          </article>)}
+        </div>
+      </section> : null}
+
+      {section.trustedPerson || section.documentStatus ? <section className={styles.section}>
+        <div className={styles.sectionHeading}><span>6</span><h2>Pessoa de confiança e documento prévio</h2></div>
+        {section.trustedPerson ? <p><strong>Pessoa de confiança:</strong> {section.trustedPerson.name}{section.trustedPerson.relation ? ` — ${section.trustedPerson.relation}` : ""}</p> : null}
+        {section.documentStatus ? <p><strong>Documento prévio:</strong> {section.documentStatus}</p> : null}
+      </section> : null}
+
+      <section className={styles.section}>
+        <div className={styles.sectionHeading}><span>7</span><h2>Revisão</h2></div>
+        <p>{section.reviewTrigger}</p>
+      </section>
+
+      {section.history.length > 1 ? <section className={styles.section}>
+        <div className={styles.sectionHeading}><span>8</span><h2>Histórico</h2></div>
+        <ul className={styles.compactList}>
+          {section.history.map((item) => <li key={`${item.consultationId}-${item.version}`}>{formatDate(item.consultationDate)} — versão {item.version}</li>)}
+        </ul>
+      </section> : null}
+
+      <footer className={styles.footer}>
+        <p>Registro de apoio à continuidade do cuidado. Preferências podem ser revistas pela pessoa e pela equipe conforme sua vontade e o contexto clínico.</p>
+        <PhysicianSignature identity={professionalIdentity} />
+      </footer>
+    </article>
+  );
+}
+
 export function AgaReportDocumentPreview({
   consultationId,
   professionalIdentity,
@@ -149,6 +273,7 @@ export function AgaReportDocumentPreview({
   const [loading, setLoading] = useState(false);
   const [clinicalReviewConfirmed, setClinicalReviewConfirmed] = useState(false);
   const [showTechnical, setShowTechnical] = useState(false);
+  const [activeTab, setActiveTab] = useState<ReportTab>("aga");
 
   const reportDomains = useMemo(() => {
     if (!generated) return [];
@@ -162,6 +287,7 @@ export function AgaReportDocumentPreview({
     setLoading(true);
     setError("");
     setClinicalReviewConfirmed(false);
+    setActiveTab("aga");
     try {
       const response = await fetch(`/api/consultations/${consultationId}/reports/aga`, { method: "POST" });
       const result = await response.json();
@@ -224,7 +350,14 @@ export function AgaReportDocumentPreview({
             </label>
           </div>
 
-          <article className={styles.document}>
+          <div className={`${styles.actions} no-print`} role="tablist" aria-label="Seções do relatório final">
+            <button type="button" role="tab" aria-selected={activeTab === "aga"} className={activeTab === "aga" ? undefined : styles.secondaryButton} onClick={() => setActiveTab("aga")}>Avaliação Geriátrica</button>
+            {generated.report.advanceDirectives ? (
+              <button type="button" role="tab" aria-selected={activeTab === "directives"} className={activeTab === "directives" ? undefined : styles.secondaryButton} onClick={() => setActiveTab("directives")}>Diretivas antecipadas</button>
+            ) : null}
+          </div>
+
+          {activeTab === "aga" ? <article className={styles.document}>
             <header className={styles.header}>
               <div className={styles.brandBlock}>
                 {professionalIdentity.logoPath ? <img src={professionalIdentity.logoPath} alt={professionalIdentity.logoAlt ?? professionalIdentity.displayName} /> : null}
@@ -252,10 +385,7 @@ export function AgaReportDocumentPreview({
             <section className={styles.executiveGrid} data-count={executiveCardCount} aria-label="Resumo do relatório">
               <article className={styles.executiveCard} data-tone="overview">
                 <div className={styles.cardTitle}><ReportGlyph name="overview" /><span>Visão geral</span></div>
-                <p>{generated.report.changeSummary.headline}</p>
-                {generated.report.changeSummary.narrative.length > 0 ? (
-                  <ul>{generated.report.changeSummary.narrative.slice(0, 3).map((item) => <li key={item}>{item}</li>)}</ul>
-                ) : null}
+                <OverviewContent overview={generated.report.overview} />
               </article>
               {attentionItems.length > 0 ? (
                 <article className={styles.executiveCard} data-tone="attention">
@@ -374,7 +504,15 @@ export function AgaReportDocumentPreview({
               <PhysicianSignature identity={professionalIdentity} />
               <p className={`${styles.technicalMeta} no-print`}>Versão do relatório {generated.snapshot.version} · estrutura técnica {generated.report.schemaVersion}</p>
             </footer>
-          </article>
+          </article> : null}
+
+          {activeTab === "directives" && generated.report.advanceDirectives ? (
+            <AdvanceDirectivesDocument
+              section={generated.report.advanceDirectives}
+              patientName={generated.report.patientName}
+              professionalIdentity={professionalIdentity}
+            />
+          ) : null}
         </>
       ) : null}
     </section>

@@ -1,0 +1,209 @@
+import type { AgaScaleReportSection } from "./aga-report.ts";
+import {
+  ADVANCE_DIRECTIVE_TOPIC_CODES,
+  DOCUMENT_STATUS_LABELS,
+  PARTICIPATION_LABELS,
+  PRIORITY_LABELS,
+  REVIEW_TRIGGER_LABELS,
+  TOPIC_LABELS,
+  TOPIC_STATUS_LABELS,
+  type AdvanceDirectiveRecordView,
+} from "./advance-directives.ts";
+
+const COGNITION_PRECEDENCE = ["fast", "meem", "moca", "dez_cs"] as const;
+const FUNCTIONALITY_ORDER = ["katz", "barthel", "lawton"] as const;
+
+export interface AgaReportOverviewScaleItem {
+  scaleCode: string;
+  label: string;
+  value: string;
+  assessedInTargetConsultation: boolean;
+  sourceDate: string;
+}
+
+export interface AgaReportOverview {
+  ageYears?: number;
+  cognition?: AgaReportOverviewScaleItem;
+  functionality: AgaReportOverviewScaleItem[];
+  device?: {
+    label: "Gastrostomia (GTT)";
+    source: "structured-medication-route";
+  };
+  advanceDirectives?: {
+    label: string;
+    sourceConsultationDate: string;
+  };
+}
+
+export interface AgaAdvanceDirectiveReportTopic {
+  code: string;
+  title: string;
+  status: string;
+  note?: string;
+}
+
+export interface AgaAdvanceDirectivesReportSection {
+  sourceConsultationId: string;
+  sourceConsultationDate: string;
+  version: number;
+  participation?: string;
+  trustedPerson?: {
+    name: string;
+    relation?: string;
+  };
+  whatMatters?: string;
+  dignityAndComfort?: string;
+  priorities: string[];
+  topics: AgaAdvanceDirectiveReportTopic[];
+  documentStatus?: string;
+  reviewTrigger: string;
+  history: Array<{
+    consultationId: string;
+    consultationDate: string;
+    version: number;
+  }>;
+}
+
+export type AgaReportEnrichment = {
+  overview: AgaReportOverview;
+  advanceDirectives?: AgaAdvanceDirectivesReportSection;
+};
+
+export function calculateAgeYearsAt(
+  birthDate: Date | string | null | undefined,
+  referenceDate: Date | string,
+): number | undefined {
+  if (!birthDate) return undefined;
+  const birth = new Date(birthDate);
+  const reference = new Date(referenceDate);
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(reference.getTime())) return undefined;
+
+  let age = reference.getUTCFullYear() - birth.getUTCFullYear();
+  const beforeBirthday = reference.getUTCMonth() < birth.getUTCMonth()
+    || (reference.getUTCMonth() === birth.getUTCMonth() && reference.getUTCDate() < birth.getUTCDate());
+  if (beforeBirthday) age -= 1;
+  return age >= 0 ? age : undefined;
+}
+
+function scaleValue(scale: AgaScaleReportSection): string | undefined {
+  const primary = scale.result.scoreText?.trim()
+    || (scale.result.score !== null ? String(scale.result.score) : "")
+    || scale.result.classification?.trim()
+    || scale.interpretation?.trim()
+    || "";
+  if (!primary) return undefined;
+
+  const classification = scale.result.classification?.trim();
+  if (classification && !primary.toLocaleLowerCase("pt-BR").includes(classification.toLocaleLowerCase("pt-BR"))) {
+    return `${primary} — ${classification}`;
+  }
+  return primary;
+}
+
+function scaleOverviewItem(scale: AgaScaleReportSection | undefined): AgaReportOverviewScaleItem | undefined {
+  if (!scale) return undefined;
+  const value = scaleValue(scale);
+  if (!value) return undefined;
+  return {
+    scaleCode: scale.code,
+    label: scale.name,
+    value,
+    assessedInTargetConsultation: scale.assessedInTargetConsultation,
+    sourceDate: scale.lastKnown.appliedAt,
+  };
+}
+
+function hasReportableAdvanceDirective(record: AdvanceDirectiveRecordView): boolean {
+  if (record.disposition !== "WANTS_TO_TALK") return false;
+  if (record.whatMatters?.trim() || record.dignityAndComfort?.trim()) return true;
+  if (record.priorities.length > 0) return true;
+  if (record.trustedPersonName?.trim()) return true;
+  if (record.documentStatus === "PRESENTED" || record.documentStatus === "WILL_BRING_LATER") return true;
+  return ADVANCE_DIRECTIVE_TOPIC_CODES.some((code) => {
+    const topic = record.topics[code];
+    return Boolean(topic.note?.trim()) || topic.status !== "NOT_DISCUSSED";
+  });
+}
+
+export function buildAdvanceDirectivesReportSection(
+  history: readonly AdvanceDirectiveRecordView[],
+): AgaAdvanceDirectivesReportSection | undefined {
+  const reportableHistory = history.filter(hasReportableAdvanceDirective);
+  const selected = reportableHistory[0];
+  if (!selected) return undefined;
+
+  const topics = ADVANCE_DIRECTIVE_TOPIC_CODES.flatMap((code): AgaAdvanceDirectiveReportTopic[] => {
+    const topic = selected.topics[code];
+    if (topic.status === "NOT_DISCUSSED" && !topic.note?.trim()) return [];
+    return [{
+      code,
+      title: TOPIC_LABELS[code].title,
+      status: TOPIC_STATUS_LABELS[topic.status],
+      ...(topic.note?.trim() ? { note: topic.note.trim() } : {}),
+    }];
+  });
+
+  return {
+    sourceConsultationId: selected.consultationId,
+    sourceConsultationDate: selected.consultationOccurredAt,
+    version: selected.version,
+    ...(selected.participationMode ? { participation: PARTICIPATION_LABELS[selected.participationMode] } : {}),
+    ...(selected.trustedPersonName?.trim() ? {
+      trustedPerson: {
+        name: selected.trustedPersonName.trim(),
+        ...(selected.trustedRelation?.trim() ? { relation: selected.trustedRelation.trim() } : {}),
+      },
+    } : {}),
+    ...(selected.whatMatters?.trim() ? { whatMatters: selected.whatMatters.trim() } : {}),
+    ...(selected.dignityAndComfort?.trim() ? { dignityAndComfort: selected.dignityAndComfort.trim() } : {}),
+    priorities: selected.priorities.map((priority) => PRIORITY_LABELS[priority]),
+    topics,
+    ...(selected.documentStatus !== "NOT_INFORMED" ? { documentStatus: DOCUMENT_STATUS_LABELS[selected.documentStatus] } : {}),
+    reviewTrigger: REVIEW_TRIGGER_LABELS[selected.reviewTrigger],
+    history: reportableHistory.map((record) => ({
+      consultationId: record.consultationId,
+      consultationDate: record.consultationOccurredAt,
+      version: record.version,
+    })),
+  };
+}
+
+export function buildAgaReportEnrichment(input: {
+  patientBirthDate?: Date | string | null;
+  consultationDate: Date | string;
+  scales: readonly AgaScaleReportSection[];
+  gastrostomyPresent: boolean;
+  directiveHistory: readonly AdvanceDirectiveRecordView[];
+}): AgaReportEnrichment {
+  const byCode = new Map(input.scales.map((scale) => [scale.code, scale]));
+  const cognition = COGNITION_PRECEDENCE
+    .map((code) => scaleOverviewItem(byCode.get(code)))
+    .find((item): item is AgaReportOverviewScaleItem => Boolean(item));
+  const functionality = FUNCTIONALITY_ORDER
+    .map((code) => scaleOverviewItem(byCode.get(code)))
+    .filter((item): item is AgaReportOverviewScaleItem => Boolean(item));
+  const advanceDirectives = buildAdvanceDirectivesReportSection(input.directiveHistory);
+
+  return {
+    overview: {
+      ...(calculateAgeYearsAt(input.patientBirthDate, input.consultationDate) !== undefined
+        ? { ageYears: calculateAgeYearsAt(input.patientBirthDate, input.consultationDate) }
+        : {}),
+      ...(cognition ? { cognition } : {}),
+      functionality,
+      ...(input.gastrostomyPresent ? {
+        device: {
+          label: "Gastrostomia (GTT)" as const,
+          source: "structured-medication-route" as const,
+        },
+      } : {}),
+      ...(advanceDirectives ? {
+        advanceDirectives: {
+          label: "Registradas — preferências e objetivos de cuidado documentados",
+          sourceConsultationDate: advanceDirectives.sourceConsultationDate,
+        },
+      } : {}),
+    },
+    ...(advanceDirectives ? { advanceDirectives } : {}),
+  };
+}
