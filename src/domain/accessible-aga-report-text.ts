@@ -1,4 +1,8 @@
 import type { AgaReportModel } from "./aga-report.ts";
+import type {
+  AgaAdvanceDirectivesReportSection,
+  AgaReportOverview,
+} from "./report-overview.ts";
 import { buildReportDomainSummaries } from "./report-domain-summary.ts";
 import { MEDICATION_MOMENT_LABELS, type MedicationMoment } from "./medication-plan.ts";
 import {
@@ -11,15 +15,77 @@ function list(items: readonly string[]): string {
   return items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "- Sem dados registrados";
 }
 
-export function renderAccessibleAgaReportText(model: AgaReportModel): string {
+type AccessibleAgaReportModel = AgaReportModel & {
+  overview?: AgaReportOverview;
+  advanceDirectives?: AgaAdvanceDirectivesReportSection;
+};
+
+function overviewBlocks(overview: AgaReportOverview): string[] {
+  const items: string[] = [];
+  if (overview.ageYears !== undefined) items.push(`Idade: ${overview.ageYears} anos`);
+  if (overview.cognition) {
+    items.push(`Cognição — ${overview.cognition.label}: ${overview.cognition.value}`);
+  }
+  if (overview.functionality.length > 0) {
+    items.push(...overview.functionality.map((item) => `Funcionalidade — ${item.label}: ${item.value}`));
+  }
+  if (overview.device) items.push(`Dispositivo: ${overview.device.label}`);
+  if (overview.advanceDirectives) items.push(`Diretivas antecipadas: ${overview.advanceDirectives.label}`);
+  return items.length > 0 ? ["", "VISÃO GERAL", list(items)] : [];
+}
+
+function advanceDirectiveBlocks(section: AgaAdvanceDirectivesReportSection): string[] {
+  const blocks = [
+    "",
+    "DIRETIVAS ANTECIPADAS",
+    `Registro de referência: ${section.sourceConsultationDate.slice(0, 10)} · versão ${section.version}`,
+  ];
+  if (section.participation) blocks.push("", "Participação na conversa", section.participation);
+  if (section.whatMatters) blocks.push("", "O que é importante para a pessoa", section.whatMatters);
+  if (section.dignityAndComfort) blocks.push("", "Conforto, dignidade e sentido", section.dignityAndComfort);
+  if (section.priorities.length > 0) blocks.push("", "Prioridades registradas", list(section.priorities));
+  if (section.topics.length > 0) {
+    blocks.push(
+      "",
+      "Preferências discutidas",
+      list(section.topics.map((topic) => `${topic.title}: ${topic.status}${topic.note ? ` — ${topic.note}` : ""}`)),
+    );
+  }
+  if (section.trustedPerson) {
+    blocks.push(
+      "",
+      "Pessoa de confiança",
+      `${section.trustedPerson.name}${section.trustedPerson.relation ? ` — ${section.trustedPerson.relation}` : ""}`,
+    );
+  }
+  if (section.documentStatus) blocks.push("", "Documento prévio", section.documentStatus);
+  blocks.push("", "Revisão", section.reviewTrigger);
+  if (section.history.length > 1) {
+    blocks.push(
+      "",
+      "Histórico",
+      list(section.history.map((item) => `${item.consultationDate.slice(0, 10)} — versão ${item.version}`)),
+    );
+  }
+  return blocks;
+}
+
+export function renderAccessibleAgaReportText(model: AccessibleAgaReportModel): string {
   const blocks = [
     `RELATÓRIO DA AVALIAÇÃO GERIÁTRICA AMPLA — LONGITUDINAL — ${model.patientName}`,
     `Consulta: ${model.consultationId} · Situação: ${consultationStatusLabel(model.consultationStatus)}`,
-    "",
-    "RESUMO LONGITUDINAL",
-    model.changeSummary.headline,
-    list(model.changeSummary.narrative),
   ];
+
+  if (model.overview) {
+    blocks.push(...overviewBlocks(model.overview));
+  } else {
+    blocks.push(
+      "",
+      "RESUMO LONGITUDINAL",
+      model.changeSummary.headline,
+      list(model.changeSummary.narrative),
+    );
+  }
 
   if (model.draftContext) {
     blocks.push("", "ATENÇÃO: relatório gerado antes da finalização da consulta.");
@@ -71,6 +137,10 @@ export function renderAccessibleAgaReportText(model: AgaReportModel): string {
       );
       if (domain.guidance.length > 0) blocks.push("Orientações:", list(domain.guidance));
     }
+  }
+
+  if (model.advanceDirectives) {
+    blocks.push(...advanceDirectiveBlocks(model.advanceDirectives));
   }
 
   blocks.push(
