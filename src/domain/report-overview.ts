@@ -173,11 +173,7 @@ export function buildAdvanceDirectivesReportSection(
     topics,
     ...(selected.documentStatus !== "NOT_INFORMED" ? { documentStatus: DOCUMENT_STATUS_LABELS[selected.documentStatus] } : {}),
     reviewTrigger: REVIEW_TRIGGER_LABELS[selected.reviewTrigger],
-    history: conversationHistory.map((record) => ({
-      consultationId: record.consultationId,
-      consultationDate: record.consultationOccurredAt,
-      version: record.version,
-    })),
+    history: [],
   };
 }
 

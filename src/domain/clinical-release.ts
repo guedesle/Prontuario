@@ -1,1 +1,1 @@
-export const CLINICAL_RELEASE_ID = "2026-08-30-directive-preference-copy-v1" as const;
+export const CLINICAL_RELEASE_ID = "2026-08-30-directives-report-without-history-v1" as const;
