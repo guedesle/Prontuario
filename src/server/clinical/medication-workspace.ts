@@ -71,7 +71,12 @@ export async function workspaceContext(tx: Prisma.TransactionClient, consultatio
   const suspendedHistory: MedicationWorkspaceView["suspendedHistory"] = [];
   const items = medications.map((medication) => {
     const regimen = effective.get(medication.id);
-    const statusInput = { patientId: consultation.patientId, medicationId: medication.id, consultationIds, events: medication.statusEvents };
+    const statusInput: Parameters<typeof medicationStatusAsOf>[0] = {
+      patientId: consultation.patientId,
+      medicationId: medication.id,
+      consultationIds,
+      events: medication.statusEvents,
+    };
     const projection = medicationStatusAsOf(statusInput);
     const suspension = latestMedicationSuspensionAsOf(statusInput);
     const status = medicationStatusForWorkspace({ isLatestConsultation, explicitStatus: projection.status, currentStatus: medication.status as MedicationLifecycleStatus });
