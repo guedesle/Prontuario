@@ -7,6 +7,8 @@ import {
   normalizeVaccinationReview,
 } from "../../src/domain/vaccination-prevention.ts";
 
+const REMOVED_PENDING_VACCINE_GUIDANCE = "Confira as vacinas pendentes com a carteira de vacinação e a equipe assistencial. Os próximos passos dependem de revisão clínica individual.";
+
 test("checklist geriátrico representa o calendário SBIm 2026/2027 sem gerar prescrição", () => {
   const routine = GERIATRIC_VACCINE_CHECKLIST.filter((item) => item.group === "ROTINA").map((item) => item.name);
   const special = GERIATRIC_VACCINE_CHECKLIST.filter((item) => item.group === "SITUACOES_ESPECIAIS").map((item) => item.name);
@@ -22,7 +24,7 @@ test("checklist geriátrico representa o calendário SBIm 2026/2027 sem gerar pr
   assert.ok(GERIATRIC_VACCINE_CHECKLIST.every((item) => item.note.trim().length > 0));
 });
 
-test("marcar ao menos uma vacina pendente deriva status PENDING sem expor o código interno no relatório", () => {
+test("marcar ao menos uma vacina pendente deriva status PENDING sem orientação redundante", () => {
   const review = deriveVaccinationReview({
     reviewed: true,
     pendingVaccines: ["Influenza (gripe)", "Pneumocócica conjugada VPC20"],
@@ -35,8 +37,9 @@ test("marcar ao menos uma vacina pendente deriva status PENDING sem expor o cód
   assert.equal(section.statusLabel, "Há vacinas pendentes registradas");
   assert.doesNotMatch(section.statusLabel, /PENDING|UNKNOWN|UP_TO_DATE/i);
   assert.deepEqual(section.pendingVaccines, ["Influenza (gripe)", "Pneumocócica conjugada VPC20"]);
+  assert.deepEqual(section.guidance, []);
+  assert.doesNotMatch(section.guidance.join(" "), new RegExp(REMOVED_PENDING_VACCINE_GUIDANCE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.equal(section.automaticPrescription, false);
-  assert.doesNotMatch(section.guidance.join(" "), /aplicar|administrar|prescrever/i);
 });
 
 test("carteira revisada sem pendência deriva UP_TO_DATE e usa texto compreensível", () => {
@@ -68,6 +71,7 @@ test("vacinas pendentes são normalizadas sem criar prescrição automática", (
 
   assert.equal(section.status, "PENDING");
   assert.deepEqual(section.pendingVaccines, ["Influenza", "Pneumocócica"]);
+  assert.deepEqual(section.guidance, []);
   assert.equal(section.automaticPrescription, false);
 });
 
