@@ -15,6 +15,12 @@ export interface MedicationStatusProjection {
   status: MedicationLifecycleStatus | null;
   source: "EXPLICIT_STATUS_EVENT" | "NO_EXPLICIT_STATUS_HISTORY";
   lastEventConsultationId?: string;
+  lastEventAt?: string;
+}
+
+export interface MedicationSuspensionProjection {
+  consultationId: string;
+  suspendedAt: string;
 }
 
 function eventTimestamp(value: Date | string): number {
@@ -25,18 +31,12 @@ function eventTimestamp(value: Date | string): number {
   return result;
 }
 
-/**
- * Reconstrói o status de um medicamento somente a partir de eventos explícitos
- * pertencentes ao horizonte da consulta. O status atual de Medication não é
- * aceito como entrada para evitar vazamento de estado futuro em documentos
- * históricos.
- */
-export function medicationStatusAsOf(input: {
+function validatedEventsAsOf(input: {
   patientId: string;
   medicationId: string;
   consultationIds: readonly string[];
   events: readonly MedicationStatusTimelineEvent[];
-}): MedicationStatusProjection {
+}): MedicationStatusTimelineEvent[] {
   if (input.events.some((event) => event.patientId !== input.patientId)) {
     throw new Error("Eventos de status de pacientes diferentes não podem compor o mesmo histórico de medicamento.");
   }
@@ -52,14 +52,6 @@ export function medicationStatusAsOf(input: {
       || eventTimestamp(a.createdAt) - eventTimestamp(b.createdAt)
       || a.id.localeCompare(b.id));
 
-  if (eligible.length === 0) {
-    return {
-      known: false,
-      status: null,
-      source: "NO_EXPLICIT_STATUS_HISTORY",
-    };
-  }
-
   let previousEvent: MedicationStatusTimelineEvent | undefined;
   for (const event of eligible) {
     if (previousEvent && event.previousStatus !== previousEvent.newStatus) {
@@ -68,11 +60,57 @@ export function medicationStatusAsOf(input: {
     previousEvent = event;
   }
 
+  return eligible;
+}
+
+/**
+ * Reconstrói o status de um medicamento somente a partir de eventos explícitos
+ * pertencentes ao horizonte da consulta. O status atual de Medication não é
+ * aceito como entrada para evitar vazamento de estado futuro em documentos
+ * históricos.
+ */
+export function medicationStatusAsOf(input: {
+  patientId: string;
+  medicationId: string;
+  consultationIds: readonly string[];
+  events: readonly MedicationStatusTimelineEvent[];
+}): MedicationStatusProjection {
+  const eligible = validatedEventsAsOf(input);
+
+  if (eligible.length === 0) {
+    return {
+      known: false,
+      status: null,
+      source: "NO_EXPLICIT_STATUS_HISTORY",
+    };
+  }
+
   const latest = eligible[eligible.length - 1]!;
   return {
     known: true,
     status: latest.newStatus,
     source: "EXPLICIT_STATUS_EVENT",
     lastEventConsultationId: latest.consultationId,
+    lastEventAt: new Date(latest.createdAt).toISOString(),
+  };
+}
+
+/**
+ * Retorna somente o último evento explícito de suspensão conhecido até a
+ * consulta-alvo. Uma reintrodução posterior não apaga a suspensão histórica,
+ * mas eventos de consultas futuras jamais retroagem para o histórico exibido.
+ */
+export function latestMedicationSuspensionAsOf(input: {
+  patientId: string;
+  medicationId: string;
+  consultationIds: readonly string[];
+  events: readonly MedicationStatusTimelineEvent[];
+}): MedicationSuspensionProjection | undefined {
+  const eligible = validatedEventsAsOf(input);
+  const latestSuspension = [...eligible].reverse().find((event) => event.newStatus === "SUSPENDED");
+  if (!latestSuspension) return undefined;
+  return {
+    consultationId: latestSuspension.consultationId,
+    suspendedAt: new Date(latestSuspension.createdAt).toISOString(),
   };
 }

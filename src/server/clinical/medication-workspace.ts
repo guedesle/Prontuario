@@ -9,7 +9,11 @@ import {
   type MedicationMoment,
   type MedicationSchedule,
 } from "../../domain/medication-plan.ts";
-import { medicationStatusAsOf, type MedicationLifecycleStatus } from "../../domain/medication-status-history.ts";
+import {
+  latestMedicationSuspensionAsOf,
+  medicationStatusAsOf,
+  type MedicationLifecycleStatus,
+} from "../../domain/medication-status-history.ts";
 import {
   assertMedicationWorkspaceEditable,
   effectiveMedicationRegimens,
@@ -64,16 +68,32 @@ export async function workspaceContext(tx: Prisma.TransactionClient, consultatio
     };
   }));
   const effective = new Map(effectiveMedicationRegimens({ consultationIds, regimens: regimenRecords }).map((regimen) => [regimen.medicationId, regimen]));
+  const suspendedHistory: MedicationWorkspaceView["suspendedHistory"] = [];
   const items = medications.map((medication) => {
     const regimen = effective.get(medication.id);
-    const projection = medicationStatusAsOf({ patientId: consultation.patientId, medicationId: medication.id, consultationIds, events: medication.statusEvents });
+    const statusInput: Parameters<typeof medicationStatusAsOf>[0] = {
+      patientId: consultation.patientId,
+      medicationId: medication.id,
+      consultationIds,
+      events: medication.statusEvents,
+    };
+    const projection = medicationStatusAsOf(statusInput);
+    const suspension = latestMedicationSuspensionAsOf(statusInput);
     const status = medicationStatusForWorkspace({ isLatestConsultation, explicitStatus: projection.status, currentStatus: medication.status as MedicationLifecycleStatus });
     const moments = regimen ? [...regimen.moments] : [];
+    const medicationText = [medication.name, medication.presentation].filter(Boolean).join(" ");
+    if (suspension) {
+      suspendedHistory.push({
+        medicationId: medication.id,
+        medicationText,
+        suspendedAt: suspension.suspendedAt,
+      });
+    }
     return {
       medicationId: medication.id,
       name: medication.name,
       presentation: medication.presentation ?? undefined,
-      medicationText: [medication.name, medication.presentation].filter(Boolean).join(" "),
+      medicationText,
       doseInstruction: regimen?.dose ?? undefined,
       route: regimen?.route ?? undefined,
       frequency: normalizeMedicationFrequency(regimen?.frequency, moments),
@@ -87,7 +107,19 @@ export async function workspaceContext(tx: Prisma.TransactionClient, consultatio
       regimenId: regimen?.id,
     };
   });
-  return { consultation, isLatestConsultation, view: { consultationId: consultation.id, consultationStatus: consultation.status, isLatestConsultation, items: items.sort((a, b) => a.medicationText.localeCompare(b.medicationText, "pt-BR")) } satisfies MedicationWorkspaceView };
+  return {
+    consultation,
+    isLatestConsultation,
+    view: {
+      consultationId: consultation.id,
+      consultationStatus: consultation.status,
+      isLatestConsultation,
+      items: items.sort((a, b) => a.medicationText.localeCompare(b.medicationText, "pt-BR")),
+      suspendedHistory: suspendedHistory.sort((a, b) =>
+        new Date(b.suspendedAt).getTime() - new Date(a.suspendedAt).getTime()
+        || a.medicationText.localeCompare(b.medicationText, "pt-BR")),
+    } satisfies MedicationWorkspaceView,
+  };
 }
 
 function assertEditable(context: Awaited<ReturnType<typeof workspaceContext>>) {

@@ -170,6 +170,7 @@ export async function medicationDocumentWorkspaceContext(
       consultationStatus: consultation.status,
       isLatestConsultation,
       items: items.sort((a, b) => a.medicationText.localeCompare(b.medicationText, "pt-BR")),
+      suspendedHistory: [],
     } satisfies MedicationWorkspaceView,
   };
 }

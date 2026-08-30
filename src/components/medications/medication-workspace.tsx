@@ -32,7 +32,18 @@ type Item = {
   statusSource: "explicit-history" | "current-record-only" | "unknown";
   regimenId?: string;
 };
-type View = { consultationId: string; consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED"; isLatestConsultation: boolean; items: Item[] };
+type SuspendedHistoryItem = {
+  medicationId: string;
+  medicationText: string;
+  suspendedAt: string;
+};
+type View = {
+  consultationId: string;
+  consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED";
+  isLatestConsultation: boolean;
+  items: Item[];
+  suspendedHistory: SuspendedHistoryItem[];
+};
 type RouteChoice = "" | "Via oral" | "Via subcutânea" | "Via intravenosa" | "Via gastrostomia" | "Outra via";
 type Form = {
   name: string;
@@ -65,6 +76,12 @@ const EMPTY_FORM: Form = {
 const STATUS_LABEL: Record<MedicationStatus, string> = { ACTIVE: "Em uso", SUSPENDED: "Suspenso", FINISHED: "Finalizado", UNKNOWN: "Status histórico desconhecido" };
 const ROUTES: readonly Exclude<RouteChoice, "">[] = ["Via oral", "Via subcutânea", "Via intravenosa", "Via gastrostomia", "Outra via"];
 const FREQUENCIES: readonly MedicationFrequency[] = ["DAILY", "WEEKLY", "MONTHLY", "AS_NEEDED"];
+
+function formatSuspensionDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Data não disponível";
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(date);
+}
 
 function routeFromForm(form: Form): string | undefined {
   if (!form.routeChoice) return undefined;
@@ -180,7 +197,6 @@ export function MedicationWorkspace({ consultationId, patientName }: { consultat
 
   const editable = Boolean(view && view.isLatestConsultation && view.consultationStatus !== "FINALIZED");
   const activeItems = useMemo(() => (view?.items ?? []).filter((item) => item.status === "ACTIVE"), [view]);
-  const otherItems = useMemo(() => (view?.items ?? []).filter((item) => item.status !== "ACTIVE"), [view]);
   function notify(next: View) { setView(next); setFeedback(null); window.dispatchEvent(new CustomEvent("clinical-medications-changed", { detail: { consultationId } })); }
   async function post(body: unknown): Promise<View> {
     const response = await fetch(`/api/consultations/${consultationId}/medications`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -233,15 +249,22 @@ export function MedicationWorkspace({ consultationId, patientName }: { consultat
     {!view.isLatestConsultation ? <p className={styles.notice}>Consulta histórica: alterações retrospectivas estão bloqueadas.</p> : null}{view.consultationStatus === "FINALIZED" ? <p className={styles.notice}>Consulta finalizada: medicações em modo somente leitura.</p> : null}{feedback ? <p className={styles.error} role="alert">{feedback}</p> : null}
     {editable ? <div className={styles.creator}><h3>Adicionar medicamento em uso</h3><RegimenFields form={form} setForm={setForm} includeName={true} /><button type="button" onClick={createMedication} disabled={!form.name.trim() || !canSaveRegimen(form) || saving}>{saving ? "Salvando…" : "Adicionar e continuar"}</button></div> : null}
     <MedicationPlanTable patientName={patientName} items={activeItems.map((item) => ({ id: item.medicationId, medicationText: item.medicationText, doseInstruction: item.doseInstruction, route: item.route, frequency: item.frequency, schedule: item.schedule, needsScheduleReview: item.needsScheduleReview, moments: item.moments, continuous: item.continuous, instructions: item.instructions }))} />
-    <div className={styles.list}><h3>Revisão e histórico de status</h3>{view.items.length === 0 ? <p className={styles.muted}>Nenhum medicamento cadastrado.</p> : view.items.map((item) => {
+
+    {editable ? <div className={styles.list}><h3>Revisar status e atualizar medicação</h3>{view.items.length === 0 ? <p className={styles.muted}>Nenhum medicamento cadastrado.</p> : view.items.map((item) => {
       const selectedStatus = statusChoice[item.medicationId] ?? (item.status === "UNKNOWN" ? "ACTIVE" : item.status);
       const confirmed = statusConfirmed[item.medicationId] === true;
       const canSubmitStatus = canSubmitMedicationStatusChange({ confirmed, currentStatus: item.status, selectedStatus, statusSource: item.statusSource });
       return <article className={styles.item} key={item.medicationId}>
-      <div><strong>{item.medicationText}</strong><span className={styles.status}>{STATUS_LABEL[item.status]}</span><small>{MEDICATION_FREQUENCY_LABELS[item.frequency]}{item.needsScheduleReview ? " · programação pendente de revisão" : ""}</small>{item.statusSource === "current-record-only" ? <small>Estado atual sem evento histórico anterior; confirme abaixo para iniciar o histórico explícito nesta consulta.</small> : null}{item.statusSource === "unknown" ? <small>Status não inferido para esta consulta histórica.</small> : null}</div>
-      {editable ? <div className={styles.itemActions}><button type="button" onClick={() => startRegimen(item)}>Atualizar dose/via/frequência</button><label>Status<select value={selectedStatus} onChange={(e) => { setStatusChoice((current) => ({ ...current, [item.medicationId]: e.target.value as Exclude<MedicationStatus, "UNKNOWN"> })); setStatusConfirmed((current) => ({ ...current, [item.medicationId]: false })); }}><option value="ACTIVE">Em uso</option><option value="SUSPENDED">Suspenso</option><option value="FINISHED">Finalizado</option></select></label><label className={styles.inline}><input type="checkbox" checked={confirmed} onChange={(e) => setStatusConfirmed((current) => ({ ...current, [item.medicationId]: e.target.checked }))} />Confirmo que revisei clinicamente esta alteração de status.</label><button type="button" onClick={() => changeStatus(item)} disabled={saving || !canSubmitStatus}>{item.statusSource === "explicit-history" ? "Registrar alteração" : "Registrar status explícito"}</button></div> : null}
+      <div><strong>{item.medicationText}</strong><span className={styles.status}>{STATUS_LABEL[item.status]}</span>{item.statusSource === "current-record-only" ? <small>Estado atual sem evento histórico anterior; confirme abaixo para iniciar o histórico explícito nesta consulta.</small> : null}{item.statusSource === "unknown" ? <small>Status não inferido para esta consulta histórica.</small> : null}</div>
+      <div className={styles.itemActions}><button type="button" onClick={() => startRegimen(item)}>Atualizar dose/via/frequência</button><label>Status<select value={selectedStatus} onChange={(e) => { setStatusChoice((current) => ({ ...current, [item.medicationId]: e.target.value as Exclude<MedicationStatus, "UNKNOWN"> })); setStatusConfirmed((current) => ({ ...current, [item.medicationId]: false })); }}><option value="ACTIVE">Em uso</option><option value="SUSPENDED">Suspenso</option><option value="FINISHED">Finalizado</option></select></label><label className={styles.inline}><input type="checkbox" checked={confirmed} onChange={(e) => setStatusConfirmed((current) => ({ ...current, [item.medicationId]: e.target.checked }))} />Confirmo que revisei clinicamente esta alteração de status.</label><button type="button" onClick={() => changeStatus(item)} disabled={saving || !canSubmitStatus}>{item.statusSource === "explicit-history" ? "Registrar alteração" : "Registrar status explícito"}</button></div>
       {editingId === item.medicationId ? <div className={styles.editRegimen}><RegimenFields form={editingForm} setForm={setEditingForm} includeName={false} /><div className={styles.editActions}><button type="button" onClick={saveRegimen} disabled={saving || !canSaveRegimen(editingForm)}>Salvar novo regime</button><button type="button" onClick={() => setEditingId(null)}>Cancelar</button></div></div> : null}
-    </article>})}</div>
-    {otherItems.length > 0 ? <p className={styles.muted}>Medicamentos suspensos, finalizados ou historicamente incertos permanecem disponíveis acima para rastreabilidade e não entram na tabela “em uso”.</p> : null}
+    </article>})}</div> : null}
+
+    <div className={styles.list}>
+      <h3>Revisão e histórico de status</h3>
+      {view.suspendedHistory.length === 0 ? <p className={styles.muted}>Nenhum medicamento com suspensão registrada até esta consulta.</p> : view.suspendedHistory.map((item) => <article className={styles.item} key={`${item.medicationId}-${item.suspendedAt}`}>
+        <div><strong>{item.medicationText}</strong><small>Suspenso em {formatSuspensionDate(item.suspendedAt)}</small></div>
+      </article>)}
+    </div>
   </section>;
 }

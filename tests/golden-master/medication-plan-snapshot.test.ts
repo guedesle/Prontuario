@@ -7,6 +7,7 @@ import {
 import type { MedicationWorkspaceView } from "../../src/domain/medication-workspace.ts";
 
 function workspace(overrides: Partial<MedicationWorkspaceView> = {}): MedicationWorkspaceView {
+  const { suspendedHistory = [], ...rest } = overrides;
   return {
     consultationId: "c2",
     consultationStatus: "IN_REVIEW",
@@ -40,7 +41,8 @@ function workspace(overrides: Partial<MedicationWorkspaceView> = {}): Medication
         statusSource: "explicit-history",
       },
     ],
-    ...overrides,
+    suspendedHistory,
+    ...rest,
   };
 }
 

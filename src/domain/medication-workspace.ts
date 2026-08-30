@@ -52,11 +52,18 @@ export interface MedicationWorkspaceItem {
   regimenId?: string;
 }
 
+export interface MedicationSuspensionHistoryItem {
+  medicationId: string;
+  medicationText: string;
+  suspendedAt: string;
+}
+
 export interface MedicationWorkspaceView {
   consultationId: string;
   consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED";
   isLatestConsultation: boolean;
   items: MedicationWorkspaceItem[];
+  suspendedHistory: MedicationSuspensionHistoryItem[];
 }
 
 export function assertMedicationWorkspaceEditable(input: {
