@@ -24,9 +24,11 @@ import {
   buildMedicationPlanSnapshotModel,
   MedicationPlanSnapshotError,
 } from "../../domain/medication-plan-snapshot";
+import { buildAgaReportEnrichment } from "../../domain/report-overview";
 import type { VaccinationReview } from "../../domain/vaccination-prevention";
 import { prisma } from "../db";
 import { requireAuthenticatedUser } from "../auth/require-user";
+import { advanceDirectiveWorkspaceContext } from "./advance-directives-workspace-context";
 import { createDocumentSnapshotInTransaction } from "./document-snapshot-transaction";
 import { workspaceContext } from "./medication-workspace";
 
@@ -63,6 +65,7 @@ export async function generateAgaReport(input: {
           patient: {
             select: {
               fullName: true,
+              birthDate: true,
               baselineConsultationId: true,
             },
           },
@@ -217,6 +220,7 @@ export async function generateAgaReport(input: {
 
       const medicationWorkspace = (await workspaceContext(tx, consultation.id)).view;
       const gastrostomyPresent = hasGastrostomyMedicationRoute(medicationWorkspace.items);
+      const directiveWorkspace = await advanceDirectiveWorkspaceContext(tx, consultation.id);
       let medicationPlan;
       try {
         const medicationSnapshot = buildMedicationPlanSnapshotModel({
@@ -249,6 +253,13 @@ export async function generateAgaReport(input: {
         vaccinationReview: vaccinationReviewFromObjective(consultation.objective),
         medicationPlan,
       });
+      const enrichment = buildAgaReportEnrichment({
+        patientBirthDate: consultation.patient.birthDate,
+        consultationDate: consultation.occurredAt,
+        scales: clinicalReport.assessedScales,
+        gastrostomyPresent,
+        directiveHistory: directiveWorkspace.history,
+      });
       const contextualCarePlan = applyContextualFamilyCarePlan({
         plan: clinicalReport.carePlan,
         immobility: deriveEstablishedImmobilityContext({
@@ -259,6 +270,7 @@ export async function generateAgaReport(input: {
       });
       const contextualReport = {
         ...clinicalReport,
+        ...enrichment,
         carePlan: {
           now: [...contextualCarePlan.now],
           mediumTerm: [...contextualCarePlan.mediumTerm],
@@ -268,7 +280,7 @@ export async function generateAgaReport(input: {
           urgent: [...contextualCarePlan.urgent],
         },
       };
-      const safeReport = sanitizeFamilyReportModel(contextualReport);
+      const safeReport = sanitizeFamilyReportModel(contextualReport) as typeof contextualReport;
       const capacityHistory = buildCapacityDimensionHistory({
         patientId: consultation.patientId,
         consultations: horizon,
