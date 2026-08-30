@@ -104,9 +104,7 @@ export function buildVaccinationPreventionSection(
       status: review.status,
       statusLabel: "Há vacinas pendentes registradas",
       pendingVaccines: [...(review.pendingVaccines ?? [])],
-      guidance: [
-        "Confira as vacinas pendentes com a carteira de vacinação e a equipe assistencial. Os próximos passos dependem de revisão clínica individual.",
-      ],
+      guidance: [],
       automaticPrescription: false,
     };
   }
