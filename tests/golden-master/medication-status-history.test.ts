@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  latestMedicationSuspensionAsOf,
   medicationStatusAsOf,
   type MedicationStatusTimelineEvent,
 } from "../../src/domain/medication-status-history.ts";
@@ -66,6 +67,7 @@ test("reconstrói status somente até o horizonte solicitado", () => {
   });
   assert.equal(followUp.status, "SUSPENDED");
   assert.equal(followUp.lastEventConsultationId, "consultation-a");
+  assert.equal(followUp.lastEventAt, "2026-03-01T09:00:00.000Z");
 
   const later = medicationStatusAsOf({
     patientId: "p1",
@@ -74,6 +76,28 @@ test("reconstrói status somente até o horizonte solicitado", () => {
     events,
   });
   assert.equal(later.status, "ACTIVE");
+});
+
+test("histórico mantém a última suspensão mesmo após reintrodução posterior", () => {
+  const suspension = latestMedicationSuspensionAsOf({
+    patientId: "p1",
+    medicationId: "med-1",
+    consultationIds: ["baseline", "consultation-a", "consultation-b"],
+    events,
+  });
+  assert.deepEqual(suspension, {
+    consultationId: "consultation-a",
+    suspendedAt: "2026-03-01T09:00:00.000Z",
+  });
+});
+
+test("sem evento de suspensão o medicamento não entra no histórico de suspensões", () => {
+  assert.equal(latestMedicationSuspensionAsOf({
+    patientId: "p1",
+    medicationId: "med-1",
+    consultationIds: ["baseline"],
+    events,
+  }), undefined);
 });
 
 test("evento futuro não retroage para documento histórico", () => {
@@ -85,6 +109,14 @@ test("evento futuro não retroage para documento histórico", () => {
   });
   assert.equal(projected.status, "SUSPENDED");
   assert.notEqual(projected.lastEventConsultationId, "consultation-b");
+
+  const suspension = latestMedicationSuspensionAsOf({
+    patientId: "p1",
+    medicationId: "med-1",
+    consultationIds: ["baseline"],
+    events,
+  });
+  assert.equal(suspension, undefined);
 });
 
 test("eventos da mesma consulta respeitam ordem de criação e id como desempate", () => {
@@ -116,6 +148,15 @@ test("eventos da mesma consulta respeitam ordem de criação e id como desempate
     events: sameConsultation,
   });
   assert.equal(projected.status, "ACTIVE");
+  assert.deepEqual(latestMedicationSuspensionAsOf({
+    patientId: "p1",
+    medicationId: "med-1",
+    consultationIds: ["baseline"],
+    events: sameConsultation,
+  }), {
+    consultationId: "baseline",
+    suspendedAt: "2026-01-01T09:00:00.000Z",
+  });
 });
 
 test("mistura de paciente ou medicamento falha fechado", () => {
@@ -132,16 +173,30 @@ test("mistura de paciente ou medicamento falha fechado", () => {
     consultationIds: ["baseline"],
     events: [{ ...events[0]!, medicationId: "med-2" }],
   }), /medicamentos diferentes/);
+
+  assert.throws(() => latestMedicationSuspensionAsOf({
+    patientId: "p1",
+    medicationId: "med-1",
+    consultationIds: ["baseline"],
+    events: [{ ...events[0]!, patientId: "p2" }],
+  }), /pacientes diferentes/);
 });
 
 test("cadeia explícita inconsistente é rejeitada em vez de inferida", () => {
+  const inconsistent = [
+    events[0]!,
+    { ...events[1]!, previousStatus: "FINISHED" as const },
+  ];
   assert.throws(() => medicationStatusAsOf({
     patientId: "p1",
     medicationId: "med-1",
     consultationIds: ["baseline", "consultation-a"],
-    events: [
-      events[0]!,
-      { ...events[1]!, previousStatus: "FINISHED" },
-    ],
+    events: inconsistent,
+  }), /transição inconsistente/);
+  assert.throws(() => latestMedicationSuspensionAsOf({
+    patientId: "p1",
+    medicationId: "med-1",
+    consultationIds: ["baseline", "consultation-a"],
+    events: inconsistent,
   }), /transição inconsistente/);
 });
