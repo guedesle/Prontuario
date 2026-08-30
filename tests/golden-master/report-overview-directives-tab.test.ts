@@ -153,7 +153,7 @@ test("diretiva estruturada salva aparece no relatório mesmo sem campos adiciona
   );
 });
 
-test("diretiva específica prévia não é apagada por recusa posterior nem por conversa vazia mais recente", () => {
+test("diretiva específica prévia não é apagada e histórico não é exposto no relatório final", () => {
   const topics = emptyAdvanceDirectiveTopics();
   const recordedPreference = "Não deseja reanimação cardiopulmonar se não houver perspectiva de recuperação.";
   topics.CARDIOPULMONARY_RESUSCITATION = {
@@ -192,7 +192,7 @@ test("diretiva específica prévia não é apagada por recusa posterior nem por 
   assert.equal(section.topics[0]?.status, recordedPreference);
   assert.equal(section.topics[0]?.note, undefined);
   assert.doesNotMatch(section.topics[0]?.status ?? "", /Preferência registrada/i);
-  assert.deepEqual(section.history.map((item) => item.consultationId), ["consultation-intermediate", "consultation-previous"]);
+  assert.deepEqual(section.history, []);
 });
 
 test("preferência marcada como registrada sem descrição não cria texto genérico no relatório", () => {
@@ -224,7 +224,7 @@ test("componente visual mantém aba condicional e documento de diretivas no rela
   assert.match(reportPreviewComponent, /activeTab === "directives" && generated\.report\.advanceDirectives/);
 });
 
-test("exportação acessível usa visão geral estruturada e inclui apenas a preferência documentada", () => {
+test("exportação acessível usa visão geral estruturada, preferência documentada e omite histórico", () => {
   const report = buildAgaReportModel({
     patientId: "patient-text",
     consultationId: "consultation-current",
@@ -251,7 +251,21 @@ test("exportação acessível usa visão geral estruturada e inclui apenas a pre
     consultationDate: "2026-08-30",
     scales: report.assessedScales,
     gastrostomyPresent: true,
-    directiveHistory: [directiveRecord({ whatMatters: "Conforto e proximidade da família.", topics })],
+    directiveHistory: [
+      directiveRecord({
+        id: "directive-current",
+        consultationId: "consultation-current",
+        consultationOccurredAt: "2026-08-30T12:00:00.000Z",
+        whatMatters: "Conforto e proximidade da família.",
+        topics,
+      }),
+      directiveRecord({
+        id: "directive-older",
+        consultationId: "consultation-older",
+        consultationOccurredAt: "2026-07-15T12:00:00.000Z",
+        whatMatters: "Manter contato com a família.",
+      }),
+    ],
   });
 
   const text = renderAccessibleAgaReportText({ ...report, ...enrichment });
@@ -262,5 +276,6 @@ test("exportação acessível usa visão geral estruturada e inclui apenas a pre
   assert.match(text, /DIRETIVAS ANTECIPADAS/);
   assert.match(text, new RegExp(recordedPreference.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   assert.doesNotMatch(text, /Preferência registrada/i);
+  assert.doesNotMatch(text, /\nHistórico\n/i);
   assert.doesNotMatch(text, /Sem mudança numérica classificável/);
 });
