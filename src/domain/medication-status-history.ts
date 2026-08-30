@@ -15,6 +15,7 @@ export interface MedicationStatusProjection {
   status: MedicationLifecycleStatus | null;
   source: "EXPLICIT_STATUS_EVENT" | "NO_EXPLICIT_STATUS_HISTORY";
   lastEventConsultationId?: string;
+  lastEventAt?: string;
 }
 
 function eventTimestamp(value: Date | string): number {
@@ -74,5 +75,6 @@ export function medicationStatusAsOf(input: {
     status: latest.newStatus,
     source: "EXPLICIT_STATUS_EVENT",
     lastEventConsultationId: latest.consultationId,
+    lastEventAt: new Date(latest.createdAt).toISOString(),
   };
 }
