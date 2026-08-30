@@ -24,6 +24,7 @@ import {
   buildMedicationPlanSnapshotModel,
   MedicationPlanSnapshotError,
 } from "../../domain/medication-plan-snapshot";
+import { buildAgaReportCareSections } from "../../domain/report-care-sections";
 import { buildAgaReportEnrichment } from "../../domain/report-overview";
 import type { VaccinationReview } from "../../domain/vaccination-prevention";
 import { prisma } from "../db";
@@ -62,6 +63,7 @@ export async function generateAgaReport(input: {
           occurredAt: true,
           createdAt: true,
           objective: true,
+          plan: true,
           patient: {
             select: {
               fullName: true,
@@ -260,6 +262,11 @@ export async function generateAgaReport(input: {
         gastrostomyPresent,
         directiveHistory: directiveWorkspace.history,
       });
+      const reportCareSections = buildAgaReportCareSections({
+        gastrostomyPresent,
+        savedPlan: consultation.plan,
+        problems: problems.map((problem) => ({ id: problem.id, title: problem.title })),
+      });
       const contextualCarePlan = applyContextualFamilyCarePlan({
         plan: clinicalReport.carePlan,
         immobility: deriveEstablishedImmobilityContext({
@@ -271,6 +278,7 @@ export async function generateAgaReport(input: {
       const contextualReport = {
         ...clinicalReport,
         ...enrichment,
+        ...reportCareSections,
         carePlan: {
           now: [...contextualCarePlan.now],
           mediumTerm: [...contextualCarePlan.mediumTerm],

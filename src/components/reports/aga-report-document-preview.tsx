@@ -9,6 +9,10 @@ import {
 } from "@/domain/capacity-dimension-history";
 import type { ProfessionalIdentity } from "@/domain/professional-identity";
 import type {
+  AgaReportClinicalConduct,
+  AgaReportGastrostomyCare,
+} from "@/domain/report-care-sections";
+import type {
   AgaAdvanceDirectivesReportSection,
   AgaReportOverview,
   AgaReportOverviewScaleItem,
@@ -25,6 +29,8 @@ interface GeneratedReportResponse {
     capacityHistory: CapacityDimensionHistory;
     overview: AgaReportOverview;
     advanceDirectives?: AgaAdvanceDirectivesReportSection;
+    clinicalConducts?: AgaReportClinicalConduct[];
+    gastrostomyCare?: AgaReportGastrostomyCare;
   };
   text: string;
   snapshot: { id: string; version: number };
@@ -425,6 +431,34 @@ export function AgaReportDocumentPreview({
               </div>
               <CapacityDimensionHistoryChart history={generated.report.capacityHistory} context="final-report" />
               <p className={styles.causalityNote}>Mudanças que aconteceram em períodos próximos podem estar relacionadas ou não. O gráfico não define a causa da mudança.</p>
+            </section> : null}
+
+            {(generated.report.clinicalConducts?.length ?? 0) > 0 ? <section className={styles.section}>
+              <div className={styles.sectionHeading}><span>4</span><h2>Condutas clínicas</h2></div>
+              <p className={styles.sectionLead}>Condutas registradas pelo médico nesta consulta. Podem incluir solicitações de exames, mudanças de tratamento ou outras decisões documentadas no plano clínico.</p>
+              <div className={styles.problemGrid}>
+                {generated.report.clinicalConducts?.map((conduct) => <article key={conduct.problemId}>
+                  <div className={styles.problemTitle}><ReportGlyph name="clinical" /><h3>{conduct.problemTitle}</h3></div>
+                  <ul className={styles.compactList}>{conduct.actions.map((action) => <li key={action}>{action}</li>)}</ul>
+                </article>)}
+              </div>
+            </section> : null}
+
+            {generated.report.gastrostomyCare ? <section className={`${styles.section} ${styles.supportPanel}`}>
+              <div className={styles.sectionHeading}><span>GTT</span><h2>Cuidados com gastrostomia</h2></div>
+              <p className={styles.sectionLead}>Orientações práticas para o cuidado diário da gastrostomia já registrada. Fórmula, volumes, horários e preparo de medicamentos seguem a orientação individual da equipe.</p>
+              <div className={styles.problemGrid}>
+                <article>
+                  <div className={styles.problemTitle}><ReportGlyph name="nutrition" /><h3>Cuidados práticos</h3></div>
+                  <ul className={styles.compactList}>
+                    {[...generated.report.gastrostomyCare.practicalActions, ...generated.report.gastrostomyCare.caregiverActions].map((item) => <li key={item}>{item}</li>)}
+                  </ul>
+                </article>
+                <article>
+                  <div className={styles.problemTitle}><ReportGlyph name="attention" /><h3>Quando entrar em contato com a equipe</h3></div>
+                  <ul className={styles.compactList}>{generated.report.gastrostomyCare.contactGuidance.map((item) => <li key={item}>{item}</li>)}</ul>
+                </article>
+              </div>
             </section> : null}
 
             <section className={styles.safetyPanel} aria-labelledby="report-urgent-help-title">

@@ -1,5 +1,9 @@
 import type { AgaReportModel } from "./aga-report.ts";
 import type {
+  AgaReportClinicalConduct,
+  AgaReportGastrostomyCare,
+} from "./report-care-sections.ts";
+import type {
   AgaAdvanceDirectivesReportSection,
   AgaReportOverview,
 } from "./report-overview.ts";
@@ -18,6 +22,8 @@ function list(items: readonly string[]): string {
 type AccessibleAgaReportModel = AgaReportModel & {
   overview?: AgaReportOverview;
   advanceDirectives?: AgaAdvanceDirectivesReportSection;
+  clinicalConducts?: AgaReportClinicalConduct[];
+  gastrostomyCare?: AgaReportGastrostomyCare;
 };
 
 function overviewBlocks(overview: AgaReportOverview): string[] {
@@ -137,6 +143,24 @@ export function renderAccessibleAgaReportText(model: AccessibleAgaReportModel): 
       );
       if (domain.guidance.length > 0) blocks.push("Orientações:", list(domain.guidance));
     }
+  }
+
+  if ((model.clinicalConducts?.length ?? 0) > 0) {
+    blocks.push("", "CONDUTAS CLÍNICAS", "Condutas registradas pelo médico nesta consulta:");
+    for (const conduct of model.clinicalConducts ?? []) {
+      blocks.push("", conduct.problemTitle, list(conduct.actions));
+    }
+  }
+
+  if (model.gastrostomyCare) {
+    blocks.push(
+      "",
+      "CUIDADOS COM GASTROSTOMIA",
+      "Cuidados práticos:",
+      list([...model.gastrostomyCare.practicalActions, ...model.gastrostomyCare.caregiverActions]),
+      "Quando entrar em contato com a equipe:",
+      list(model.gastrostomyCare.contactGuidance),
+    );
   }
 
   if (model.advanceDirectives) {
