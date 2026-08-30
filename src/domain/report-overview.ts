@@ -138,12 +138,21 @@ export function buildAdvanceDirectivesReportSection(
 
   const topics = ADVANCE_DIRECTIVE_TOPIC_CODES.flatMap((code): AgaAdvanceDirectiveReportTopic[] => {
     const topic = selected.topics[code];
-    if (topic.status === "NOT_DISCUSSED" && !topic.note?.trim()) return [];
+    const note = topic.note?.trim();
+    if (topic.status === "NOT_DISCUSSED" && !note) return [];
+    if (topic.status === "PREFERENCE_RECORDED") {
+      if (!note) return [];
+      return [{
+        code,
+        title: TOPIC_LABELS[code].title,
+        status: note,
+      }];
+    }
     return [{
       code,
       title: TOPIC_LABELS[code].title,
       status: TOPIC_STATUS_LABELS[topic.status],
-      ...(topic.note?.trim() ? { note: topic.note.trim() } : {}),
+      ...(note ? { note } : {}),
     }];
   });
 

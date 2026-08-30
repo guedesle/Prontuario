@@ -155,9 +155,10 @@ test("diretiva estruturada salva aparece no relatório mesmo sem campos adiciona
 
 test("diretiva específica prévia não é apagada por recusa posterior nem por conversa vazia mais recente", () => {
   const topics = emptyAdvanceDirectiveTopics();
+  const recordedPreference = "Não deseja reanimação cardiopulmonar se não houver perspectiva de recuperação.";
   topics.CARDIOPULMONARY_RESUSCITATION = {
     status: "PREFERENCE_RECORDED",
-    note: "Preferência registrada para revisão clínica.",
+    note: recordedPreference,
   };
   const meaningful = directiveRecord({
     whatMatters: "Permanecer próxima à família.",
@@ -188,8 +189,18 @@ test("diretiva específica prévia não é apagada por recusa posterior nem por 
   assert.ok(section);
   assert.equal(section.sourceConsultationId, "consultation-previous");
   assert.equal(section.whatMatters, "Permanecer próxima à família.");
-  assert.equal(section.topics[0]?.status, "Preferência registrada");
+  assert.equal(section.topics[0]?.status, recordedPreference);
+  assert.equal(section.topics[0]?.note, undefined);
+  assert.doesNotMatch(section.topics[0]?.status ?? "", /Preferência registrada/i);
   assert.deepEqual(section.history.map((item) => item.consultationId), ["consultation-intermediate", "consultation-previous"]);
+});
+
+test("preferência marcada como registrada sem descrição não cria texto genérico no relatório", () => {
+  const topics = emptyAdvanceDirectiveTopics();
+  topics.CARDIOPULMONARY_RESUSCITATION = { status: "PREFERENCE_RECORDED" };
+  const section = buildAdvanceDirectivesReportSection([directiveRecord({ topics })]);
+  assert.ok(section);
+  assert.deepEqual(section.topics, []);
 });
 
 test("adiamento ou recusa sem conversa de diretivas não criam aba falsa no relatório", () => {
@@ -213,7 +224,7 @@ test("componente visual mantém aba condicional e documento de diretivas no rela
   assert.match(reportPreviewComponent, /activeTab === "directives" && generated\.report\.advanceDirectives/);
 });
 
-test("exportação acessível usa visão geral estruturada e inclui diretivas", () => {
+test("exportação acessível usa visão geral estruturada e inclui apenas a preferência documentada", () => {
   const report = buildAgaReportModel({
     patientId: "patient-text",
     consultationId: "consultation-current",
@@ -232,6 +243,8 @@ test("exportação acessível usa visão geral estruturada e inclui diretivas", 
     }],
   });
   const topics = emptyAdvanceDirectiveTopics();
+  const recordedPreference = "Prefere permanecer em casa quando isso for seguro e clinicamente possível.";
+  topics.CARDIOPULMONARY_RESUSCITATION = { status: "PREFERENCE_RECORDED", note: recordedPreference };
   topics.HOSPITALIZATION_AND_PLACE_OF_CARE = { status: "UNCERTAIN_CONTEXT_DEPENDENT" };
   const enrichment = buildAgaReportEnrichment({
     patientBirthDate: "1944-08-30",
@@ -247,5 +260,7 @@ test("exportação acessível usa visão geral estruturada e inclui diretivas", 
   assert.match(text, /Cognição — FAST: 6e — FAST 6e/);
   assert.match(text, /Dispositivo: Gastrostomia \(GTT\)/);
   assert.match(text, /DIRETIVAS ANTECIPADAS/);
+  assert.match(text, new RegExp(recordedPreference.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(text, /Preferência registrada/i);
   assert.doesNotMatch(text, /Sem mudança numérica classificável/);
 });
