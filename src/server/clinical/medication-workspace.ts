@@ -9,7 +9,11 @@ import {
   type MedicationMoment,
   type MedicationSchedule,
 } from "../../domain/medication-plan.ts";
-import { medicationStatusAsOf, type MedicationLifecycleStatus } from "../../domain/medication-status-history.ts";
+import {
+  latestMedicationSuspensionAsOf,
+  medicationStatusAsOf,
+  type MedicationLifecycleStatus,
+} from "../../domain/medication-status-history.ts";
 import {
   assertMedicationWorkspaceEditable,
   effectiveMedicationRegimens,
@@ -67,15 +71,17 @@ export async function workspaceContext(tx: Prisma.TransactionClient, consultatio
   const suspendedHistory: MedicationWorkspaceView["suspendedHistory"] = [];
   const items = medications.map((medication) => {
     const regimen = effective.get(medication.id);
-    const projection = medicationStatusAsOf({ patientId: consultation.patientId, medicationId: medication.id, consultationIds, events: medication.statusEvents });
+    const statusInput = { patientId: consultation.patientId, medicationId: medication.id, consultationIds, events: medication.statusEvents };
+    const projection = medicationStatusAsOf(statusInput);
+    const suspension = latestMedicationSuspensionAsOf(statusInput);
     const status = medicationStatusForWorkspace({ isLatestConsultation, explicitStatus: projection.status, currentStatus: medication.status as MedicationLifecycleStatus });
     const moments = regimen ? [...regimen.moments] : [];
     const medicationText = [medication.name, medication.presentation].filter(Boolean).join(" ");
-    if (projection.status === "SUSPENDED" && projection.lastEventAt) {
+    if (suspension) {
       suspendedHistory.push({
         medicationId: medication.id,
         medicationText,
-        suspendedAt: projection.lastEventAt,
+        suspendedAt: suspension.suspendedAt,
       });
     }
     return {
