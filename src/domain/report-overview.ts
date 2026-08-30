@@ -113,8 +113,12 @@ function scaleOverviewItem(scale: AgaScaleReportSection | undefined): AgaReportO
   };
 }
 
-function hasReportableAdvanceDirective(record: AdvanceDirectiveRecordView): boolean {
-  if (record.disposition !== "WANTS_TO_TALK") return false;
+function isAdvanceDirectiveConversation(record: AdvanceDirectiveRecordView): boolean {
+  return record.disposition === "WANTS_TO_TALK";
+}
+
+function hasSpecificAdvanceDirectiveContent(record: AdvanceDirectiveRecordView): boolean {
+  if (!isAdvanceDirectiveConversation(record)) return false;
   if (record.whatMatters?.trim() || record.dignityAndComfort?.trim()) return true;
   if (record.priorities.length > 0) return true;
   if (record.trustedPersonName?.trim()) return true;
@@ -128,8 +132,8 @@ function hasReportableAdvanceDirective(record: AdvanceDirectiveRecordView): bool
 export function buildAdvanceDirectivesReportSection(
   history: readonly AdvanceDirectiveRecordView[],
 ): AgaAdvanceDirectivesReportSection | undefined {
-  const reportableHistory = history.filter(hasReportableAdvanceDirective);
-  const selected = reportableHistory[0];
+  const conversationHistory = history.filter(isAdvanceDirectiveConversation);
+  const selected = conversationHistory.find(hasSpecificAdvanceDirectiveContent) ?? conversationHistory[0];
   if (!selected) return undefined;
 
   const topics = ADVANCE_DIRECTIVE_TOPIC_CODES.flatMap((code): AgaAdvanceDirectiveReportTopic[] => {
@@ -160,12 +164,23 @@ export function buildAdvanceDirectivesReportSection(
     topics,
     ...(selected.documentStatus !== "NOT_INFORMED" ? { documentStatus: DOCUMENT_STATUS_LABELS[selected.documentStatus] } : {}),
     reviewTrigger: REVIEW_TRIGGER_LABELS[selected.reviewTrigger],
-    history: reportableHistory.map((record) => ({
+    history: conversationHistory.map((record) => ({
       consultationId: record.consultationId,
       consultationDate: record.consultationOccurredAt,
       version: record.version,
     })),
   };
+}
+
+function hasSpecificAdvanceDirectiveSectionContent(section: AgaAdvanceDirectivesReportSection): boolean {
+  return Boolean(
+    section.whatMatters
+    || section.dignityAndComfort
+    || section.trustedPerson
+    || section.documentStatus
+    || section.priorities.length > 0
+    || section.topics.length > 0,
+  );
 }
 
 export function buildAgaReportEnrichment(input: {
@@ -199,7 +214,9 @@ export function buildAgaReportEnrichment(input: {
       } : {}),
       ...(advanceDirectives ? {
         advanceDirectives: {
-          label: "Registradas — preferências e objetivos de cuidado documentados",
+          label: hasSpecificAdvanceDirectiveSectionContent(advanceDirectives)
+            ? "Registradas — preferências e objetivos de cuidado documentados"
+            : "Conversa registrada — preferências específicas ainda não documentadas",
           sourceConsultationDate: advanceDirectives.sourceConsultationDate,
         },
       } : {}),
