@@ -1,1 +1,1 @@
-export const CLINICAL_RELEASE_ID = "2026-08-30-vidaas-advance-directives-signature-v4" as const;
+export const CLINICAL_RELEASE_ID = "2026-08-30-finalization-return-to-patients-v1" as const;

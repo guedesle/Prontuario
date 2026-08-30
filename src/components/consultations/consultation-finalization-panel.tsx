@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./consultation-finalization-panel.module.css";
@@ -232,6 +233,9 @@ export function ConsultationFinalizationPanel({ consultationId }: { consultation
           <p>
             O registro está encerrado e protegido contra edição. Documentos continuam vinculados a esta consulta e permanecem versionados.
           </p>
+          <Link className={styles.returnToPatients} href="/patients">
+            Voltar à lista de pacientes
+          </Link>
         </div>
       ) : null}
     </section>
