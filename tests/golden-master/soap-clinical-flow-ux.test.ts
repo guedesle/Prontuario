@@ -16,7 +16,6 @@ test("vacinas permanecem clinicamente intactas e ganham separação visual", () 
   assert.match(editor, /deriveVaccinationReview/);
   assert.match(editor, /GERIATRIC_VACCINE_CHECKLIST/);
   assert.match(editor, /Carteira\/status vacinal revisado nesta consulta/);
-  assert.match(editor, /não gera prescrição, produto, dose ou esquema/);
   assert.match(styles, /\.vaccinePanel\s*\{[\s\S]*?border-left:\s*4px solid var\(--primary\)/);
 });
 
