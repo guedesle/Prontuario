@@ -19,6 +19,7 @@ const view: MedicationWorkspaceView = {
   consultationStatus: "DRAFT",
   isLatestConsultation: true,
   items: [],
+  suspendedHistory: [],
 };
 
 function operations(overrides: Partial<Parameters<typeof medicationWorkspaceHttpHandlers>[0]> = {}) {
