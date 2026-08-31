@@ -32,12 +32,13 @@ function isApprovedProductionEmail(email: string): boolean {
 
 function usesApprovedProductionAccessContract(): boolean {
   return process.env.NODE_ENV === "production"
-    && appUrl.replace(/\/$/, "") === canonicalProductionAppUrl;
+    || appUrl.replace(/\/$/, "") === canonicalProductionAppUrl;
 }
 
 function isAuthorizedEmail(email: string): boolean {
+  if (isApprovedProductionEmail(email)) return true;
   return usesApprovedProductionAccessContract()
-    ? isApprovedProductionEmail(email)
+    ? false
     : isEmailAllowed(email, allowedEmails);
 }
 
