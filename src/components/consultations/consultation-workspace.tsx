@@ -93,78 +93,91 @@ export function ConsultationWorkspace({
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  const activeSection = useMemo(
-    () => SECTIONS.find((section) => section.id === active) ?? SECTIONS[0],
-    [active],
-  );
+  const activeIndex = useMemo(() => SECTIONS.findIndex((section) => section.id === active), [active]);
 
-  function activate(sectionId: WorkspaceSectionId) {
+  function select(sectionId: WorkspaceSectionId) {
     setActive(sectionId);
     setVisited((current) => new Set([...current, sectionId]));
-    window.history.replaceState(null, "", `#${sectionId}`);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${sectionId}`);
+    }
   }
 
   return (
-    <section className={styles.workspace} aria-labelledby="consultation-workspace-title">
+    <section className={styles.workspace} aria-label="Etapas da consulta geriátrica">
       <aside className={styles.navigation} aria-label="Navegação da consulta">
-        <div className={styles.navigationHeading}>
-          <span className={styles.eyebrow}>Consulta em etapas</span>
-          <strong id="consultation-workspace-title">{patientName}</strong>
+        <div className={styles.navigationHeader}>
+          <span>Consulta em etapas</span>
+          <strong>{activeIndex + 1} de {SECTIONS.length}</strong>
         </div>
-        <div className={styles.sectionList} role="list" aria-label="Áreas do prontuário">
-          {SECTIONS.map((section) => (
+        <p className={styles.performanceHint}>Abrimos somente a etapa em uso. Isso reduz o carregamento inicial e evita consumir internet com áreas que ainda não foram acessadas.</p>
+        <nav className={styles.sectionList} aria-label="Áreas do prontuário">
+          {SECTIONS.map((section, index) => (
             <button
               key={section.id}
               type="button"
-              className={active === section.id ? styles.active : ""}
+              className={active === section.id ? styles.active : undefined}
               aria-current={active === section.id ? "step" : undefined}
-              onClick={() => activate(section.id)}
+              onClick={() => select(section.id)}
             >
-              <span className={styles.sectionLabel}>{section.label}</span>
-              <span className={styles.sectionShortLabel}>{section.shortLabel}</span>
-              <small>{section.description}</small>
+              <span className={styles.stepNumber}>{index + 1}</span>
+              <span className={styles.stepCopy}><strong>{section.shortLabel}</strong><small>{section.description}</small></span>
             </button>
           ))}
-        </div>
+        </nav>
       </aside>
 
       <div className={styles.content}>
         <header className={styles.contentHeader}>
-          <span className={styles.eyebrow}>Etapa atual</span>
-          <h2>{activeSection.label}</h2>
-          <p>{activeSection.description}</p>
+          <div>
+            <span>Etapa atual</span>
+            <h2>{SECTIONS[activeIndex]?.label ?? "Consulta"}</h2>
+          </div>
+          <small>As etapas já abertas permanecem preservadas na tela para não perder rascunhos ao navegar.</small>
         </header>
 
         {visited.has("problemas") ? (
-          <div id="problemas" hidden={active !== "problemas"}>
+          <div id="problemas" hidden={active !== "problemas"} className={styles.panel}>
             <ProblemWorkspace consultationId={consultationId} />
           </div>
         ) : null}
+
         {visited.has("medicamentos") ? (
-          <div id="medicamentos" hidden={active !== "medicamentos"}>
-            <MedicationWorkspace consultationId={consultationId} />
+          <div id="medicamentos" hidden={active !== "medicamentos"} className={styles.panel}>
+            <MedicationWorkspace consultationId={consultationId} patientName={patientName} />
+            <div className={styles.documentActionBar} aria-label="Ações da tabela de medicamentos">
+              <div><strong>Tabela de medicamentos</strong><span>Abra o documento separado para revisar e imprimir. As salvaguardas de identidade e reconciliação continuam valendo.</span></div>
+              <a className={styles.documentAction} href={`/consultations/${consultationId}/medications/print`} target="_blank" rel="noreferrer">Abrir e imprimir tabela</a>
+            </div>
           </div>
         ) : null}
-        <div id="soap" hidden={active !== "soap"}>
-          <SoapEditor consultationId={consultationId} />
-        </div>
+
+        {visited.has("soap") ? (
+          <div id="soap" hidden={active !== "soap"} className={styles.panel}>
+            <SoapEditor consultationId={consultationId} />
+          </div>
+        ) : null}
+
         {visited.has("escalas") ? (
-          <div id="escalas" hidden={active !== "escalas"}>
+          <div id="escalas" hidden={active !== "escalas"} className={styles.panel}>
             <ClinicalScalesWorkspace consultationId={consultationId} />
           </div>
         ) : null}
+
         {visited.has("diretivas") ? (
-          <div id="diretivas" hidden={active !== "diretivas"}>
+          <div id="diretivas" hidden={active !== "diretivas"} className={styles.panel}>
             <AdvanceDirectivesWorkspace consultationId={consultationId} />
           </div>
         ) : null}
+
         {visited.has("relatorio") ? (
-          <div id="relatorio" hidden={active !== "relatorio"}>
+          <div id="relatorio" hidden={active !== "relatorio"} className={styles.panel}>
             <ReportWorkspaceTabs consultationId={consultationId} professionalIdentity={professionalIdentity} />
           </div>
         ) : null}
+
         {visited.has("finalizacao") ? (
-          <div id="finalizacao" hidden={active !== "finalizacao"}>
+          <div id="finalizacao" hidden={active !== "finalizacao"} className={styles.panel}>
             <ConsultationFinalizationPanel consultationId={consultationId} />
           </div>
         ) : null}
