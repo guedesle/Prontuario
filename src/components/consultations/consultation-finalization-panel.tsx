@@ -233,7 +233,7 @@ export function ConsultationFinalizationPanel({ consultationId }: { consultation
           <p>
             O registro está encerrado e protegido contra edição. Documentos continuam vinculados a esta consulta e permanecem versionados.
           </p>
-          <Link className={styles.returnToPatients} href="/patients">
+          <Link className={styles.returnToPatients} href="/">
             Voltar à lista de pacientes
           </Link>
         </div>
