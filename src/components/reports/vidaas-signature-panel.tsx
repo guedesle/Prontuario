@@ -9,8 +9,14 @@ type SignatureProvider = "vidaas" | "bird";
 type LoadingKey = `${DocumentKind}:${SignatureProvider}`;
 
 function endpointFor(consultationId: string, kind: DocumentKind, provider: SignatureProvider): string {
-  const documentPath = kind === "advance-directives" ? "advance-directives" : "aga";
-  return `/api/consultations/${consultationId}/reports/${documentPath}/signatures/${provider}`;
+  if (provider === "vidaas") {
+    return kind === "advance-directives"
+      ? `/api/consultations/${consultationId}/reports/advance-directives/signatures/vidaas`
+      : `/api/consultations/${consultationId}/reports/aga/signatures/vidaas`;
+  }
+  return kind === "advance-directives"
+    ? `/api/consultations/${consultationId}/reports/advance-directives/signatures/bird`
+    : `/api/consultations/${consultationId}/reports/aga/signatures/bird`;
 }
 
 function providerLabel(provider: SignatureProvider): string {
