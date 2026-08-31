@@ -1,10 +1,11 @@
+import { createHash } from "node:crypto";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "../db";
 import {
-  assertActiveAllowedUser,
   isEmailAllowed,
+  normalizeEmail,
   parseEmailSet,
   roleForFirstLogin,
 } from "../../domain/security/auth-policy";
@@ -13,6 +14,32 @@ import { assertProductionEnvironment } from "../../domain/security/environment";
 const appUrl = process.env.APP_URL ?? "http://localhost:3000";
 const allowedEmails = parseEmailSet(process.env.AUTH_ALLOWED_EMAILS);
 const bootstrapAdmins = parseEmailSet(process.env.AUTH_BOOTSTRAP_ADMIN_EMAILS);
+
+const canonicalProductionAppUrl = "https://prontuario.nataliamendesgeriatra.com";
+const approvedProductionEmailFingerprints = new Set([
+  "f3edb3d5dbf548434e230325bc7835275146d04fcc65dcf55d83385956691210",
+  "b233416c9c9fecdd75ad43613d16cb2515c19c2ff302e56842dbcd64a876de02",
+  "7adbe1e0c628a064adf67f5241674295f6fdb6b4f2c09734532121e6db5e35f4",
+]);
+
+function emailFingerprint(email: string): string {
+  return createHash("sha256").update(normalizeEmail(email), "utf8").digest("hex");
+}
+
+function isApprovedProductionEmail(email: string): boolean {
+  return approvedProductionEmailFingerprints.has(emailFingerprint(email));
+}
+
+function usesApprovedProductionAccessContract(): boolean {
+  return process.env.NODE_ENV === "production"
+    && appUrl.replace(/\/$/, "") === canonicalProductionAppUrl;
+}
+
+function isAuthorizedEmail(email: string): boolean {
+  return usesApprovedProductionAccessContract()
+    ? isApprovedProductionEmail(email)
+    : isEmailAllowed(email, allowedEmails);
+}
 
 if (process.env.NODE_ENV === "production") {
   assertProductionEnvironment({
@@ -88,7 +115,7 @@ export const auth = betterAuth({
     user: {
       create: {
         before: async (user) => {
-          if (!isEmailAllowed(user.email, allowedEmails)) {
+          if (!isAuthorizedEmail(user.email)) {
             throw new APIError("FORBIDDEN", {
               message: "Conta não autorizada para este prontuário.",
             });
@@ -116,9 +143,7 @@ export const auth = betterAuth({
           if (!user) {
             throw new APIError("UNAUTHORIZED", { message: "Usuário não encontrado." });
           }
-          try {
-            assertActiveAllowedUser({ user, allowedEmails });
-          } catch {
+          if (!user.active || !isAuthorizedEmail(user.email)) {
             throw new APIError("FORBIDDEN", { message: "Acesso ao prontuário revogado." });
           }
           return { data: session };
