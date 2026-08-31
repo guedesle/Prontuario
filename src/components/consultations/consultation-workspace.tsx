@@ -17,7 +17,7 @@ type WorkspaceSection = {
 const SECTIONS: readonly WorkspaceSection[] = [
   { id: "problemas", label: "Problemas", shortLabel: "Problemas", description: "Lista clínica e geriátrica longitudinal" },
   { id: "medicamentos", label: "Medicamentos", shortLabel: "Medicamentos", description: "Reconciliação e horários" },
-  { id: "soap", label: "Evolução clínica", shortLabel: "Evolução", description: "SOAP, exames, vacinas e plano por problema" },
+  { id: "soap", label: "Evolução e plano", shortLabel: "Evolução + plano", description: "SOAP, exames, vacinas e plano por problema" },
   { id: "escalas", label: "Escalas clínicas", shortLabel: "Escalas", description: "Avaliações estruturadas" },
   { id: "diretivas", label: "Diretivas antecipadas", shortLabel: "Diretivas", description: "Valores e preferências revisáveis" },
   { id: "relatorio", label: "Relatório final", shortLabel: "Relatório", description: "Documento para paciente e família" },
@@ -93,91 +93,78 @@ export function ConsultationWorkspace({
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  const activeIndex = useMemo(() => SECTIONS.findIndex((section) => section.id === active), [active]);
+  const activeSection = useMemo(
+    () => SECTIONS.find((section) => section.id === active) ?? SECTIONS[0],
+    [active],
+  );
 
-  function select(sectionId: WorkspaceSectionId) {
+  function activate(sectionId: WorkspaceSectionId) {
     setActive(sectionId);
     setVisited((current) => new Set([...current, sectionId]));
-    if (typeof window !== "undefined") {
-      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${sectionId}`);
-    }
+    window.history.replaceState(null, "", `#${sectionId}`);
   }
 
   return (
-    <section className={styles.workspace} aria-label="Etapas da consulta geriátrica">
+    <section className={styles.workspace} aria-labelledby="consultation-workspace-title">
       <aside className={styles.navigation} aria-label="Navegação da consulta">
-        <div className={styles.navigationHeader}>
-          <span>Consulta em etapas</span>
-          <strong>{activeIndex + 1} de {SECTIONS.length}</strong>
+        <div className={styles.navigationHeading}>
+          <span className={styles.eyebrow}>Consulta em etapas</span>
+          <strong id="consultation-workspace-title">{patientName}</strong>
         </div>
-        <p className={styles.performanceHint}>Abrimos somente a etapa em uso. Isso reduz o carregamento inicial e evita consumir internet com áreas que ainda não foram acessadas.</p>
-        <nav className={styles.sectionList} aria-label="Áreas do prontuário">
-          {SECTIONS.map((section, index) => (
+        <div className={styles.sectionList} role="list" aria-label="Áreas do prontuário">
+          {SECTIONS.map((section) => (
             <button
               key={section.id}
               type="button"
-              className={active === section.id ? styles.active : undefined}
+              className={active === section.id ? styles.active : ""}
               aria-current={active === section.id ? "step" : undefined}
-              onClick={() => select(section.id)}
+              onClick={() => activate(section.id)}
             >
-              <span className={styles.stepNumber}>{index + 1}</span>
-              <span className={styles.stepCopy}><strong>{section.shortLabel}</strong><small>{section.description}</small></span>
+              <span className={styles.sectionLabel}>{section.label}</span>
+              <span className={styles.sectionShortLabel}>{section.shortLabel}</span>
+              <small>{section.description}</small>
             </button>
           ))}
-        </nav>
+        </div>
       </aside>
 
       <div className={styles.content}>
         <header className={styles.contentHeader}>
-          <div>
-            <span>Etapa atual</span>
-            <h2>{SECTIONS[activeIndex]?.label ?? "Consulta"}</h2>
-          </div>
-          <small>As etapas já abertas permanecem preservadas na tela para não perder rascunhos ao navegar.</small>
+          <span className={styles.eyebrow}>Etapa atual</span>
+          <h2>{activeSection.label}</h2>
+          <p>{activeSection.description}</p>
         </header>
 
         {visited.has("problemas") ? (
-          <div id="problemas" hidden={active !== "problemas"} className={styles.panel}>
+          <div id="problemas" hidden={active !== "problemas"}>
             <ProblemWorkspace consultationId={consultationId} />
           </div>
         ) : null}
-
         {visited.has("medicamentos") ? (
-          <div id="medicamentos" hidden={active !== "medicamentos"} className={styles.panel}>
-            <MedicationWorkspace consultationId={consultationId} patientName={patientName} />
-            <div className={styles.documentActionBar} aria-label="Ações da tabela de medicamentos">
-              <div><strong>Tabela de medicamentos</strong><span>Abra o documento separado para revisar e imprimir. As salvaguardas de identidade e reconciliação continuam valendo.</span></div>
-              <a className={styles.documentAction} href={`/consultations/${consultationId}/medications/print`} target="_blank" rel="noreferrer">Abrir e imprimir tabela</a>
-            </div>
+          <div id="medicamentos" hidden={active !== "medicamentos"}>
+            <MedicationWorkspace consultationId={consultationId} />
           </div>
         ) : null}
-
-        {visited.has("soap") ? (
-          <div id="soap" hidden={active !== "soap"} className={styles.panel}>
-            <SoapEditor consultationId={consultationId} />
-          </div>
-        ) : null}
-
+        <div id="soap" hidden={active !== "soap"}>
+          <SoapEditor consultationId={consultationId} />
+        </div>
         {visited.has("escalas") ? (
-          <div id="escalas" hidden={active !== "escalas"} className={styles.panel}>
+          <div id="escalas" hidden={active !== "escalas"}>
             <ClinicalScalesWorkspace consultationId={consultationId} />
           </div>
         ) : null}
-
         {visited.has("diretivas") ? (
-          <div id="diretivas" hidden={active !== "diretivas"} className={styles.panel}>
+          <div id="diretivas" hidden={active !== "diretivas"}>
             <AdvanceDirectivesWorkspace consultationId={consultationId} />
           </div>
         ) : null}
-
         {visited.has("relatorio") ? (
-          <div id="relatorio" hidden={active !== "relatorio"} className={styles.panel}>
+          <div id="relatorio" hidden={active !== "relatorio"}>
             <ReportWorkspaceTabs consultationId={consultationId} professionalIdentity={professionalIdentity} />
           </div>
         ) : null}
-
         {visited.has("finalizacao") ? (
-          <div id="finalizacao" hidden={active !== "finalizacao"} className={styles.panel}>
+          <div id="finalizacao" hidden={active !== "finalizacao"}>
             <ConsultationFinalizationPanel consultationId={consultationId} />
           </div>
         ) : null}
