@@ -31,7 +31,10 @@ test("campos e salvaguardas clínicas do SOAP continuam presentes", () => {
   assert.ok(editor.includes("summarizeSoapMedicationProvenance"));
 });
 
-test("navegação apresenta a etapa com nome mais simples sem mudar o id soap", () => {
-  assert.ok(workspace.includes('{ id: "soap", label: "Evolução clínica", shortLabel: "Evolução", description: "SOAP, exames, vacinas e plano por problema" }'));
+test("regressão: etapa soap mantém evolução e plano explícitos na navegação", () => {
+  assert.match(
+    workspace,
+    /\{\s*id:\s*"soap",\s*label:\s*"Evolução e plano",\s*shortLabel:\s*"Evolução \+ plano",\s*description:\s*"SOAP, exames, vacinas e plano por problema"\s*\}/,
+  );
   assert.ok(workspace.includes('useState<WorkspaceSectionId>("soap")'));
 });
