@@ -1,4 +1,6 @@
 .card {
+  display: flex;
+  flex-direction: column;
   margin: 22px 0;
   padding: 24px;
   border: 1px solid var(--line);
@@ -66,14 +68,14 @@
 }
 
 .copyPanel {
+  order: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  margin: 14px 0 18px;
-  padding: 14px 16px;
+  margin: 22px 0 0;
+  padding: 15px 16px;
   border: 1px solid #ddd1e8;
-  border-left: 4px solid var(--primary);
   border-radius: 12px;
   background: #faf7fd;
 }
@@ -166,13 +168,15 @@
 }
 
 .soapGrid {
+  order: 20;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
 }
 
 .soapSection {
-  padding: 16px;
+  min-width: 0;
+  padding: 18px;
   border: 1px solid #e8e1ee;
   border-radius: 14px;
   background: #fdfcff;
@@ -180,6 +184,8 @@
 
 .soapSection h3 {
   margin: 0 0 12px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #eee7f2;
   color: var(--primary-strong);
   font-size: 15px;
 }
@@ -195,17 +201,17 @@
 }
 
 .soapSection fieldset {
-  margin: 16px 0 0;
-  padding: 12px;
-  border: 1px solid #e2d8eb;
-  border-radius: 11px;
+  margin: 22px 0 0;
+  padding: 16px;
+  border: 1px solid #d9c9e6;
+  border-radius: 13px;
   background: #fff;
 }
 
 .soapSection legend {
-  padding: 0 6px;
+  padding: 0 8px;
   color: var(--primary-strong);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 850;
 }
 
@@ -223,6 +229,9 @@
 .vaccinePanel {
   display: grid;
   gap: 14px;
+  padding-top: 18px !important;
+  border-left: 4px solid var(--primary) !important;
+  background: #faf7fd !important;
 }
 
 .vaccineStatus {
@@ -233,7 +242,7 @@
   padding: 12px;
   border: 1px solid #e0d5e9;
   border-radius: 12px;
-  background: #faf7fd;
+  background: #fff;
 }
 
 .vaccineStatus > div {
@@ -267,7 +276,7 @@
   display: grid;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid #eee7f2;
+  border-top: 1px solid #e8dfee;
 }
 
 .vaccineGroup > div:first-child {
@@ -357,7 +366,8 @@
 }
 
 .examSection {
-  grid-column: 1 / -1;
+  grid-column: 1;
+  background: #fff;
 }
 
 .examHeading {
@@ -375,9 +385,9 @@
 
 .examLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 14px;
-  margin-top: 12px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+  gap: 16px;
+  margin-top: 14px;
 }
 
 .examLayout > label {
@@ -450,6 +460,12 @@
 
 .problemList li {
   margin: 8px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0eaf4;
+}
+
+.problemList li:last-child {
+  border-bottom: 0;
 }
 
 .problemList span {
@@ -491,10 +507,6 @@
     display: grid;
   }
 
-  .soapGrid {
-    grid-template-columns: 1fr;
-  }
-
   .copyPanel,
   .vaccineStatus {
     align-items: stretch;
@@ -505,7 +517,8 @@
     justify-content: flex-start;
   }
 
-  .vaccineGrid {
+  .vaccineGrid,
+  .examLayout {
     grid-template-columns: 1fr;
   }
 
@@ -513,14 +526,11 @@
     display: grid;
     gap: 4px;
   }
-
-  .examLayout {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 760px) {
   .card { padding: 16px; }
+  .soapSection { padding: 15px; }
 }
 
 @media print {
@@ -533,6 +543,7 @@
   }
 
   .card {
+    display: block;
     break-inside: auto;
     box-shadow: none;
   }
