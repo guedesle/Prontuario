@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   assertActiveAllowedUser,
   assertCanChangeAdminState,
@@ -11,6 +12,13 @@ import {
 } from "../../src/domain/security/auth-policy.ts";
 
 const allowed = parseEmailSet("medica@example.com; admin@example.com");
+const authServer = readFileSync("src/server/auth/auth.ts", "utf8");
+const loginPage = readFileSync("src/app/login/page.tsx", "utf8");
+const approvedProductionPrincipalFingerprints = [
+  "f3edb3d5dbf548434e230325bc7835275146d04fcc65dcf55d83385956691210",
+  "b233416c9c9fecdd75ad43613d16cb2515c19c2ff302e56842dbcd64a876de02",
+  "7adbe1e0c628a064adf67f5241674295f6fdb6b4f2c09734532121e6db5e35f4",
+] as const;
 
 test("allowlist normaliza email e falha fechada fora da lista", () => {
   assert.equal(isEmailAllowed(" MEDICA@example.com ", allowed), true);
@@ -46,4 +54,14 @@ test("último administrador ativo não pode ser removido", () => {
     targetUserId: "a1", targetRole: "ADMIN", targetActive: true,
     nextActive: false, activeAdminIds: ["a1", "a2"],
   }));
+});
+
+test("regressão: produção mantém exatamente três identidades médicas aprovadas sem expor os emails no login", () => {
+  assert.equal(approvedProductionPrincipalFingerprints.length, 3);
+  for (const fingerprint of approvedProductionPrincipalFingerprints) {
+    assert.ok(authServer.includes(fingerprint), `fingerprint de acesso ausente: ${fingerprint.slice(0, 8)}`);
+  }
+  assert.match(authServer, /isApprovedProductionEmail/);
+  assert.doesNotMatch(loginPage, /@gmail\.com/i);
+  assert.doesNotMatch(authServer, /natimn4@gmail\.com|draanameliacoutinho@gmail\.com|paulalimaf20@gmail\.com/i);
 });
