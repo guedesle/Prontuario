@@ -65,3 +65,12 @@ test("regressão: produção mantém exatamente três identidades médicas aprov
   assert.doesNotMatch(loginPage, /@gmail\.com/i);
   assert.doesNotMatch(authServer, /natimn4@gmail\.com|draanameliacoutinho@gmail\.com|paulalimaf20@gmail\.com/i);
 });
+
+test("regressão: as três identidades aprovadas não dependem da allowlist externa para autenticar", () => {
+  const authorizationFunction = authServer.match(/function isAuthorizedEmail\(email: string\): boolean \{[\s\S]*?\n\}/)?.[0] ?? "";
+  const productionContractFunction = authServer.match(/function usesApprovedProductionAccessContract\(\): boolean \{[\s\S]*?\n\}/)?.[0] ?? "";
+
+  assert.match(authorizationFunction, /if \(isApprovedProductionEmail\(email\)\) return true;/);
+  assert.match(authorizationFunction, /usesApprovedProductionAccessContract\(\)/);
+  assert.match(productionContractFunction, /process\.env\.NODE_ENV === "production"[\s\S]*\|\|[\s\S]*canonicalProductionAppUrl/);
+});
