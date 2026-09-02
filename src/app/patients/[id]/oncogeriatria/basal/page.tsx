@@ -1,4 +1,4 @@
-import { BaselineCheckpointForm, CargForm, G8Form } from "@/components/oncogeriatria/oncogeriatric-forms";
+import { BaselineCheckpointForm, G8Form } from "@/components/oncogeriatria/oncogeriatric-forms";
 import { OncogeriatricNav } from "@/components/oncogeriatria/oncogeriatric-nav";
 import { formatClinicalDate, loadEpisodeWorkspace, loadOncogeriatricPatient, requireOncogeriatricReadAccess, resolveOncogeriatricEpisode } from "@/server/oncogeriatria/read";
 
@@ -25,7 +25,7 @@ export default async function OncogeriatricBaselinePage({ params, searchParams }
       </section>
       {current ? <section className="two-columns">
         <article className="panel">{current.consultationId ? <G8Form patientId={patientId} episodeId={episode.id} checkpointId={current.id} /> : <p className="clinical-caution">Para persistir G8 no motor único de escalas, o checkpoint precisa estar vinculado a uma consulta existente. O sistema não cria consulta artificialmente.</p>}</article>
-        <article className="panel">{current.consultationId ? <CargForm patientId={patientId} episodeId={episode.id} checkpointId={current.id} /> : <p className="clinical-caution">Para persistir CARG no motor único de escalas, vincule o baseline a uma consulta existente. Nenhum dado é enviado a calculadoras externas.</p>}</article>
+        <article className="panel"><h3>CARG — implementação bloqueada nesta release</h3><p className="clinical-caution">A ferramenta CARG-TT possui copyright explicitamente atribuído ao Cancer and Aging Research Group. A implementação eletrônica local permanece indisponível até resolução formal das condições de uso/licenciamento. O restante do módulo funciona normalmente.</p><p className="muted">Nenhuma PHI é enviada ao site ou à calculadora externa.</p></article>
       </section> : null}
     </main>
   );
