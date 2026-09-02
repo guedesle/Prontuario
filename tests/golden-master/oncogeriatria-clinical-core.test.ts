@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateCarg, calculateG8 } from "../../src/domain/oncogeriatria/calculators.ts";
+import { calculateG8, cargAvailability } from "../../src/domain/oncogeriatria/calculators.ts";
 import { buildOncogeriatricDelta } from "../../src/domain/oncogeriatria/longitudinal.ts";
 
 test("G8 original: cenário máximo resulta 17 e triagem não vulnerável", () => {
@@ -34,43 +34,10 @@ test("G8 original: cutoff 14 permanece triagem vulnerável", () => {
   assert.equal(result.classification, "VULNERABLE_SCREEN");
 });
 
-test("CARG original: cenário sem fatores pontua zero e risco baixo", () => {
-  const result = calculateCarg({
-    ageYears: 70,
-    sex: "FEMALE",
-    cancerType: "OTHER",
-    plannedDose: "REDUCED_UPFRONT",
-    plannedDrugCount: "MONO",
-    hemoglobinGdl: 12,
-    creatinineClearanceMlMin: 60,
-    hearing: "EXCELLENT_GOOD",
-    fallsLastSixMonths: 0,
-    medicationIndependence: "WITHOUT_HELP",
-    walkingLimitation: "NOT_LIMITED",
-    socialInterference: "NONE_OR_LITTLE",
-  });
-  assert.equal(result.score, 0);
-  assert.equal(result.category, "LOW");
-});
-
-test("CARG original: soma máxima é 23 e permanece categoria alta", () => {
-  const result = calculateCarg({
-    ageYears: 80,
-    sex: "MALE",
-    cancerType: "GI_GU",
-    plannedDose: "STANDARD",
-    plannedDrugCount: "POLY",
-    hemoglobinGdl: 9,
-    creatinineClearanceMlMin: 20,
-    hearing: "FAIR_POOR_DEAF",
-    fallsLastSixMonths: 2,
-    medicationIndependence: "WITH_HELP_OR_UNABLE",
-    walkingLimitation: "SOMEWHAT_OR_A_LOT",
-    socialInterference: "SOME_MOST_ALL",
-  });
-  assert.equal(result.score, 23);
-  assert.equal(result.category, "HIGH");
-  assert.match(result.decisionSupportMessage, /apoio à decisão clínica compartilhada/i);
+test("CARG permanece bloqueado quando licenciamento eletrônico não está resolvido", () => {
+  const availability = cargAvailability();
+  assert.equal(availability.status, "LICENSE_REVIEW_REQUIRED");
+  assert.match(availability.message, /licenciamento/i);
 });
 
 test("delta geriátrico nunca mistura versões diferentes", () => {
