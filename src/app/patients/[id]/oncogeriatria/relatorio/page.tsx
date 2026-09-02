@@ -1,6 +1,5 @@
 import { OncogeriatricNav } from "@/components/oncogeriatria/oncogeriatric-nav";
 import { OncogeriatricReportActions } from "@/components/oncogeriatria/report-actions";
-import { ReportSnapshotButton } from "@/components/oncogeriatria/oncogeriatric-forms";
 import { buildProfessionalIdentity } from "@/domain/professional-identity";
 import { formatClinicalDate, loadEpisodeWorkspace, loadOncogeriatricPatient, readStructuredRecord, requireOncogeriatricReadAccess, resolveOncogeriatricEpisode } from "@/server/oncogeriatria/read";
 
@@ -23,6 +22,27 @@ function scaleTrajectory(codeFragment: string, assessments: { scaleCode: string;
   return first && last ? `${display(first)} → ${display(last)} (versão ${version})` : "Não avaliado";
 }
 
+function summarizeCheckpointChanges(value: unknown): string[] {
+  const data = readStructuredRecord(value);
+  const labels: Record<string, string> = {
+    newIadlHelp: "nova necessidade de ajuda em AIVD", newAdlHelp: "nova necessidade de ajuda em ABVD",
+    fall: "queda", nearFall: "quase queda", newWalkingAid: "novo dispositivo de marcha", worsenedMobility: "piora de mobilidade",
+    reducedIntake: "redução da ingestão", anorexia: "anorexia", nausea: "náusea", dysphagia: "disfagia", mucositis: "mucosite",
+    confusion: "confusão", delirium: "delirium", perceivedDecline: "piora cognitiva percebida", medicationDifficulty: "nova dificuldade com medicamentos",
+    emergency: "emergência", hospitalization: "hospitalização", infection: "infecção", treatmentInterruption: "interrupção de tratamento registrada",
+    cycleDelay: "atraso de ciclo registrado", doseReductionRecorded: "redução de dose registrada pelo oncologista",
+  };
+  const changes: string[] = [];
+  for (const sectionName of ["functional", "mobility", "nutrition", "cognition", "careEvents"]) {
+    const section = readStructuredRecord(data[sectionName]);
+    for (const [key, item] of Object.entries(section)) if (item === true && labels[key]) changes.push(labels[key]);
+  }
+  const nutrition = readStructuredRecord(data.nutrition);
+  if (typeof nutrition.weightKg === "number") changes.push(`peso registrado: ${nutrition.weightKg} kg`);
+  if (typeof data.notes === "string" && data.notes.trim()) changes.push(data.notes.trim());
+  return changes;
+}
+
 export default async function OncogeriatricReportPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ episode?: string }> }) {
   const { user } = await requireOncogeriatricReadAccess();
   const { id: patientId } = await params;
@@ -41,19 +61,22 @@ export default async function OncogeriatricReportPage({ params, searchParams }: 
   const whatMatters = typeof baselineData.whatMatters === "string" && baselineData.whatMatters.trim() ? baselineData.whatMatters : "Não registrado";
   const activeInterventions = workspace.interventions.filter((item) => item.status !== "COMPLETED").slice(0, 3);
   const recentEvents = workspace.toxicities.slice(0, 3);
-  const changes = latestCheckpoint ? readStructuredRecord(latestCheckpoint.structuredData) : {};
+  const changes = summarizeCheckpointChanges(latestCheckpoint?.structuredData);
   const reportDate = new Date();
-
+  const trajectories = {
+    abvd: scaleTrajectory("ABVD", workspace.scaleAssessments),
+    aivd: scaleTrajectory("AIVD", workspace.scaleAssessments),
+    nutrition: scaleTrajectory("MNA", workspace.scaleAssessments),
+    mobility: scaleTrajectory("10-CS", workspace.scaleAssessments),
+    cognition: scaleTrajectory("MEEM", workspace.scaleAssessments),
+  };
   const snapshotContent = {
-    schemaVersion: "oncogeriatria-report-v1",
-    generatedAt: reportDate.toISOString(),
-    patientId,
-    episodeId: episode.id,
+    schemaVersion: "oncogeriatria-report-v1", generatedAt: reportDate.toISOString(), patientId, episodeId: episode.id,
     diagnosis: { diagnosis: episode.diagnosis, primarySite: episode.primarySite, histology: episode.histology, stage: episode.stage },
     treatment: currentCourse ? { regimenName: currentCourse.regimenName, intent: currentCourse.intent, therapyLine: currentCourse.therapyLine, status: currentCourse.status } : null,
     g8: g8 ? { score: g8.scoreText, classification: g8.classification } : null,
     carg: carg ? { score: carg.scoreText, classification: carg.classification } : null,
-    trajectories: { abvd: scaleTrajectory("ABVD", workspace.scaleAssessments), aivd: scaleTrajectory("AIVD", workspace.scaleAssessments), nutrition: scaleTrajectory("MNA", workspace.scaleAssessments) },
+    trajectories, changes,
     activeInterventions: activeInterventions.map((item) => ({ domain: item.domain, description: item.description, intervention: item.intervention, status: item.status })),
     recentEvents: recentEvents.map((item) => ({ type: item.toxicityType, occurredAt: item.occurredAt.toISOString(), grade: item.grade, hospitalizationAssociated: item.hospitalizationAssociated })),
     whatMatters,
@@ -61,18 +84,18 @@ export default async function OncogeriatricReportPage({ params, searchParams }: 
 
   return (
     <main className="shell">
-      <header className="hero compact-hero no-print"><p className="eyebrow">Oncogeriatria · comunicação médica</p><h1>Resumo oncogeriátrico</h1><p>Prévia compacta para comunicação com oncologia. Revise clinicamente antes de copiar, imprimir ou gerar snapshot.</p></header>
-      <OncogeriatricNav patientId={patientId} episodeId={episode.id} />
-      <div className="report-actions no-print"><OncogeriatricReportActions /><ReportSnapshotButton patientId={patientId} episodeId={episode.id} content={snapshotContent} /></div>
+      <header className="hero compact-hero no-print"><p className="eyebrow">Oncogeriatria · comunicação médica</p><h1>Resumo oncogeriátrico</h1><p>Prévia compacta para comunicação com oncologia. A interface exige confirmação explícita de revisão clínica antes de copiar, imprimir ou gerar snapshot.</p></header>
+      <div className="no-print"><OncogeriatricNav patientId={patientId} episodeId={episode.id} /></div>
+      <OncogeriatricReportActions patientId={patientId} episodeId={episode.id} content={snapshotContent} />
 
       <article id="oncogeriatric-report" className="aga-report">
         <header><p className="eyebrow">Prontuário Aprimorado · Oncogeriatria</p><h1>Resumo oncogeriátrico</h1><p><strong>Paciente:</strong> {patient.fullName} · <strong>Data:</strong> {formatClinicalDate(reportDate)}</p><p><strong>Profissional:</strong> {professional.displayName} · {professional.roleLabel}</p></header>
         <section><h2>Diagnóstico oncológico</h2><p>{episode.diagnosis}{episode.primarySite ? ` · sítio: ${episode.primarySite}` : ""}{episode.histology ? ` · histologia: ${episode.histology}` : ""}{episode.stage ? ` · estágio: ${episode.stage}` : ""}</p></section>
         <section><h2>Tratamento atual e fase</h2><p>{currentCourse ? `${currentCourse.regimenName} · ${currentCourse.intent} · ${currentCourse.therapyLine ?? "linha não registrada"} · ${currentCourse.status}` : "Tratamento não registrado"}</p><p>Último checkpoint: {latestCheckpoint ? `${latestCheckpoint.type} · ${formatClinicalDate(latestCheckpoint.occurredAt)}` : "Não registrado"}</p></section>
         <section className="two-columns"><div><h2>G8</h2><p>{g8 ? `${g8.scoreText ?? "sem escore"} · ${g8.classification ?? "sem classificação"}` : "Não avaliado"}</p></div><div><h2>CARG</h2><p>{carg ? `${carg.scoreText ?? "sem escore"} · ${carg.classification ?? "sem classificação"}` : "Não avaliado"}</p><p className="muted">Estimativa de risco para apoio à decisão clínica compartilhada.</p></div></section>
-        <section><h2>Trajetória geriátrica</h2><table><thead><tr><th scope="col">Domínio</th><th scope="col">Baseline → atual</th></tr></thead><tbody><tr><th scope="row">Estado funcional — ABVD</th><td>{scaleTrajectory("ABVD", workspace.scaleAssessments)}</td></tr><tr><th scope="row">Estado funcional — AIVD</th><td>{scaleTrajectory("AIVD", workspace.scaleAssessments)}</td></tr><tr><th scope="row">Estado nutricional — MNA</th><td>{scaleTrajectory("MNA", workspace.scaleAssessments)}</td></tr><tr><th scope="row">Mobilidade</th><td>{scaleTrajectory("10-CS", workspace.scaleAssessments)}</td></tr><tr><th scope="row">Cognição</th><td>{scaleTrajectory("MEEM", workspace.scaleAssessments)}</td></tr></tbody></table></section>
+        <section><h2>Trajetória geriátrica</h2><table><thead><tr><th scope="col">Domínio</th><th scope="col">Baseline → atual</th></tr></thead><tbody><tr><th scope="row">Estado funcional — ABVD</th><td>{trajectories.abvd}</td></tr><tr><th scope="row">Estado funcional — AIVD</th><td>{trajectories.aivd}</td></tr><tr><th scope="row">Estado nutricional — MNA</th><td>{trajectories.nutrition}</td></tr><tr><th scope="row">Mobilidade</th><td>{trajectories.mobility}</td></tr><tr><th scope="row">Cognição</th><td>{trajectories.cognition}</td></tr></tbody></table></section>
         <section><h2>Principais vulnerabilidades / intervenções</h2>{activeInterventions.length ? <ol>{activeInterventions.map((item) => <li key={item.id}><strong>{item.domain}:</strong> {item.description}{item.intervention ? ` — ${item.intervention}` : ""}</li>)}</ol> : <p>Sem intervenção ativa registrada.</p>}</section>
-        <section><h2>Mudanças desde o último checkpoint</h2><pre className="report-structured-summary">{Object.keys(changes).length ? JSON.stringify(changes, null, 2) : "Sem dados estruturados registrados."}</pre></section>
+        <section><h2>Mudanças desde o último checkpoint</h2>{changes.length ? <ul>{changes.map((item) => <li key={item}>{item}</li>)}</ul> : <p>Sem mudança estruturada registrada.</p>}</section>
         <section><h2>Eventos relevantes</h2>{recentEvents.length ? <ul>{recentEvents.map((event) => <li key={event.id}>{formatClinicalDate(event.occurredAt)} · {event.toxicityType}{event.grade ? ` · grau ${event.grade}` : ""}{event.hospitalizationAssociated ? " · hospitalização associada" : ""}</li>)}</ul> : <p>Nenhum evento relevante registrado.</p>}</section>
         <section><h2>Questões para discussão com oncologia</h2><p>Campo destinado à discussão clínica humana. O sistema não propõe ajuste automático de dose, intervalo ou esquema.</p></section>
         <section><h2>Objetivo prioritário informado pelo paciente</h2><p>{whatMatters}</p></section>
