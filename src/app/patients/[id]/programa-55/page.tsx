@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { isProgram55Eligible } from "@/domain/program55/eligibility";
 import { isProgram55Enabled } from "@/domain/program55/feature";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
 import { prisma } from "@/server/db";
@@ -19,7 +20,7 @@ function domainMatches(dimension: string | null, terms: readonly string[]): bool
 
 export default async function Program55Page({ params }: { params: Promise<{ id: string }> }) {
   await requireAuthenticatedUser("patient.read");
-  if (!isProgram55Enabled(process.env.FEATURE_PROGRAM_55)) notFound();
+  if (!isProgram55Enabled(process.env.PROGRAM55_EMERGENCY_DISABLED)) notFound();
 
   const { id } = await params;
   const patient = await prisma.patient.findUnique({
@@ -64,7 +65,7 @@ export default async function Program55Page({ params }: { params: Promise<{ id: 
     },
   });
 
-  if (!patient) notFound();
+  if (!patient || !isProgram55Eligible(patient.birthDate)) notFound();
 
   const assessments = patient.scaleAssessments;
   const nutrition = assessments.filter((item) => domainMatches(item.scaleDefinition?.dimension ?? null, ["nutri", "sarcopen"]));
@@ -106,7 +107,7 @@ export default async function Program55Page({ params }: { params: Promise<{ id: 
   return (
     <main className="shell">
       <header className="hero compact-hero">
-        <p className="eyebrow">Programa 55+</p>
+        <p className="eyebrow">Programa 55+ · 55 a 70 anos</p>
         <h1>Saúde, Longevidade e Autonomia</h1>
         <p>
           {patient.fullName} · nascimento {formatDate(patient.birthDate)} · visão integrada dos dados já existentes no prontuário.
