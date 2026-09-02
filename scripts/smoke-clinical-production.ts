@@ -1,4 +1,5 @@
 import { CLINICAL_RELEASE_ID } from "../src/domain/clinical-release.ts";
+import { ONCOGERIATRIA_VERSION } from "../src/domain/oncogeriatria/feature.ts";
 import { validateGoogleOAuthBootstrap } from "../src/domain/oauth-bootstrap-smoke.ts";
 import { PROGRAM55_MAX_AGE, PROGRAM55_MIN_AGE } from "../src/domain/program55/eligibility.ts";
 
@@ -31,7 +32,7 @@ async function request(base: URL, path: string, redirect: RequestRedirect = "man
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       "cache-control": "no-cache",
-      "user-agent": "prontuario-clinical-release-smoke/1.9",
+      "user-agent": "prontuario-clinical-release-smoke/2.0",
     },
   });
 }
@@ -54,7 +55,7 @@ async function startGoogleOAuth(base: URL) {
     headers: {
       "cache-control": "no-cache",
       "content-type": "application/json",
-      "user-agent": "prontuario-clinical-release-smoke/1.9",
+      "user-agent": "prontuario-clinical-release-smoke/2.0",
     },
     body: JSON.stringify({ provider: "google", callbackURL: "/", errorCallbackURL: "/login?error=google" }),
   });
@@ -90,6 +91,7 @@ try {
     database?: string;
     releaseId?: string;
     program55?: { enabled?: boolean; minAge?: number; maxAge?: number; schemaReady?: boolean };
+    oncogeriatria?: { enabled?: boolean; schemaReady?: boolean; version?: string };
   } | null;
   if (healthBody?.status !== "ok" || healthBody.database !== "ok") blocked("/api/health não confirmou aplicação e banco em estado ok.");
   if (healthBody.releaseId !== CLINICAL_RELEASE_ID) blocked(`/api/health está saudável, mas executa release diferente da esperada (${healthBody.releaseId ?? "sem releaseId"}).`);
@@ -100,6 +102,13 @@ try {
     healthBody.program55.schemaReady !== true
   ) {
     blocked("/api/health não confirmou Programa 55+ ativo, faixa 55–70 e schema longitudinal pronto.");
+  }
+  if (
+    healthBody.oncogeriatria?.enabled !== true ||
+    healthBody.oncogeriatria.schemaReady !== true ||
+    healthBody.oncogeriatria.version !== ONCOGERIATRIA_VERSION
+  ) {
+    blocked("/api/health não confirmou Oncogeriatria ativa, schema pronto e versão esperada.");
   }
 
   const assets = await request(base, "/api/health/assets", "follow");
@@ -122,7 +131,7 @@ try {
   await startGoogleOAuth(base);
   await startGoogleOAuthViaPublicEntrypoint(base);
 
-  for (const path of ["/patients", "/patients/new", "/programa-55"]) {
+  for (const path of ["/patients", "/patients/new", "/programa-55", "/oncogeriatria"]) {
     const protectedResponse = await request(base, path, "manual");
     if (protectedResponse.status === 200) blocked(`${path} ficou acessível anonimamente.`);
     if (![301, 302, 303, 307, 308, 401, 403].includes(protectedResponse.status)) blocked(`${path} apresentou comportamento inesperado para acesso anônimo: HTTP ${protectedResponse.status}.`);
@@ -139,10 +148,11 @@ console.log(`- HTTPS acessível: ${base.origin}`);
 console.log(`- release confirmada: ${CLINICAL_RELEASE_ID}`);
 console.log("- /api/health confirmou banco ok e resposta não cacheável");
 console.log(`- Programa 55+ confirmado ativo para ${PROGRAM55_MIN_AGE}–${PROGRAM55_MAX_AGE} anos e schema longitudinal pronto`);
+console.log(`- Oncogeriatria confirmada ativa, schema pronto e versão ${ONCOGERIATRIA_VERSION}`);
 console.log("- /api/health/auth confirmou prontidão estática do OAuth");
 console.log("- CSS e JavaScript do Next.js presentes e entregues com HTTP 200");
 console.log("- /login contém ação de autenticação Google");
 console.log("- endpoint canônico do Better Auth iniciou Google OAuth com state e Set-Cookie");
 console.log("- /auth/google exige gesto explícito, sem auto-redirecionamento, e preserva state/PKCE");
 console.log("- /auth/google oferece fallback de novo contexto para navegadores internos");
-console.log("- rotas clínicas, incluindo /programa-55, não estão abertas anonimamente");
+console.log("- rotas clínicas, incluindo /programa-55 e /oncogeriatria, não estão abertas anonimamente");
