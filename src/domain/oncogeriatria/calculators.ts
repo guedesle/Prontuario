@@ -36,7 +36,6 @@ function assertFiniteNonNegative(value: number, field: string): void {
 export function calculateG8(input: G8Input): G8Result {
   assertFiniteNonNegative(input.bmi, "IMC");
   assertFiniteNonNegative(input.ageYears, "Idade");
-
   const foodScore: Record<G8FoodIntake, number> = { SEVERE_DECREASE: 0, MODERATE_DECREASE: 1, NO_DECREASE: 2 };
   const weightScore: Record<G8WeightLoss, number> = { GT_3_KG: 0, UNKNOWN: 1, BETWEEN_1_AND_3_KG: 2, NONE: 3 };
   const mobilityScore: Record<G8Mobility, number> = { BED_OR_CHAIR: 0, GETS_UP_DOES_NOT_GO_OUT: 1, GOES_OUT: 2 };
@@ -46,14 +45,21 @@ export function calculateG8(input: G8Input): G8Result {
   const medicationScore = input.takesMoreThanThreePrescriptionDrugs ? 0 : 1;
   const ageScore = input.ageYears > 85 ? 0 : input.ageYears >= 80 ? 1 : 2;
   const score = foodScore[input.foodIntake] + weightScore[input.weightLoss] + mobilityScore[input.mobility] + neuroScore[input.neuropsychological] + bmiScore + medicationScore + healthScore[input.healthStatusComparedWithPeers] + ageScore;
+  return { score, classification: score <= 14 ? "VULNERABLE_SCREEN" : "NOT_VULNERABLE_SCREEN", cutoff: 14, scaleCode: G8_SCALE_CODE, scaleVersion: G8_SCALE_VERSION };
+}
 
-  return {
-    score,
-    classification: score <= 14 ? "VULNERABLE_SCREEN" : "NOT_VULNERABLE_SCREEN",
-    cutoff: 14,
-    scaleCode: G8_SCALE_CODE,
-    scaleVersion: G8_SCALE_VERSION,
-  };
+// Placeholder deliberado: o conteúdo/algoritmo do CARG não é implementado localmente nesta release.
+export type CargInput = Record<string, unknown>;
+export interface CargResult {
+  score: number;
+  category: "LOW" | "INTERMEDIATE" | "HIGH";
+  scaleCode: typeof CARG_SCALE_CODE;
+  scaleVersion: typeof CARG_SCALE_VERSION;
+  decisionSupportMessage: string;
+}
+
+export function calculateCarg(_input: CargInput): CargResult {
+  throw new Error("CARG_LICENSE_REVIEW_REQUIRED");
 }
 
 export function cargAvailability() {
