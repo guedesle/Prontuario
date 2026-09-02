@@ -1,5 +1,6 @@
 import { CLINICAL_RELEASE_ID } from "../src/domain/clinical-release.ts";
 import { validateGoogleOAuthBootstrap } from "../src/domain/oauth-bootstrap-smoke.ts";
+import { PROGRAM55_MAX_AGE, PROGRAM55_MIN_AGE } from "../src/domain/program55/eligibility.ts";
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -30,7 +31,7 @@ async function request(base: URL, path: string, redirect: RequestRedirect = "man
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       "cache-control": "no-cache",
-      "user-agent": "prontuario-clinical-release-smoke/1.7",
+      "user-agent": "prontuario-clinical-release-smoke/1.8",
     },
   });
 }
@@ -53,7 +54,7 @@ async function startGoogleOAuth(base: URL) {
     headers: {
       "cache-control": "no-cache",
       "content-type": "application/json",
-      "user-agent": "prontuario-clinical-release-smoke/1.7",
+      "user-agent": "prontuario-clinical-release-smoke/1.8",
     },
     body: JSON.stringify({
       provider: "google",
@@ -116,10 +117,22 @@ try {
   if (!healthCacheControl.includes("no-store")) {
     blocked("/api/health não confirmou Cache-Control: no-store; a release pode estar sendo validada por resposta intermediária antiga.");
   }
-  const healthBody = await health.json().catch(() => null) as { status?: string; database?: string; releaseId?: string } | null;
+  const healthBody = await health.json().catch(() => null) as {
+    status?: string;
+    database?: string;
+    releaseId?: string;
+    program55?: { enabled?: boolean; minAge?: number; maxAge?: number };
+  } | null;
   if (healthBody?.status !== "ok" || healthBody.database !== "ok") blocked("/api/health não confirmou aplicação e banco em estado ok.");
   if (healthBody.releaseId !== CLINICAL_RELEASE_ID) {
     blocked(`/api/health está saudável, mas executa release diferente da esperada (${healthBody.releaseId ?? "sem releaseId"}).`);
+  }
+  if (
+    healthBody.program55?.enabled !== true ||
+    healthBody.program55.minAge !== PROGRAM55_MIN_AGE ||
+    healthBody.program55.maxAge !== PROGRAM55_MAX_AGE
+  ) {
+    blocked("/api/health não confirmou Programa 55+ habilitado para a faixa de 55 a 70 anos.");
   }
 
   const assets = await request(base, "/api/health/assets", "follow");
@@ -152,7 +165,7 @@ try {
   await startGoogleOAuth(base);
   await startGoogleOAuthViaPublicEntrypoint(base);
 
-  for (const path of ["/patients", "/patients/new"]) {
+  for (const path of ["/patients", "/patients/new", "/programa-55"]) {
     const protectedResponse = await request(base, path, "manual");
     if (protectedResponse.status === 200) blocked(`${path} ficou acessível anonimamente.`);
     if (![301, 302, 303, 307, 308, 401, 403].includes(protectedResponse.status)) {
@@ -172,10 +185,11 @@ console.log("CLINICAL_RELEASE=SMOKE_OK");
 console.log(`- HTTPS acessível: ${base.origin}`);
 console.log(`- release confirmada: ${CLINICAL_RELEASE_ID}`);
 console.log("- /api/health confirmou banco ok e resposta não cacheável");
+console.log(`- Programa 55+ confirmado ativo para ${PROGRAM55_MIN_AGE}–${PROGRAM55_MAX_AGE} anos`);
 console.log("- /api/health/auth confirmou prontidão estática do OAuth");
 console.log("- CSS e JavaScript do Next.js presentes e entregues com HTTP 200");
 console.log("- /login contém ação de autenticação Google");
 console.log("- endpoint canônico do Better Auth iniciou Google OAuth com state e Set-Cookie");
 console.log("- /auth/google exige gesto explícito, sem auto-redirecionamento, e preserva state/PKCE");
 console.log("- /auth/google oferece fallback de novo contexto para navegadores internos");
-console.log("- rotas clínicas não estão abertas anonimamente");
+console.log("- rotas clínicas, incluindo /programa-55, não estão abertas anonimamente");
