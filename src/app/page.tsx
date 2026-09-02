@@ -1,5 +1,6 @@
 import { PatientFinder } from "@/components/patients/patient-finder";
 import { buildProfessionalIdentity } from "@/domain/professional-identity";
+import { isProgram55Enabled } from "@/domain/program55/feature";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
 
 const modules = [
@@ -20,6 +21,7 @@ export default async function Home() {
     email: user.email,
     brandOwnerEmail: process.env.PROFESSIONAL_BRAND_OWNER_EMAIL,
   });
+  const program55Enabled = isProgram55Enabled(process.env.PROGRAM55_EMERGENCY_DISABLED);
 
   return (
     <main className="shell home-shell">
@@ -44,6 +46,19 @@ export default async function Home() {
       </header>
 
       <PatientFinder />
+
+      {program55Enabled ? (
+        <section className="panel" aria-labelledby="program55-entry-title">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Linha de cuidado dedicada</p>
+              <h2 id="program55-entry-title">Programa 55+ · pacientes de 55 a 70 anos</h2>
+              <p className="muted">Acesse a visão integrada e longitudinal sem criar cadastro paralelo.</p>
+            </div>
+            <a href="/programa-55">Abrir Programa 55+ →</a>
+          </div>
+        </section>
+      ) : null}
 
       <section className="notice">
         <strong>Segurança por padrão</strong>
