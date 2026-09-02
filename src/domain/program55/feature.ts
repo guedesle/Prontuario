@@ -1,3 +1,3 @@
-export function isProgram55Enabled(value: string | undefined): boolean {
-  return value?.trim().toLowerCase() === "true";
+export function isProgram55Enabled(emergencyDisabled: string | undefined): boolean {
+  return emergencyDisabled?.trim().toLowerCase() !== "true";
 }
