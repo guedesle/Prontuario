@@ -20,7 +20,7 @@ O módulo não cria cadastro paralelo e não depende da participação no Progra
 - `/patients/[id]/oncogeriatria/intervencoes` — vulnerabilidades/intervenções;
 - `/patients/[id]/oncogeriatria/longitudinal` — Δ geriátrico, timeline e gráficos;
 - `/patients/[id]/oncogeriatria/pos-tratamento` — recuperação e seguimento;
-- `/patients/[id]/oncogeriatria/relatorio` — resumo médico imprimível.
+- `/patients/[id]/oncogeriatria/relatorio` — relatório oncogeriátrico específico e imprimível.
 
 ## Modelo longitudinal
 
@@ -67,21 +67,20 @@ Fonte principal: Bellera CA et al. *Annals of Oncology*. 2012;23(8):2166-2172. d
 
 ### CARG
 
-Versão eletrônica: `CARG / HURRIA_2011`.
+Referência científica: Hurria A et al. *Journal of Clinical Oncology*. 2011;29(25):3457-3465. doi:10.1200/JCO.2011.34.7625.
 
-Fonte principal: Hurria A et al. *Journal of Clinical Oncology*. 2011;29(25):3457-3465. doi:10.1200/JCO.2011.34.7625.
+A implementação eletrônica local do CARG está **bloqueada nesta release** enquanto se aguarda autorização formal de copyright/licenciamento para reprodução e uso eletrônico do instrumento.
 
-As 11 variáveis e pesos foram implementados em código de domínio testado. As categorias eletrônicas são:
+Regras de segurança nesta versão:
 
-- 0–5: baixo;
-- 6–9: intermediário;
-- >=10: alto.
+- `ScaleDefinition` `CARG / HURRIA_2011` permanece inativa com `LICENSE_REVIEW_REQUIRED`;
+- o questionário CARG não é reproduzido na interface;
+- o algoritmo CARG não é executado;
+- o endpoint de gravação responde `CARG_LICENSE_REVIEW_REQUIRED`;
+- nenhuma PHI é enviada a calculadoras externas;
+- eventual resultado histórico previamente registrado pode ser exibido apenas como histórico, sem novo cálculo.
 
-A amostra original apresentou escores até 19; a soma teórica de todos os pesos é 23. O sistema preserva o escore calculado e usa a faixa >=10 como alta sem inventar recomendação de tratamento.
-
-Mensagem obrigatória: **“Estimativa de risco para apoio à decisão clínica compartilhada.”**
-
-Nenhuma PHI é enviada a calculadoras externas.
+Após autorização formal, a ativação deverá ocorrer em PR próprio com termos de uso documentados, versão/tradução autorizada, golden masters e revisão clínica.
 
 ## Δ geriátrico
 
@@ -119,7 +118,20 @@ O sistema não pode emitir comandos como reduzir quimioterapia, suspender tratam
 
 ## Relatório
 
-O resumo oncogeriátrico é comunicação médica compacta. Copiar, imprimir e gerar snapshot exigem confirmação explícita de revisão clínica. O sistema de assinatura digital existente não é modificado.
+O relatório final é específico da Oncogeriatria e consolida:
+
+- contexto oncológico e fase do tratamento;
+- G8;
+- status do CARG enquanto licenciamento está pendente;
+- trajetória geriátrica baseline → atual;
+- vulnerabilidades e recomendações geriátricas registradas;
+- mudanças e sinais de atenção desde o último checkpoint;
+- eventos relevantes durante o tratamento;
+- recuperação e pós-tratamento;
+- objetivo prioritário informado pelo paciente;
+- seção explícita de integração com a equipe oncológica.
+
+As recomendações registradas previamente permanecem no relatório longitudinal. Copiar, imprimir e gerar snapshot exigem confirmação explícita de revisão clínica. O sistema de assinatura digital existente não é modificado.
 
 ## Rollback
 
