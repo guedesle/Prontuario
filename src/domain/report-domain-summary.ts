@@ -85,16 +85,24 @@ const DOMAIN_GUIDANCE: Readonly<Partial<Record<string, DomainGuidance>>> = {
   },
   fragilidade: {
     actions: [
-      "Mantenha somente atividades e exercícios previamente considerados seguros, combinando força, equilíbrio e caminhada conforme a capacidade individual.",
-      "Evite longos períodos de inatividade; distribua tarefas curtas ao longo do dia e programe pausas quando houver fadiga.",
-      "Registre perda de peso, redução de força, nova dificuldade para caminhar ou maior cansaço e comunique à equipe.",
+      "Fragilidade não significa que a pessoa deva parar: manter movimento seguro e regular ajuda a preservar força, equilíbrio e independência. Priorize as atividades e exercícios que já foram considerados seguros para ela, respeitando limites e necessidade de supervisão.",
+      "Organize o dia em etapas curtas, com pausas antes de chegar à exaustão. Evite longos períodos de imobilidade e incentive participação nas tarefas que a pessoa ainda consegue realizar com segurança.",
+      "Avise a equipe se houver perda de peso sem intenção, redução de força, mais dificuldade para levantar ou caminhar, quedas ou cansaço que esteja aumentando. Esses sinais merecem revisão porque a fragilidade pode mudar ao longo do tempo.",
     ],
-    evidenceReferences: [{
-      label: "Recomendações internacionais de exercício para pessoas idosas",
-      pmid: "34409961",
-      url: "https://pubmed.ncbi.nlm.nih.gov/34409961/",
-      relevance: "Consenso internacional: programas multicomponentes e individualizados apoiam função, mobilidade e manejo da fragilidade.",
-    }],
+    evidenceReferences: [
+      {
+        label: "Intervenções multidomínio para fragilidade e pré-fragilidade",
+        pmid: "42620771",
+        url: "https://pubmed.ncbi.nlm.nih.gov/42620771/",
+        relevance: "Revisão sistemática: exercício, especialmente treinamento funcional e de resistência, apresenta benefícios consistentes; apoio nutricional pode complementar uma abordagem individualizada e multidomínio.",
+      },
+      {
+        label: "Exercício e força muscular em pessoas idosas",
+        pmid: "42570706",
+        url: "https://pubmed.ncbi.nlm.nih.gov/42570706/",
+        relevance: "Revisão sistemática e meta-análise: exercício resistido melhora força muscular; intervenções devem ser adaptadas à capacidade e segurança de cada pessoa.",
+      },
+    ],
   },
   medicamentos: {
     actions: [
