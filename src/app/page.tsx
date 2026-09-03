@@ -1,4 +1,5 @@
 import { PatientFinder } from "@/components/patients/patient-finder";
+import { isOncogeriatriaEnabled } from "@/domain/oncogeriatria/feature";
 import { buildProfessionalIdentity } from "@/domain/professional-identity";
 import { isProgram55Enabled } from "@/domain/program55/feature";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
@@ -22,6 +23,7 @@ export default async function Home() {
     brandOwnerEmail: process.env.PROFESSIONAL_BRAND_OWNER_EMAIL,
   });
   const program55Enabled = isProgram55Enabled(process.env.PROGRAM55_EMERGENCY_DISABLED);
+  const oncogeriatriaEnabled = isOncogeriatriaEnabled(process.env.ONCOGERIATRIA_EMERGENCY_DISABLED);
 
   return (
     <main className="shell home-shell">
@@ -56,6 +58,19 @@ export default async function Home() {
               <p className="muted">Acesse a visão integrada e longitudinal sem criar cadastro paralelo.</p>
             </div>
             <a href="/programa-55">Abrir Programa 55+ →</a>
+          </div>
+        </section>
+      ) : null}
+
+      {oncogeriatriaEnabled ? (
+        <section className="panel" aria-labelledby="oncogeriatria-entry-title">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Linha de cuidado dedicada</p>
+              <h2 id="oncogeriatria-entry-title">Oncogeriatria</h2>
+              <p className="muted">Linha de cuidado dedicada à avaliação geriátrica antes, durante e após o tratamento oncológico, integrada ao mesmo prontuário clínico.</p>
+            </div>
+            <a href="/oncogeriatria">Abrir Oncogeriatria →</a>
           </div>
         </section>
       ) : null}

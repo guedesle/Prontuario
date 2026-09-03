@@ -696,3 +696,148 @@ model Program55Goal {
   @@index([checkpointId])
   @@index([createdById, createdAt])
 }
+
+model OncogeriatricEpisode {
+  id            String   @id @default(cuid())
+  patientId     String
+  status        String   @default("ACTIVE")
+  diagnosis     String
+  primarySite   String?
+  histology     String?
+  stage         String?
+  diagnosedAt   DateTime?
+  diseaseStatus String?
+  notes         String?  @db.Text
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([id, patientId])
+  @@index([patientId, status, createdAt])
+  @@index([createdById, createdAt])
+}
+
+model OncogeriatricTreatmentCourse {
+  id             String   @id @default(cuid())
+  episodeId      String
+  patientId      String
+  modality       String
+  intent         String
+  therapyLine    String?
+  regimenName    String
+  plannedCycles  Int?
+  plannedStartAt DateTime?
+  actualStartAt  DateTime?
+  endedAt        DateTime?
+  status         String   @default("PLANNED")
+  riskFlags      Json?
+  notes          String?  @db.Text
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([id, episodeId, patientId])
+  @@index([episodeId, status])
+  @@index([patientId, actualStartAt])
+}
+
+model OncogeriatricCheckpoint {
+  id                String   @id @default(cuid())
+  patientId         String
+  episodeId         String
+  treatmentCourseId String?
+  consultationId    String?
+  type              String
+  cycleNumber       Int?
+  occurredAt        DateTime
+  scheduledAt       DateTime?
+  status            String   @default("IN_PROGRESS")
+  structuredData    Json?
+  g8AssessmentId    String?
+  cargAssessmentId  String?
+  createdById       String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([id, episodeId, patientId])
+  @@index([patientId, occurredAt])
+  @@index([episodeId, type, occurredAt])
+  @@index([treatmentCourseId, occurredAt])
+  @@index([status, scheduledAt])
+  @@index([consultationId, patientId])
+}
+
+model OncogeriatricIntervention {
+  id                      String   @id @default(cuid())
+  patientId               String
+  episodeId               String
+  checkpointId            String?
+  domain                  String
+  description             String   @db.Text
+  intervention            String?  @db.Text
+  responsibleProfessional String?
+  dueAt                   DateTime?
+  status                  String   @default("PLANNED")
+  result                  String?  @db.Text
+  createdById             String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([episodeId, status])
+  @@index([patientId, domain])
+  @@index([checkpointId])
+}
+
+model OncogeriatricToxicityEvent {
+  id                            String   @id @default(cuid())
+  patientId                     String
+  episodeId                     String
+  treatmentCourseId             String?
+  checkpointId                  String?
+  occurredAt                    DateTime
+  toxicityType                  String
+  grade                         String?
+  consequences                  String?  @db.Text
+  hospitalizationAssociated     Boolean  @default(false)
+  cycleDelayAssociated          Boolean  @default(false)
+  treatmentModificationRecorded String?  @db.Text
+  createdById                   String
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  @@index([episodeId, occurredAt])
+  @@index([patientId, occurredAt])
+  @@index([treatmentCourseId, occurredAt])
+}
+
+model OncogeriatricRecoveryAssessment {
+  id           String   @id @default(cuid())
+  patientId    String
+  episodeId    String
+  checkpointId String?
+  domain       String
+  status       String
+  notes        String?  @db.Text
+  assessedAt   DateTime
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([episodeId, domain, assessedAt])
+  @@index([patientId, assessedAt])
+}
+
+model OncogeriatricReportSnapshot {
+  id             String   @id @default(cuid())
+  patientId      String
+  episodeId      String
+  consultationId String?
+  version        Int
+  content        Json
+  generatedById  String
+  createdAt      DateTime @default(now())
+
+  @@unique([episodeId, version])
+  @@index([patientId, createdAt])
+  @@index([consultationId, patientId])
+}
