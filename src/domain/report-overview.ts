@@ -13,6 +13,25 @@ import {
 const COGNITION_PRECEDENCE = ["fast", "meem", "moca", "dez_cs"] as const;
 const FUNCTIONALITY_ORDER = ["katz", "barthel", "lawton"] as const;
 
+const FAST_STAGE_LABELS: Readonly<Record<string, string>> = {
+  "1": "1",
+  "2": "2",
+  "3": "3",
+  "4": "4",
+  "5": "5",
+  "6.1": "6A",
+  "6.2": "6B",
+  "6.3": "6C",
+  "6.4": "6D",
+  "6.5": "6E",
+  "7.1": "7A",
+  "7.2": "7B",
+  "7.3": "7C",
+  "7.4": "7D",
+  "7.5": "7E",
+  "7.6": "7F",
+};
+
 export interface AgaReportOverviewScaleItem {
   scaleCode: string;
   label: string;
@@ -85,8 +104,21 @@ export function calculateAgeYearsAt(
   return age >= 0 ? age : undefined;
 }
 
+function fastStageValue(scale: AgaScaleReportSection): string | undefined {
+  const numeric = scale.result.score;
+  if (typeof numeric === "number") {
+    return FAST_STAGE_LABELS[String(numeric)];
+  }
+
+  const scoreText = scale.result.scoreText?.trim();
+  if (!scoreText) return undefined;
+  return FAST_STAGE_LABELS[scoreText.replace(",", ".")];
+}
+
 function scaleValue(scale: AgaScaleReportSection): string | undefined {
-  const primary = scale.result.scoreText?.trim()
+  const canonicalFastStage = scale.code === "fast" ? fastStageValue(scale) : undefined;
+  const primary = canonicalFastStage
+    || scale.result.scoreText?.trim()
     || (scale.result.score !== null ? String(scale.result.score) : "")
     || scale.result.classification?.trim()
     || scale.interpretation?.trim()
