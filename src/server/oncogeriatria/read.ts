@@ -39,11 +39,33 @@ export async function loadEpisodeWorkspace(patientId: string, episodeId: string)
     prisma.oncogeriatricIntervention.findMany({ where: { patientId, episodeId }, orderBy: { createdAt: "desc" } }),
     prisma.oncogeriatricToxicityEvent.findMany({ where: { patientId, episodeId }, orderBy: { occurredAt: "desc" } }),
     prisma.oncogeriatricRecoveryAssessment.findMany({ where: { patientId, episodeId }, orderBy: { assessedAt: "desc" } }),
-    prisma.consultation.findMany({ where: { patientId }, orderBy: { occurredAt: "desc" }, take: 25, select: { id: true, occurredAt: true, status: true } }),
+    prisma.consultation.findMany({
+      where: { patientId },
+      orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      select: { id: true, patientId: true, occurredAt: true, createdAt: true, status: true },
+    }),
     prisma.scaleAssessment.findMany({
       where: { patientId },
       orderBy: { appliedAt: "asc" },
-      select: { id: true, scaleCode: true, scaleVersion: true, scoreNumeric: true, scoreText: true, classification: true, interpretation: true, appliedAt: true, consultationId: true },
+      select: {
+        id: true,
+        patientId: true,
+        scaleCode: true,
+        scaleVersion: true,
+        scoreNumeric: true,
+        scoreText: true,
+        classification: true,
+        interpretation: true,
+        clinicalColor: true,
+        appliedAt: true,
+        consultationId: true,
+        scaleDefinition: {
+          select: {
+            sourceCitation: true,
+            definitionHash: true,
+          },
+        },
+      },
     }),
   ]);
   return { courses, checkpoints, interventions, toxicities, recovery, consultations, scaleAssessments };
