@@ -4,6 +4,7 @@ import test from "node:test";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { normalizePersonName } from "../../src/domain/patient-identity.ts";
 import { PrismaClient } from "../../src/generated/prisma/client.ts";
+import { searchOncogeriatricPatientCandidates } from "../../src/server/oncogeriatria/patient-search.ts";
 import { searchPatientsInDatabase } from "../../src/server/patients/search-patients-database.ts";
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -131,6 +132,12 @@ test("busca real no MySQL localiza pacientes novos, legado e consulta ativa sem 
       assert.equal(reportedCase.destinationPath, `/patients/${testPatientId}`);
     }
 
+    const oncogeriatriaResults = await searchOncogeriatricPatientCandidates(client, "paciente teste");
+    assert.ok(
+      oncogeriatriaResults.some((patient) => patient.id === testPatientId),
+      "filtro da Oncogeriatria deve localizar o mesmo cadastro pela busca canônica",
+    );
+
     const falsePositive = await searchPatientsInDatabase(client, "Mariana");
     assert.equal(falsePositive.some((patient) => patient.id === mariaId), false);
 
@@ -138,6 +145,12 @@ test("busca real no MySQL localiza pacientes novos, legado e consulta ativa sem 
     const legacy = legacyResults.find((patient) => patient.id === legacyId);
     assert.ok(legacy, "registro histórico com normalizedFullName inconsistente deve ser recuperado pelo fallback");
     assert.equal(legacy.destinationPath, `/patients/${legacyId}`);
+
+    const oncogeriatriaLegacyResults = await searchOncogeriatricPatientCandidates(client, "Historico Avila");
+    assert.ok(
+      oncogeriatriaLegacyResults.some((patient) => patient.id === legacyId),
+      "filtro da Oncogeriatria deve herdar o fallback para normalizedFullName legado/inconsistente",
+    );
 
     const collations = await client.$queryRawUnsafe<Array<{
       COLUMN_NAME: string;
