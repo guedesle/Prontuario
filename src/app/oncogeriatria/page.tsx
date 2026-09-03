@@ -1,3 +1,4 @@
+import { searchOncogeriatricPatientCandidates } from "@/server/oncogeriatria/patient-search";
 import { requireOncogeriatricReadAccess, formatClinicalDate, hasRelevantCheckpointAlert } from "@/server/oncogeriatria/read";
 import { prisma } from "@/server/db";
 
@@ -58,10 +59,7 @@ export default async function OncogeriatriaHome({ searchParams }: { searchParams
   }).filter((row) => !phaseFilter || row.phase === phaseFilter);
 
   const searchPatients = q.length >= 2
-    ? await prisma.patient.findMany({
-        where: { normalizedFullName: { contains: q.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "") } },
-        orderBy: { fullName: "asc" }, take: 10, select: { id: true, fullName: true, birthDate: true },
-      })
+    ? await searchOncogeriatricPatientCandidates(prisma, q)
     : [];
 
   return (
