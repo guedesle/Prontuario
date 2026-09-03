@@ -15,6 +15,12 @@ export interface OncogeriatricDelta {
   currentAt: Date;
 }
 
+export interface OncogeriatricRecoveryObservation {
+  id: string;
+  domain: string;
+  assessedAt: Date;
+}
+
 export function buildOncogeriatricDelta(observations: OncogeriatricNumericObservation[]): OncogeriatricDelta | null {
   if (observations.length < 2) return null;
   const ordered = [...observations].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
@@ -47,4 +53,16 @@ export function groupComparableObservations(observations: OncogeriatricNumericOb
     version: group[0]?.version ?? "",
     observations: group.sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime()),
   }));
+}
+
+export function latestRecoveryAssessmentsByDomain<T extends OncogeriatricRecoveryObservation>(observations: T[]): T[] {
+  const ordered = [...observations].sort((a, b) => {
+    const dateDelta = b.assessedAt.getTime() - a.assessedAt.getTime();
+    return dateDelta !== 0 ? dateDelta : b.id.localeCompare(a.id);
+  });
+  const latest = new Map<string, T>();
+  for (const observation of ordered) {
+    if (!latest.has(observation.domain)) latest.set(observation.domain, observation);
+  }
+  return [...latest.values()];
 }
