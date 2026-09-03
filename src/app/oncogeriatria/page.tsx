@@ -22,6 +22,12 @@ const phaseLabels: Record<string, string> = {
   COMPLETED: "Acompanhamento concluído",
 };
 
+function formatIsoClinicalDate(value: string | null | undefined): string {
+  if (!value) return "Sem dados registrados";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "Sem dados registrados";
+}
+
 export default async function OncogeriatriaHome({ searchParams }: { searchParams: Promise<{ q?: string; phase?: string }> }) {
   await requireOncogeriatricReadAccess();
   const params = await searchParams;
@@ -84,7 +90,7 @@ export default async function OncogeriatriaHome({ searchParams }: { searchParams
         </form>
         {q.length >= 2 ? (
           <ul className="clean-list" aria-label="Resultados da busca de pacientes">
-            {searchPatients.map((patient) => <li key={patient.id}><a href={`/patients/${patient.id}/oncogeriatria`}><strong>{patient.fullName}</strong></a><span>Nascimento: {formatClinicalDate(patient.birthDate)} · abrir cadastro existente</span></li>)}
+            {searchPatients.map((patient) => <li key={patient.id}><a href={`/patients/${patient.id}/oncogeriatria`}><strong>{patient.fullName}</strong></a><span>Nascimento: {formatIsoClinicalDate(patient.birthDate)} · abrir cadastro existente</span></li>)}
             {!searchPatients.length ? <li><span>Nenhum paciente encontrado com esse termo.</span></li> : null}
           </ul>
         ) : null}
