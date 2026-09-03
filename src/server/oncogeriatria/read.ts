@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { buildOncogeriatricCapacityHistory } from "@/domain/oncogeriatria/capacity-history";
 import { isOncogeriatriaEnabled } from "@/domain/oncogeriatria/feature";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
 import { prisma } from "@/server/db";
@@ -69,6 +70,24 @@ export async function loadEpisodeWorkspace(patientId: string, episodeId: string)
     }),
   ]);
   return { courses, checkpoints, interventions, toxicities, recovery, consultations, scaleAssessments };
+}
+
+export type OncogeriatricEpisodeWorkspace = Awaited<ReturnType<typeof loadEpisodeWorkspace>>;
+
+export function capacityHistoryForOncogeriatricEpisode(
+  patientId: string,
+  workspace: OncogeriatricEpisodeWorkspace,
+) {
+  return buildOncogeriatricCapacityHistory({
+    patientId,
+    checkpoints: workspace.checkpoints,
+    consultations: workspace.consultations,
+    assessments: workspace.scaleAssessments.map((assessment) => ({
+      ...assessment,
+      sourceCitation: assessment.scaleDefinition?.sourceCitation,
+      definitionHash: assessment.scaleDefinition?.definitionHash,
+    })),
+  });
 }
 
 export function formatClinicalDate(value: Date | null | undefined): string {
