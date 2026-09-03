@@ -232,7 +232,7 @@ export async function generateAgaReport(input: {
         });
         medicationPlan = {
           status: "READY" as const,
-          message: "Tabela para organização do cuidado: não substitui receita, não representa nova prescrição e não autoriza iniciar, suspender, substituir ou alterar medicamentos, doses ou horários por conta própria.",
+          message: "Tabela para organização do cuidado: não substitui receita e não representa nova prescrição.",
           plan: medicationSnapshot.plan,
         };
       } catch (error) {
