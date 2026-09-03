@@ -1,5 +1,6 @@
 import { OncogeriatricNav } from "@/components/oncogeriatria/oncogeriatric-nav";
 import { OncogeriatricReportActions } from "@/components/oncogeriatria/report-actions";
+import { latestRecoveryAssessmentsByDomain } from "@/domain/oncogeriatria/longitudinal";
 import { buildProfessionalIdentity } from "@/domain/professional-identity";
 import { formatClinicalDate, loadEpisodeWorkspace, loadOncogeriatricPatient, readStructuredRecord, requireOncogeriatricReadAccess, resolveOncogeriatricEpisode } from "@/server/oncogeriatria/read";
 
@@ -78,7 +79,7 @@ export default async function OncogeriatricReportPage({ params, searchParams }: 
   const recentEvents = workspace.toxicities.slice(0, 5);
   const changes = summarizeCheckpointChanges(latestCheckpoint?.structuredData);
   const reportDate = new Date();
-  const latestRecoveryByDomain = Array.from(new Map(workspace.recovery.map((item) => [item.domain, item])).values()).slice(0, 8);
+  const latestRecoveryByDomain = latestRecoveryAssessmentsByDomain(workspace.recovery).slice(0, 8);
   const trajectories = {
     abvd: scaleTrajectory("ABVD", workspace.scaleAssessments),
     aivd: scaleTrajectory("AIVD", workspace.scaleAssessments),
