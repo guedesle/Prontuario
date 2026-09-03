@@ -1,3 +1,4 @@
+import { searchOncogeriatricPatientCandidates } from "@/server/oncogeriatria/patient-search";
 import { requireOncogeriatricReadAccess, formatClinicalDate, hasRelevantCheckpointAlert } from "@/server/oncogeriatria/read";
 import { prisma } from "@/server/db";
 
@@ -20,6 +21,12 @@ const phaseLabels: Record<string, string> = {
   FOLLOW_UP: "Seguimento",
   COMPLETED: "Acompanhamento concluído",
 };
+
+function formatIsoClinicalDate(value: string | null | undefined): string {
+  if (!value) return "Sem dados registrados";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : "Sem dados registrados";
+}
 
 export default async function OncogeriatriaHome({ searchParams }: { searchParams: Promise<{ q?: string; phase?: string }> }) {
   await requireOncogeriatricReadAccess();
@@ -58,10 +65,7 @@ export default async function OncogeriatriaHome({ searchParams }: { searchParams
   }).filter((row) => !phaseFilter || row.phase === phaseFilter);
 
   const searchPatients = q.length >= 2
-    ? await prisma.patient.findMany({
-        where: { normalizedFullName: { contains: q.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "") } },
-        orderBy: { fullName: "asc" }, take: 10, select: { id: true, fullName: true, birthDate: true },
-      })
+    ? await searchOncogeriatricPatientCandidates(prisma, q)
     : [];
 
   return (
@@ -86,7 +90,7 @@ export default async function OncogeriatriaHome({ searchParams }: { searchParams
         </form>
         {q.length >= 2 ? (
           <ul className="clean-list" aria-label="Resultados da busca de pacientes">
-            {searchPatients.map((patient) => <li key={patient.id}><a href={`/patients/${patient.id}/oncogeriatria`}><strong>{patient.fullName}</strong></a><span>Nascimento: {formatClinicalDate(patient.birthDate)} · abrir cadastro existente</span></li>)}
+            {searchPatients.map((patient) => <li key={patient.id}><a href={`/patients/${patient.id}/oncogeriatria`}><strong>{patient.fullName}</strong></a><span>Nascimento: {formatIsoClinicalDate(patient.birthDate)} · abrir cadastro existente</span></li>)}
             {!searchPatients.length ? <li><span>Nenhum paciente encontrado com esse termo.</span></li> : null}
           </ul>
         ) : null}
