@@ -206,37 +206,6 @@ export function G8Form({ patientId, episodeId, checkpointId }: { patientId: stri
   );
 }
 
-export function CargForm({ patientId, episodeId, checkpointId }: { patientId: string; episodeId: string; checkpointId: string }) {
-  const state = useSubmission();
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = new FormData(event.currentTarget);
-    await state.run(() => postAction(patientId, { action: "CARG_SAVE", episodeId, checkpointId, answers: {
-      ageYears: numberOrNull(form, "ageYears"), sex: text(form, "sex"), cancerType: text(form, "cancerType"), plannedDose: text(form, "plannedDose"), plannedDrugCount: text(form, "plannedDrugCount"),
-      hemoglobinGdl: numberOrNull(form, "hemoglobinGdl"), creatinineClearanceMlMin: numberOrNull(form, "creatinineClearanceMlMin"), hearing: text(form, "hearing"), fallsLastSixMonths: numberOrNull(form, "fallsLastSixMonths"),
-      medicationIndependence: text(form, "medicationIndependence"), walkingLimitation: text(form, "walkingLimitation"), socialInterference: text(form, "socialInterference"),
-    }}));
-  }
-  return (
-    <form className="stack" onSubmit={submit}>
-      <h3>CARG — risco de toxicidade</h3>
-      <p className="muted">Estimativa de risco para apoio à decisão clínica compartilhada. Não determina dose, esquema, suspensão ou contraindicação.</p>
-      <label>Idade<input name="ageYears" type="number" required /></label>
-      <label>Sexo usado no limiar de hemoglobina<select name="sex"><option value="FEMALE">Feminino</option><option value="MALE">Masculino</option></select></label>
-      <label>Tipo tumoral<select name="cancerType"><option value="OTHER">Outros</option><option value="GI_GU">Gastrointestinal/geniturinário</option></select></label>
-      <label>Dose planejada<select name="plannedDose"><option value="STANDARD">Padrão</option><option value="REDUCED_UPFRONT">Reduzida previamente pelo oncologista</option></select></label>
-      <label>Número de agentes<select name="plannedDrugCount"><option value="MONO">Monoterapia</option><option value="POLY">Poliquimioterapia</option></select></label>
-      <label>Hemoglobina (g/dL)<input name="hemoglobinGdl" required inputMode="decimal" /></label>
-      <label>Clearance de creatinina (mL/min)<input name="creatinineClearanceMlMin" required inputMode="decimal" /></label>
-      <label>Audição<select name="hearing"><option value="EXCELLENT_GOOD">Excelente/boa</option><option value="FAIR_POOR_DEAF">Regular/ruim/surdez</option></select></label>
-      <label>Quedas em 6 meses<input name="fallsLastSixMonths" type="number" min="0" required /></label>
-      <label>Medicações<select name="medicationIndependence"><option value="WITHOUT_HELP">Sem ajuda</option><option value="WITH_HELP_OR_UNABLE">Com ajuda/incapaz</option></select></label>
-      <label>Caminhar um quarteirão<select name="walkingLimitation"><option value="NOT_LIMITED">Sem limitação</option><option value="SOMEWHAT_OR_A_LOT">Alguma/muita limitação</option></select></label>
-      <label>Interferência em atividade social<select name="socialInterference"><option value="NONE_OR_LITTLE">Nenhuma/pouca</option><option value="SOME_MOST_ALL">Alguma/maior parte/todo o tempo</option></select></label>
-      <button disabled={state.pending} type="submit">Calcular e persistir CARG</button><Feedback message={state.message} />
-    </form>
-  );
-}
-
 export function InterventionForm({ patientId, episodeId }: { patientId: string; episodeId: string }) {
   const state = useSubmission();
   async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); await state.run(() => postAction(patientId, {
