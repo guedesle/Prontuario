@@ -21,15 +21,25 @@ O Prontuário Aprimorado já possui identidade canônica em `Patient.id`, consul
 
 ## Decisão 4 — motor único de escalas
 
-G8 e CARG são registrados em `ScaleDefinition`/`ScaleAssessment`. O checkpoint guarda apenas o ID do assessment correspondente. Nenhuma segunda tabela de pontuações é criada.
+G8 permanece em `ScaleDefinition`/`ScaleAssessment`. O checkpoint guarda apenas o ID do assessment correspondente. Nenhuma segunda tabela de pontuações é criada.
+
+O CARG possui apenas um slot estrutural reservado para futura ativação. A definição `CARG / HURRIA_2011` fica inativa com `LICENSE_REVIEW_REQUIRED`; não há questionário, tradução ou algoritmo operacional nesta release.
 
 ## Decisão 5 — cálculo clínico fora do React
 
-Regras G8/CARG ficam em `src/domain/oncogeriatria/calculators.ts`, cobertas por golden masters. Componentes React somente coletam respostas estruturadas e exibem resultados persistidos.
+A regra G8 fica em `src/domain/oncogeriatria/calculators.ts`, coberta por golden masters. Componentes React somente coletam respostas estruturadas e exibem resultados persistidos. O CARG permanece deliberadamente bloqueado até autorização formal de uso eletrônico.
 
-## Decisão 6 — CARG não é motor de tratamento
+## Decisão 6 — CARG bloqueado por governança de copyright/licenciamento
 
-O CARG estima risco de toxicidade e apresenta categoria. Ele nunca emite recomendação de dose, esquema, suspensão ou contraindicação. Redução de dose e atraso só entram como eventos previamente registrados pelo oncologista.
+Enquanto não houver autorização documentada do Cancer and Aging Research Group/CARinG para reprodução e implementação eletrônica, o sistema:
+
+- não reproduz o questionário CARG;
+- não calcula o escore localmente;
+- não disponibiliza endpoint funcional de gravação CARG;
+- não envia PHI a calculadoras externas;
+- preserva apenas eventual resultado histórico já existente, claramente identificado como histórico.
+
+Após licença formal, a ativação deverá ocorrer em PR próprio, com fonte, versão, tradução autorizada, golden masters e revisão clínica.
 
 ## Decisão 7 — comparabilidade longitudinal versionada
 
@@ -43,6 +53,10 @@ Todas as gravações têm autoria e AuditEvent. Logs técnicos não armazenam co
 
 Na v1, `OncogeriatricReportSnapshot` é entidade aditiva porque `DocumentSnapshot` exige `consultationId` e um `DocumentType` compartilhado. Alterar essas estruturas existentes apenas para encaixar o novo relatório aumentaria risco de regressão. A assinatura digital existente permanece intocada.
 
-## Decisão 10 — feature safety
+## Decisão 10 — relatório específico da Oncogeriatria
+
+O relatório final consolida contexto oncológico, G8, trajetória geriátrica baseline→atual, vulnerabilidades, recomendações geriátricas previamente registradas, mudanças desde o último checkpoint, eventos durante tratamento, recuperação/pós-tratamento e objetivo prioritário do paciente. Copiar, imprimir ou gerar snapshot exige confirmação explícita de revisão clínica.
+
+## Decisão 11 — feature safety
 
 `ONCOGERIATRIA_EMERGENCY_DISABLED=true` desativa apenas a área nova. O rollback preferencial é de código, preservando tabelas/dados novos.
