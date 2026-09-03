@@ -12,7 +12,20 @@ const types = [
   ["POST_12_MONTHS", "Seguimento 12 meses"],
 ] as const;
 
-export function CheckpointPlannerForm({ patientId, episodeId }: { patientId: string; episodeId: string }) {
+export interface CheckpointConsultationOption {
+  id: string;
+  label: string;
+}
+
+export function CheckpointPlannerForm({
+  patientId,
+  episodeId,
+  consultations = [],
+}: {
+  patientId: string;
+  episodeId: string;
+  consultations?: CheckpointConsultationOption[];
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -23,14 +36,33 @@ export function CheckpointPlannerForm({ patientId, episodeId }: { patientId: str
     try {
       const response = await fetch(`/api/oncogeriatria/patients/${patientId}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "CHECKPOINT_CREATE", episodeId, type: String(data.get("type") ?? ""), occurredAt: String(data.get("occurredAt") ?? ""), scheduledAt: String(data.get("scheduledAt") ?? "") || null, structuredData: { trigger: String(data.get("trigger") ?? "").trim() || null } }),
+        body: JSON.stringify({
+          action: "CHECKPOINT_CREATE",
+          episodeId,
+          type: String(data.get("type") ?? ""),
+          consultationId: String(data.get("consultationId") ?? "").trim() || null,
+          occurredAt: String(data.get("occurredAt") ?? ""),
+          scheduledAt: String(data.get("scheduledAt") ?? "") || null,
+          structuredData: { trigger: String(data.get("trigger") ?? "").trim() || null },
+        }),
       });
       const result = await response.json() as { message?: string };
       if (!response.ok) throw new Error(result.message ?? "Não foi possível registrar checkpoint.");
-      setMessage("Checkpoint registrado. Nenhuma consulta foi criada automaticamente.");
+      setMessage("Checkpoint registrado. Nenhuma consulta foi criada automaticamente; quando selecionada, a consulta existente integra sua avaliação por domínio à trajetória oncogeriátrica.");
       router.refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : "Não foi possível registrar checkpoint."); }
     finally { setPending(false); }
   }
-  return <form className="patient-form" onSubmit={submit}><label>Tipo<select name="type">{types.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Data de referência<input type="date" name="occurredAt" required /></label><label>Próximo checkpoint previsto (opcional)<input type="date" name="scheduledAt" /></label><label>Gatilho/observação<input name="trigger" placeholder="Ex.: pós-hospitalização, nova perda funcional" /></label><button type="submit" disabled={pending}>{pending ? "Salvando…" : "Registrar checkpoint"}</button>{message ? <p role="status" className="muted">{message}</p> : null}</form>;
+  return (
+    <form className="patient-form" onSubmit={submit}>
+      <label>Tipo<select name="type">{types.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+      <label>Data de referência<input type="date" name="occurredAt" required /></label>
+      <label>Consulta existente para avaliação por domínio<select name="consultationId" defaultValue=""><option value="">Sem vínculo por enquanto</option>{consultations.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+      <p className="muted">O vínculo reaproveita os resultados já persistidos no Prontuário. Nenhuma escala é copiada, recalculada ou preenchida automaticamente.</p>
+      <label>Próximo checkpoint previsto (opcional)<input type="date" name="scheduledAt" /></label>
+      <label>Gatilho/observação<input name="trigger" placeholder="Ex.: pós-hospitalização, nova perda funcional" /></label>
+      <button type="submit" disabled={pending}>{pending ? "Salvando…" : "Registrar checkpoint"}</button>
+      {message ? <p role="status" className="muted">{message}</p> : null}
+    </form>
+  );
 }
