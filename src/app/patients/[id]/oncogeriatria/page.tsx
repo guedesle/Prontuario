@@ -1,6 +1,8 @@
+import { OncogeriatricDomainStatusSummary } from "@/components/oncogeriatria/domain-status-summary";
 import { OncogeriatricNav } from "@/components/oncogeriatria/oncogeriatric-nav";
 import { StartEpisodeForm } from "@/components/oncogeriatria/oncogeriatric-forms";
 import {
+  capacityHistoryForOncogeriatricEpisode,
   formatClinicalDate,
   hasRelevantCheckpointAlert,
   loadEpisodeWorkspace,
@@ -40,6 +42,7 @@ export default async function OncogeriatricPatientPage({ params, searchParams }:
   }
 
   const workspace = await loadEpisodeWorkspace(patientId, episode.id);
+  const capacityHistory = capacityHistoryForOncogeriatricEpisode(patientId, workspace);
   const currentCourse = workspace.courses.find((course) => course.status === "ACTIVE") ?? workspace.courses[0];
   const latestCheckpoint = workspace.checkpoints[workspace.checkpoints.length - 1];
   const g8 = scaleForCheckpoint(workspace.checkpoints.map((checkpoint) => checkpoint.g8AssessmentId), workspace.scaleAssessments);
@@ -84,6 +87,8 @@ export default async function OncogeriatricPatientPage({ params, searchParams }:
           <article><span>Intervenções</span><strong>{workspace.interventions.filter((item) => item.status !== "COMPLETED").length}</strong><small>ativas/pendentes</small></article>
         </div>
       </section>
+
+      <OncogeriatricDomainStatusSummary history={capacityHistory} />
 
       <section className="two-columns">
         <article className="panel"><h2>Checkpoint recente</h2>{latestCheckpoint ? <><p><strong>{latestCheckpoint.type}</strong> · {formatClinicalDate(latestCheckpoint.occurredAt)}</p><p className="muted">Status: {latestCheckpoint.status}. Consulte a área Check para os detalhes estruturados.</p></> : <p className="muted">Sem dados registrados.</p>}</article>
