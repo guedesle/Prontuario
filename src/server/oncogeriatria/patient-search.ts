@@ -6,7 +6,7 @@ type OncogeriatricPatientSearchClient = Pick<PrismaClient, "patient">;
 export interface OncogeriatricPatientSearchResult {
   id: string;
   fullName: string;
-  birthDate: Date | null;
+  birthDate: string | null;
 }
 
 /**
