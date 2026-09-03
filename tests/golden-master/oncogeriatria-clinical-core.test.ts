@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { buildOncogeriatricCapacityHistory, latestOncogeriatricDomainStates } from "../../src/domain/oncogeriatria/capacity-history.ts";
 import { calculateG8, cargAvailability } from "../../src/domain/oncogeriatria/calculators.ts";
 import { buildOncogeriatricDelta, latestRecoveryAssessmentsByDomain } from "../../src/domain/oncogeriatria/longitudinal.ts";
 
@@ -63,4 +64,86 @@ test("relatório pós-tratamento usa a avaliação de recuperação mais recente
   assert.equal(latest.length, 2);
   assert.equal(latest.find((item) => item.domain === "FUNCTIONAL")?.id, "functional-new");
   assert.equal(latest.find((item) => item.domain === "NUTRITION")?.id, "nutrition-new");
+});
+
+test("trajetória por domínio da Oncogeriatria inclui somente consultas explicitamente vinculadas ao episódio", () => {
+  const patientId = "patient-1";
+  const history = buildOncogeriatricCapacityHistory({
+    patientId,
+    checkpoints: [{ consultationId: "consultation-linked" }],
+    consultations: [
+      { id: "consultation-linked", patientId, occurredAt: "2026-01-10" },
+      { id: "consultation-unrelated", patientId, occurredAt: "2026-02-10" },
+    ],
+    assessments: [
+      {
+        id: "lawton-linked",
+        patientId,
+        consultationId: "consultation-linked",
+        scaleCode: "lawton",
+        scaleVersion: "v1",
+        scoreNumeric: 18,
+        scoreText: "18",
+        classification: "dependência funcional",
+        clinicalColor: "vermelho",
+        appliedAt: "2026-01-10",
+      },
+      {
+        id: "lawton-unrelated",
+        patientId,
+        consultationId: "consultation-unrelated",
+        scaleCode: "lawton",
+        scaleVersion: "v1",
+        scoreNumeric: 27,
+        scoreText: "27",
+        classification: "independente",
+        clinicalColor: "verde",
+        appliedAt: "2026-02-10",
+      },
+    ],
+  });
+
+  assert.deepEqual(history.consultations.map((item) => item.id), ["consultation-linked"]);
+  const functional = history.dimensions.find((item) => item.code === "funcionalidade");
+  assert.equal(functional?.cells.length, 1);
+  assert.equal(functional?.cells[0]?.status, "altered");
+  assert.equal(functional?.cells[0]?.assessments[0]?.assessmentId, "lawton-linked");
+});
+
+test("último estado oncogeriátrico por domínio persiste quando checkpoint posterior não reaplica escala", () => {
+  const patientId = "patient-2";
+  const history = buildOncogeriatricCapacityHistory({
+    patientId,
+    checkpoints: [
+      { consultationId: "baseline" },
+      { consultationId: "cycle-2" },
+    ],
+    consultations: [
+      { id: "baseline", patientId, occurredAt: "2026-03-01" },
+      { id: "cycle-2", patientId, occurredAt: "2026-04-01" },
+    ],
+    assessments: [
+      {
+        id: "lawton-baseline",
+        patientId,
+        consultationId: "baseline",
+        scaleCode: "lawton",
+        scaleVersion: "v1",
+        scoreNumeric: 20,
+        scoreText: "20",
+        classification: "dependência funcional",
+        clinicalColor: "vermelho",
+        appliedAt: "2026-03-01",
+      },
+    ],
+  });
+
+  const functional = history.dimensions.find((item) => item.code === "funcionalidade");
+  assert.equal(functional?.cells[0]?.status, "altered");
+  assert.equal(functional?.cells[1]?.status, "not-assessed");
+
+  const latest = latestOncogeriatricDomainStates(history).find((item) => item.code === "funcionalidade");
+  assert.equal(latest?.status, "altered");
+  assert.equal(latest?.occurredAt?.slice(0, 10), "2026-03-01");
+  assert.equal(latest?.instruments[0]?.code, "lawton");
 });
