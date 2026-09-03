@@ -1,7 +1,9 @@
+import { OncogeriatricDomainStatusSummary } from "@/components/oncogeriatria/domain-status-summary";
 import { OncogeriatricNav } from "@/components/oncogeriatria/oncogeriatric-nav";
 import { OncogeriatricTrendChart } from "@/components/oncogeriatria/oncogeriatric-trend-chart";
+import { CapacityDimensionHistoryChart } from "@/components/reports/capacity-dimension-history-chart";
 import { buildOncogeriatricDelta, groupComparableObservations } from "@/domain/oncogeriatria/longitudinal";
-import { formatClinicalDate, loadEpisodeWorkspace, loadOncogeriatricPatient, readStructuredRecord, requireOncogeriatricReadAccess, resolveOncogeriatricEpisode } from "@/server/oncogeriatria/read";
+import { capacityHistoryForOncogeriatricEpisode, formatClinicalDate, loadEpisodeWorkspace, loadOncogeriatricPatient, readStructuredRecord, requireOncogeriatricReadAccess, resolveOncogeriatricEpisode } from "@/server/oncogeriatria/read";
 
 function dayKey(date: Date): string { return date.toISOString().slice(0, 10); }
 
@@ -13,6 +15,7 @@ export default async function OncogeriatricLongitudinalPage({ params, searchPara
   const episode = await resolveOncogeriatricEpisode(patientId, query.episode);
   if (!episode) return <main className="shell"><p>Inicie um episódio oncogeriátrico para visualizar a trajetória.</p></main>;
   const workspace = await loadEpisodeWorkspace(patientId, episode.id);
+  const capacityHistory = capacityHistoryForOncogeriatricEpisode(patientId, workspace);
   const firstCheckpointAt = workspace.checkpoints[0]?.occurredAt ?? episode.diagnosedAt ?? episode.createdAt;
   const eventsByDay = new Map<string, string[]>();
   const addEvent = (date: Date | null | undefined, label: string) => {
@@ -43,6 +46,12 @@ export default async function OncogeriatricLongitudinalPage({ params, searchPara
     <main className="shell">
       <header className="hero compact-hero"><p className="eyebrow">Oncogeriatria · longitudinal</p><h1>Δ geriátrico</h1><p>{patient.fullName} · baseline → tratamento → eventos → intervenção → recuperação. Comparações são feitas apenas entre o mesmo código e a mesma versão do instrumento.</p></header>
       <OncogeriatricNav patientId={patientId} episodeId={episode.id} />
+
+      <OncogeriatricDomainStatusSummary history={capacityHistory} />
+      <section className="panel" aria-label="Trajetória persistente por domínio no episódio oncogeriátrico">
+        <div className="section-heading"><div><p className="eyebrow">Domínios</p><h2>Trajetória geriátrica vinculada ao episódio</h2></div><span className="muted">Consultas não vinculadas ao episódio não entram nesta visão.</span></div>
+        <CapacityDimensionHistoryChart history={capacityHistory} context="patient-home" />
+      </section>
 
       <section className="panel"><div className="section-heading"><div><p className="eyebrow">Mudança temporal</p><h2>Baseline → atual</h2></div><span className="muted">Mudança numérica não é rotulada automaticamente como clinicamente significativa.</span></div>
         {deltas.length ? <div className="evolution-list">{deltas.map((delta) => delta ? <article className="evolution-card" key={`${delta.code}-${delta.version}`}><div><h3>{delta.code}</h3><p className="dimension">versão {delta.version}</p><p className="trend">Δ numérico: {delta.delta > 0 ? "+" : ""}{delta.delta}</p></div><div className="score-block"><span>Baseline</span><strong>{delta.baseline}</strong></div><div className="score-arrow">→</div><div className="score-block current-score"><span>Atual</span><strong>{delta.current}</strong></div><div className="score-block"><span>Período</span><strong>{formatClinicalDate(delta.currentAt)}</strong></div></article> : null)}</div> : <p className="muted">Dados insuficientes para comparação de escalas com código e versão compatíveis.</p>}
