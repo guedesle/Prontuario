@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { calculateG8, cargAvailability } from "../../src/domain/oncogeriatria/calculators.ts";
-import { buildOncogeriatricDelta } from "../../src/domain/oncogeriatria/longitudinal.ts";
+import { buildOncogeriatricDelta, latestRecoveryAssessmentsByDomain } from "../../src/domain/oncogeriatria/longitudinal.ts";
 
 test("G8 original: cenário máximo resulta 17 e triagem não vulnerável", () => {
   const result = calculateG8({
@@ -52,4 +52,15 @@ test("delta geriátrico nunca mistura versões diferentes", () => {
     { code: "MNA_SF", version: "2", occurredAt: new Date("2026-04-01"), value: 9 },
   ]);
   assert.equal(mixed, null);
+});
+
+test("relatório pós-tratamento usa a avaliação de recuperação mais recente de cada domínio", () => {
+  const latest = latestRecoveryAssessmentsByDomain([
+    { id: "functional-new", domain: "FUNCTIONAL", assessedAt: new Date("2026-08-01"), status: "RECOVERING" },
+    { id: "nutrition-new", domain: "NUTRITION", assessedAt: new Date("2026-07-15"), status: "RECOVERED" },
+    { id: "functional-old", domain: "FUNCTIONAL", assessedAt: new Date("2026-06-01"), status: "PERSISTENT_DEFICIT" },
+  ]);
+  assert.equal(latest.length, 2);
+  assert.equal(latest.find((item) => item.domain === "FUNCTIONAL")?.id, "functional-new");
+  assert.equal(latest.find((item) => item.domain === "NUTRITION")?.id, "nutrition-new");
 });
