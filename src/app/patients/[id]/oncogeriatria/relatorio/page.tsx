@@ -74,12 +74,11 @@ export default async function OncogeriatricReportPage({ params, searchParams }: 
   const whatMatters = typeof baselineData.whatMatters === "string" && baselineData.whatMatters.trim() ? baselineData.whatMatters : "Não registrado";
 
   const activeInterventions = workspace.interventions.filter((item) => item.status !== "COMPLETED");
-  const completedInterventions = workspace.interventions.filter((item) => item.status === "COMPLETED").slice(0, 3);
-  const visibleActiveInterventions = activeInterventions.slice(0, 8);
-  const recentEvents = workspace.toxicities.slice(0, 5);
+  const completedInterventions = workspace.interventions.filter((item) => item.status === "COMPLETED");
+  const recentEvents = workspace.toxicities;
   const changes = summarizeCheckpointChanges(latestCheckpoint?.structuredData);
   const reportDate = new Date();
-  const latestRecoveryByDomain = latestRecoveryAssessmentsByDomain(workspace.recovery).slice(0, 8);
+  const latestRecoveryByDomain = latestRecoveryAssessmentsByDomain(workspace.recovery);
   const trajectories = {
     abvd: scaleTrajectory("ABVD", workspace.scaleAssessments),
     aivd: scaleTrajectory("AIVD", workspace.scaleAssessments),
@@ -104,6 +103,7 @@ export default async function OncogeriatricReportPage({ params, searchParams }: 
     trajectories,
     changes,
     activeInterventions: activeInterventions.map((item) => ({ domain: item.domain, vulnerability: item.description, recommendation: item.intervention, responsibleProfessional: item.responsibleProfessional, dueAt: item.dueAt?.toISOString() ?? null, status: item.status })),
+    completedInterventions: completedInterventions.map((item) => ({ domain: item.domain, vulnerability: item.description, recommendation: item.intervention, responsibleProfessional: item.responsibleProfessional, result: item.result, status: item.status })),
     recentEvents: recentEvents.map((item) => ({ type: item.toxicityType, occurredAt: item.occurredAt.toISOString(), grade: item.grade, hospitalizationAssociated: item.hospitalizationAssociated, cycleDelayAssociated: item.cycleDelayAssociated })),
     recovery: latestRecoveryByDomain.map((item) => ({ domain: item.domain, status: item.status, notes: item.notes, assessedAt: item.assessedAt.toISOString() })),
     whatMatters,
@@ -167,9 +167,9 @@ export default async function OncogeriatricReportPage({ params, searchParams }: 
 
         <section>
           <h2>5. Vulnerabilidades e recomendações geriátricas registradas</h2>
-          {visibleActiveInterventions.length ? (
+          {activeInterventions.length ? (
             <ol>
-              {visibleActiveInterventions.map((item) => (
+              {activeInterventions.map((item) => (
                 <li key={item.id}>
                   <strong>{item.domain}:</strong> {item.description}
                   {item.intervention ? <> — <strong>recomendação:</strong> {item.intervention}</> : ""}
@@ -179,8 +179,7 @@ export default async function OncogeriatricReportPage({ params, searchParams }: 
               ))}
             </ol>
           ) : <p>Sem recomendação geriátrica ativa registrada neste episódio.</p>}
-          {activeInterventions.length > visibleActiveInterventions.length ? <p className="muted">Há mais {activeInterventions.length - visibleActiveInterventions.length} recomendações ativas registradas no prontuário longitudinal.</p> : null}
-          {completedInterventions.length ? <><h3>Intervenções concluídas recentemente</h3><ul>{completedInterventions.map((item) => <li key={item.id}><strong>{item.domain}:</strong> {item.intervention ?? item.description}{item.result ? ` · resultado: ${item.result}` : ""}</li>)}</ul></> : null}
+          {completedInterventions.length ? <><h3>Intervenções concluídas previamente</h3><ul>{completedInterventions.map((item) => <li key={item.id}><strong>{item.domain}:</strong> {item.intervention ?? item.description}{item.result ? ` · resultado: ${item.result}` : ""}</li>)}</ul></> : null}
         </section>
 
         <section>
