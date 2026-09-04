@@ -125,22 +125,22 @@ const DOMAIN_CONTENT: Readonly<Record<IntrinsicCapacityDomainCode, Omit<Intrinsi
   },
   vitalidade: {
     label: "Vitalidade",
-    whyItMatters: "Relaciona-se às reservas fisiológicas do organismo. Nesta versão, o alerta clínico disponível usa o estado nutricional como indicador, sem afirmar que nutrição represente toda a vitalidade.",
+    whyItMatters: "Vitalidade representa a reserva que o organismo usa para enfrentar doenças e manter as atividades do dia. Nesta versão, o estado nutricional é um dos sinais acompanhados e deve ser interpretado junto com força, funcionalidade e condições clínicas.",
     actions: [
-      "Ofereça refeições menores em horários regulares e alimentos bem aceitos dentro das orientações alimentares já definidas.",
-      "Facilite água e outras bebidas permitidas ao longo do dia, respeitando eventual restrição de líquidos informada pela equipe.",
-      "Acompanhe peso na mesma balança e observe roupas mais folgadas, redução das porções ou dificuldade para mastigar e engolir.",
-      "Alterne atividade e descanso, preservando participação nas tarefas que o paciente consegue fazer com segurança.",
+      "Priorize uma alimentação possível e prazerosa: ofereça refeições menores e mais frequentes quando grandes volumes cansarem ou reduzirem a aceitação, mantendo as orientações nutricionais já definidas para a pessoa.",
+      "Facilite líquidos ao longo do dia e deixe bebidas ao alcance quando isso for seguro, sempre respeitando eventual restrição de líquidos orientada pela equipe.",
+      "Acompanhe mudanças que ajudam a perceber perda de reserva: peso, roupas mais folgadas, redução das porções, perda de apetite, dificuldade para mastigar ou engolir e cansaço maior para comer.",
+      "Preserve atividade e participação conforme tolerância, alternando esforço e descanso. O objetivo é evitar tanto a exaustão quanto a inatividade prolongada.",
     ],
     attentionSigns: [
-      "Avise a equipe sobre perda de peso, redução persistente da ingestão, cansaço crescente, vômitos ou dificuldade para engolir.",
-      "Procure avaliação rápida se houver engasgo com falta de ar, incapacidade de ingerir líquidos ou sinais de desidratação e prostração importante.",
+      "Avise a equipe se houver perda de peso sem intenção, queda persistente da ingestão, piora do apetite, cansaço crescente, vômitos repetidos ou dificuldade para mastigar ou engolir.",
+      "Procure avaliação rápida se houver engasgo com falta de ar, incapacidade de ingerir líquidos, redução importante da urina, sonolência fora do habitual ou prostração importante.",
     ],
     evidenceReferences: [{
-      label: "Diretriz ESPEN de nutrição clínica e hidratação em geriatria",
-      pmid: "30005900",
-      url: "https://pubmed.ncbi.nlm.nih.gov/30005900/",
-      relevance: "Diretriz baseada em evidências: rastreio, cuidado nutricional individualizado e prevenção de desidratação devem integrar o acompanhamento geriátrico.",
+      label: "Diretriz prática ESPEN de nutrição clínica e hidratação em geriatria",
+      pmid: "35306388",
+      url: "https://pubmed.ncbi.nlm.nih.gov/35306388/",
+      relevance: "Diretriz prática: rastreio e cuidado nutricional devem ser individualizados; alimentação, hidratação e suporte oral fazem parte de uma abordagem abrangente e multidisciplinar para pessoas idosas.",
     }],
   },
   sensorial: {

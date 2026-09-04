@@ -122,19 +122,19 @@ export const PRIORITY_LABELS: Readonly<Record<AdvanceDirectivePriority, string>>
 export const TOPIC_LABELS: Readonly<Record<AdvanceDirectiveTopicCode, { title: string; hint: string }>> = {
   CARDIOPULMONARY_RESUSCITATION: {
     title: "Reanimação cardiopulmonar",
-    hint: "Em parada cardiorrespiratória",
+    hint: "Conversa sobre preferências em uma eventual parada cardiorrespiratória, considerando o contexto clínico, possibilidade de recuperação e o que a pessoa considera um resultado aceitável.",
   },
   VENTILATION_AND_INTENSIVE_CARE: {
     title: "Ventilação e terapia intensiva",
-    hint: "Em doença grave ou piora aguda",
+    hint: "Conversa sobre suporte intensivo diante de doença grave ou piora aguda, incluindo quais condições, limites e objetivos seriam compatíveis com os valores da pessoa.",
   },
   ARTIFICIAL_NUTRITION_AND_HYDRATION: {
     title: "Alimentação e hidratação artificiais",
-    hint: "Se não puder alimentar-se pela via habitual",
+    hint: "Conversa sobre preferências caso a alimentação pela via habitual deixe de ser possível, levando em conta reversibilidade, conforto, benefícios esperados e objetivos de cuidado.",
   },
   HOSPITALIZATION_AND_PLACE_OF_CARE: {
     title: "Hospitalização e local de cuidado",
-    hint: "Preferências diante de piora importante",
+    hint: "Conversa sobre onde a pessoa gostaria de ser cuidada diante de piora importante, quando houver opções clinicamente seguras e compatíveis com suas prioridades.",
   },
 };
 
@@ -142,7 +142,7 @@ export const TOPIC_STATUS_LABELS: Readonly<Record<AdvanceDirectiveTopicStatus, s
   NOT_DISCUSSED: "Não discutido",
   WANTS_TO_DISCUSS: "Prefere conversar",
   PREFERENCE_RECORDED: "Preferência registrada",
-  UNCERTAIN_CONTEXT_DEPENDENT: "Incerto ou depende do contexto",
+  UNCERTAIN_CONTEXT_DEPENDENT: "Ainda incerto ou depende do contexto clínico",
 };
 
 export const DOCUMENT_STATUS_LABELS: Readonly<Record<AdvanceDirectiveDocumentStatus, string>> = {
@@ -153,9 +153,9 @@ export const DOCUMENT_STATUS_LABELS: Readonly<Record<AdvanceDirectiveDocumentSta
 };
 
 export const REVIEW_TRIGGER_LABELS: Readonly<Record<AdvanceDirectiveReviewTrigger, string>> = {
-  WHEN_PERSON_WANTS_OR_CONDITION_CHANGES: "Quando a pessoa desejar ou o quadro mudar",
+  WHEN_PERSON_WANTS_OR_CONDITION_CHANGES: "Quando a pessoa desejar ou houver mudança importante no quadro ou nos objetivos de cuidado",
   NEXT_CONSULTATION: "Na próxima consulta",
-  AFTER_FAMILY_CONVERSATION: "Após conversa com a família",
+  AFTER_FAMILY_CONVERSATION: "Após conversa com a família ou pessoa de confiança",
   AFTER_SPECIFIC_CLINICAL_REVIEW: "Após avaliação clínica específica",
 };
 

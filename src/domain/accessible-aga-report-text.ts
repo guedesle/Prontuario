@@ -44,6 +44,8 @@ function advanceDirectiveBlocks(section: AgaAdvanceDirectivesReportSection): str
   const blocks = [
     "",
     "DIRETIVAS ANTECIPADAS",
+    "Este registro resume valores, prioridades e preferências conversadas para orientar decisões compartilhadas se, no futuro, a pessoa estiver mais doente ou tiver dificuldade para expressar suas escolhas.",
+    "As preferências devem ser interpretadas à luz da situação clínica de cada momento e podem ser revistas sempre que a pessoa desejar ou quando houver mudança importante de saúde, funcionalidade ou objetivos de cuidado.",
     `Registro de referência: ${section.sourceConsultationDate.slice(0, 10)} · versão ${section.version}`,
   ];
   if (section.participation) blocks.push("", "Participação na conversa", section.participation);
@@ -126,7 +128,6 @@ export function renderAccessibleAgaReportText(model: AccessibleAgaReportModel): 
     list(vaccinationItems),
     "Orientação:",
     list(model.vaccinationPrevention.guidance),
-    "Esta seção é informativa, não contém prescrição automática e permanece separada da tabela de medicamentos.",
   );
 
   const domains = buildReportDomainSummaries(model.assessedScales, model.intrinsicCapacity);
