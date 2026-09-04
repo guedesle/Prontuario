@@ -1,0 +1,132 @@
+.card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  break-inside: avoid;
+}
+
+.card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.card header > span {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.chartWrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.chartWrap:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  min-width: 520px;
+  height: auto;
+}
+
+.axis,
+.guide,
+.dateGuide {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.dateGuide {
+  stroke-dasharray: 3 4;
+}
+
+.line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.point {
+  fill: #fff;
+  stroke: var(--primary);
+  stroke-width: 2.5;
+}
+
+.axisValue,
+.pointValue,
+.dateLabel {
+  fill: var(--ink);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.axisValue,
+.dateLabel {
+  font-size: 9px;
+}
+
+.pointValue {
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.scaleNote,
+.empty {
+  margin-top: 7px !important;
+}
+
+.card table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.card caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.card th,
+.card td {
+  padding: 6px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+@media print {
+  .chartWrap { overflow: visible; }
+  .chart { min-width: 0; }
+  .card table { font-size: 8pt; }
+}

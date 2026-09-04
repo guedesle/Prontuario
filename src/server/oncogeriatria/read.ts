@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { buildProblemCapacityMilestones } from "@/domain/capacity-timeline-milestones";
+import type { CapacityTimelineMilestone } from "@/domain/capacity-dimension-history";
 import { buildOncogeriatricCapacityHistory } from "@/domain/oncogeriatria/capacity-history";
 import { isOncogeriatriaEnabled } from "@/domain/oncogeriatria/feature";
 import { requireAuthenticatedUser } from "@/server/auth/require-user";
@@ -34,7 +36,7 @@ export async function resolveOncogeriatricEpisode(patientId: string, requestedEp
 }
 
 export async function loadEpisodeWorkspace(patientId: string, episodeId: string) {
-  const [courses, checkpoints, interventions, toxicities, recovery, consultations, scaleAssessments] = await Promise.all([
+  const [courses, checkpoints, interventions, toxicities, recovery, consultations, scaleAssessments, problems] = await Promise.all([
     prisma.oncogeriatricTreatmentCourse.findMany({ where: { patientId, episodeId }, orderBy: [{ actualStartAt: "desc" }, { createdAt: "desc" }] }),
     prisma.oncogeriatricCheckpoint.findMany({ where: { patientId, episodeId }, orderBy: [{ occurredAt: "asc" }, { createdAt: "asc" }] }),
     prisma.oncogeriatricIntervention.findMany({ where: { patientId, episodeId }, orderBy: { createdAt: "desc" } }),
@@ -68,8 +70,38 @@ export async function loadEpisodeWorkspace(patientId: string, episodeId: string)
         },
       },
     }),
+    prisma.clinicalProblem.findMany({
+      where: { patientId },
+      select: {
+        patientId: true,
+        originConsultationId: true,
+        title: true,
+        description: true,
+        createdAt: true,
+        events: {
+          orderBy: { createdAt: "asc" },
+          select: { patientId: true, consultationId: true, note: true, createdAt: true },
+        },
+      },
+    }),
   ]);
-  return { courses, checkpoints, interventions, toxicities, recovery, consultations, scaleAssessments };
+  const linkedConsultationIds = checkpoints.flatMap((checkpoint) => checkpoint.consultationId ? [checkpoint.consultationId] : []);
+  const problemMilestones = buildProblemCapacityMilestones({ patientId, problems, consultationIds: linkedConsultationIds });
+  const checkpointById = new Map(checkpoints.map((checkpoint) => [checkpoint.id, checkpoint]));
+  const oncologyMilestones: CapacityTimelineMilestone[] = toxicities.flatMap((toxicity) => {
+    const consultationId = toxicity.checkpointId ? checkpointById.get(toxicity.checkpointId)?.consultationId : null;
+    if (!consultationId) return [];
+    const details = [toxicity.grade ? `grau ${toxicity.grade}` : null, toxicity.consequences].filter(Boolean).join(" · ");
+    return [{
+      patientId,
+      consultationId,
+      title: toxicity.hospitalizationAssociated ? "Hospitalização associada a toxicidade" : `Toxicidade: ${toxicity.toxicityType}`,
+      note: details || undefined,
+      recordedAt: toxicity.occurredAt,
+      source: "oncology-event" as const,
+    }];
+  });
+  return { courses, checkpoints, interventions, toxicities, recovery, consultations, scaleAssessments, problemMilestones: [...problemMilestones, ...oncologyMilestones] };
 }
 
 export type OncogeriatricEpisodeWorkspace = Awaited<ReturnType<typeof loadEpisodeWorkspace>>;
@@ -87,6 +119,7 @@ export function capacityHistoryForOncogeriatricEpisode(
       sourceCitation: assessment.scaleDefinition?.sourceCitation,
       definitionHash: assessment.scaleDefinition?.definitionHash,
     })),
+    milestones: workspace.problemMilestones,
   });
 }
 

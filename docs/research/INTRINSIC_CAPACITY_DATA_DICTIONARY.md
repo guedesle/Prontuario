@@ -1,6 +1,6 @@
 # Dicionário de dados — capacidade intrínseca e independência funcional
 
-Versão metodológica: `intrinsic-capacity-model-v1.0.0`
+Versão metodológica: `intrinsic-capacity-model-v1.1.0`
 
 Este dicionário define o núcleo mínimo necessário para reprodutibilidade científica. A aplicação pode conter campos adicionais, mas nenhum ponto do gráfico deve perder os campos de origem abaixo.
 
@@ -24,7 +24,7 @@ Este dicionário define o núcleo mínimo necessário para reprodutibilidade cie
 | `clinical_color_original` | cor clínica original | instrumento | verde/amarelo/vermelho/cinza | ScaleAssessment.clinicalColor | apenas camada de origem; não é unidade psicométrica |
 | `source_citation` | fonte | instrumento | referência bibliográfica ou institucional da definição | ScaleDefinition.sourceCitation | ausente = não declarar regra como plenamente validada |
 | `definition_hash` | hash da definição | instrumento | hash da configuração aplicada | ScaleDefinition.definitionHash | útil para auditoria e reprodutibilidade |
-| `methodology_model_version` | versão do modelo | todos | ex. `intrinsic-capacity-model-v1.0.0` | derivação | obrigatório |
+| `methodology_model_version` | versão do modelo | todos | ex. `intrinsic-capacity-model-v1.1.0` | derivação | obrigatório |
 | `domain_state` | estado do domínio | domínio | not-assessed / recorded / indeterminate / preserved / attention / altered | derivação versionada | nunca substituir dado original |
 | `domain_state_reason` | justificativa | domínio | razão legível da classificação derivada | derivação versionada | obrigatório |
 | `selected_for_domain_state` | evidência selecionada | domínio | booleano que informa quais instrumentos contribuíram para o estado | derivação versionada | obrigatório |

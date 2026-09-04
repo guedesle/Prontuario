@@ -1,4 +1,8 @@
+import { SCALE_DIRECTIONS, type ScaleDirection, type ScaleTrend } from "../longitudinal-scales.ts";
+
 export interface OncogeriatricNumericObservation {
+  id?: string;
+  consultationId?: string;
   code: string;
   version: string;
   occurredAt: Date;
@@ -13,6 +17,8 @@ export interface OncogeriatricDelta {
   delta: number;
   baselineAt: Date;
   currentAt: Date;
+  direction?: ScaleDirection;
+  trend: ScaleTrend;
 }
 
 export interface OncogeriatricRecoveryObservation {
@@ -29,14 +35,25 @@ export function buildOncogeriatricDelta(observations: OncogeriatricNumericObserv
   if (!baseline || !current) return null;
   if (baseline.code !== current.code || baseline.version !== current.version) return null;
   if (ordered.some((item) => item.code !== baseline.code || item.version !== baseline.version)) return null;
+  const delta = current.value - baseline.value;
+  const direction = SCALE_DIRECTIONS[baseline.code.toLocaleLowerCase("pt-BR")];
+  const trend: ScaleTrend = delta === 0
+    ? "stable"
+    : !direction
+      ? "not-comparable"
+      : direction === "higher-better"
+        ? (delta > 0 ? "favorable" : "unfavorable")
+        : (delta < 0 ? "favorable" : "unfavorable");
   return {
     code: baseline.code,
     version: baseline.version,
     baseline: baseline.value,
     current: current.value,
-    delta: current.value - baseline.value,
+    delta,
     baselineAt: baseline.occurredAt,
     currentAt: current.occurredAt,
+    direction,
+    trend,
   };
 }
 
@@ -48,11 +65,20 @@ export function groupComparableObservations(observations: OncogeriatricNumericOb
     current.push(observation);
     groups.set(key, current);
   }
-  return [...groups.values()].map((group) => ({
-    code: group[0]?.code ?? "",
-    version: group[0]?.version ?? "",
-    observations: group.sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime()),
-  }));
+  return [...groups.values()].map((group) => {
+    const effective = new Map<string, OncogeriatricNumericObservation>();
+    for (const observation of group) {
+      const key = observation.consultationId ?? observation.id ?? observation.occurredAt.toISOString();
+      const previous = effective.get(key);
+      if (!previous || observation.occurredAt.getTime() >= previous.occurredAt.getTime()) effective.set(key, observation);
+    }
+    const ordered = [...effective.values()].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime() || (a.id ?? "").localeCompare(b.id ?? ""));
+    return {
+      code: ordered[0]?.code ?? "",
+      version: ordered[0]?.version ?? "",
+      observations: ordered,
+    };
+  });
 }
 
 export function latestRecoveryAssessmentsByDomain<T extends OncogeriatricRecoveryObservation>(observations: T[]): T[] {

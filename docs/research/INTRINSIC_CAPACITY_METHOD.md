@@ -2,7 +2,7 @@
 
 Status: proposta implementada em branch para revisão, ainda não validada clinicamente como instrumento novo.
 
-Versão metodológica: `intrinsic-capacity-model-v1.0.0`
+Versão metodológica vigente: `intrinsic-capacity-model-v1.1.0` (a base v1.0.0 abaixo foi preservada; o tratamento de consulta intermediária sem reaplicação está documentado no ADR 0003).
 
 ## 1. Princípio central
 

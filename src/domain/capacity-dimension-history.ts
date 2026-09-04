@@ -63,7 +63,7 @@ export interface CapacityTimelineMilestone {
   title: string;
   note?: string | null;
   recordedAt: Date | string;
-  source: "problem-origin" | "problem-event";
+  source: "problem-origin" | "problem-event" | "oncology-event";
 }
 
 export interface CapacityDimensionCellAssessment {
@@ -330,6 +330,7 @@ function buildInflectionPoints(
     } | undefined;
 
     for (const cell of dimension.cells) {
+      if (cell.status === "not-assessed") continue;
       if (!isComparableStatus(cell.status) || !cell.comparabilityKey) {
         previous = undefined;
         continue;
@@ -377,6 +378,7 @@ function hasDrawableLongitudinalTrend(dimensions: readonly CapacityDimensionRow[
   return dimensions.some((dimension) => {
     let previousKey: string | undefined;
     for (const cell of dimension.cells) {
+      if (cell.status === "not-assessed") continue;
       if (!isComparableStatus(cell.status) || !cell.comparabilityKey) {
         previousKey = undefined;
         continue;

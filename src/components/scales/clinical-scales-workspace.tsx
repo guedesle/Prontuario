@@ -56,6 +56,16 @@ type CurrentAssessment = {
 type StatusView = {
   consultationStatus: "DRAFT" | "IN_REVIEW" | "FINALIZED";
   latest: CurrentAssessment[];
+  previous: Array<{
+    assessmentId: string;
+    consultationId: string;
+    scaleCode: string;
+    scaleVersion: string;
+    scoreNumeric: number | null;
+    scoreText: string | null;
+    classification: string | null;
+    appliedAt: string;
+  }>;
 };
 type PreviousAssessment = {
   assessmentId: string;
@@ -83,6 +93,22 @@ const INLINE_CHOICE_LIMIT = 6;
 
 function asDisplayValue(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
+}
+
+function displayClinicalDate(value: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  }).format(new Date(value));
+}
+
+function previousResultLabel(assessment: StatusView["previous"][number]): string {
+  const result = assessment.scoreText ?? assessment.scoreNumeric;
+  if (result !== null && result !== undefined && assessment.classification) return `${result} · ${assessment.classification}`;
+  if (result !== null && result !== undefined) return String(result);
+  return assessment.classification ?? "resultado registrado";
 }
 
 function parseFieldValue(value: string, field: CoreQuestion | ComplementaryField): number | string {
@@ -240,6 +266,7 @@ export function ClinicalScalesWorkspace({ consultationId }: { consultationId: st
   }, [consultationId]);
 
   const appliedCodes = useMemo(() => new Set(statusView?.latest.map((item) => item.scaleCode) ?? []), [statusView]);
+  const previousByCode = useMemo(() => new Map((statusView?.previous ?? []).map((item) => [item.scaleCode, item])), [statusView]);
   const options = useMemo(() => buildClinicalScaleOptions([
     ...(coreView?.definitions ?? []).map((definition) => ({ source: "core" as const, code: definition.code, name: definition.name, dimension: definition.dimension, appliedInCurrentConsultation: appliedCodes.has(definition.code) })),
     ...(complementaryView?.definitions ?? []).map((definition) => ({ source: "complementary" as const, code: definition.code, name: definition.name, dimension: definition.dimension, appliedInCurrentConsultation: appliedCodes.has(definition.code) })),
@@ -262,6 +289,7 @@ export function ClinicalScalesWorkspace({ consultationId }: { consultationId: st
   const selectedGroups = useMemo(() => groupClinicalScaleOptions(selectedOptions), [selectedOptions]);
   const activeOption = useMemo(() => options.find((option) => option.key === activeKey) ?? null, [options, activeKey]);
   const currentAssessment = activeOption ? statusView?.latest.find((item) => item.scaleCode === activeOption.code) ?? null : null;
+  const previousAssessment = activeOption ? previousByCode.get(activeOption.code) ?? null : null;
   const finalized = statusView?.consultationStatus === "FINALIZED";
 
   useEffect(() => {
@@ -442,12 +470,15 @@ export function ClinicalScalesWorkspace({ consultationId }: { consultationId: st
   const activeComplementary = activeOption?.source === "complementary" ? complementaryView.definitions.find((item) => item.code === activeOption.code) : null;
 
   return <section className={styles.card} aria-labelledby="clinical-scales-title">
-    <div className={styles.heading}><div><p className="eyebrow">Avaliação geriátrica</p><h2 id="clinical-scales-title">Escalas clínicas</h2><p>Selecione por domínio as escalas que deseja aplicar. É possível marcar várias e alternar entre elas sem sair da consulta.</p></div><span className={styles.count}>{appliedCodes.size} aplicada(s) nesta consulta</span></div>
+    <div className={styles.heading}><div><p className="eyebrow">Avaliação geriátrica</p><h2 id="clinical-scales-title">Escalas clínicas</h2><p>Selecione por domínio as escalas que deseja aplicar. É possível marcar várias e alternar entre elas sem sair da consulta.</p></div><span className={styles.count}>{appliedCodes.size} nesta consulta · {previousByCode.size} com histórico anterior</span></div>
     {coreView.licensingRestrictions?.length ? <p className={styles.licenseNotice}>Alguns instrumentos eletrônicos permanecem indisponíveis até confirmação da licença aplicável; registros rápidos permitidos continuam disponíveis quando previstos.</p> : null}
     {finalized ? <p className={styles.locked}>Consulta finalizada: resultados e histórico permanecem visíveis, sem nova aplicação.</p> : null}
 
     <div className={styles.domainGrid}>
-      {groups.map((group) => <fieldset className={styles.domainBox} key={group.domain}><legend>{group.domain}</legend>{group.options.map((option) => <label className={styles.checkRow} key={option.key}><input type="checkbox" checked={selectedKeys.has(option.key)} disabled={option.disabled} onChange={(event) => toggleScale(option, event.target.checked)} /><span>{option.name}{option.statusNote ? ` — ${option.statusNote}` : ""}</span>{option.appliedInCurrentConsultation ? <strong>Aplicada</strong> : null}</label>)}</fieldset>)}
+      {groups.map((group) => <fieldset className={styles.domainBox} key={group.domain}><legend>{group.domain}</legend>{group.options.map((option) => {
+        const previous = previousByCode.get(option.code);
+        return <label className={styles.checkRow} key={option.key}><input type="checkbox" checked={selectedKeys.has(option.key)} disabled={option.disabled} onChange={(event) => toggleScale(option, event.target.checked)} /><span className={styles.scaleLabel}>{option.name}{option.statusNote ? ` — ${option.statusNote}` : ""}{previous ? <small>Anterior: {displayClinicalDate(previous.appliedAt)} · {previousResultLabel(previous)}</small> : null}</span>{option.appliedInCurrentConsultation ? <strong>Aplicada</strong> : previous ? <b className={styles.historyBadge}>Histórico</b> : null}</label>;
+      })}</fieldset>)}
     </div>
 
     {selectedGroups.length ? <div className={styles.selectedBar} aria-label="Escalas selecionadas agrupadas por domínio">
@@ -465,6 +496,7 @@ export function ClinicalScalesWorkspace({ consultationId }: { consultationId: st
     {activeOption ? <article className={styles.workspace}>
       <header className={styles.workspaceHeader}><div><span>{activeOption.domain}</span><h3>{activeOption.name}</h3></div>{currentAssessment ? <div className={styles.appliedBadge}><strong>Aplicada nesta consulta</strong><span>{currentAssessment.scoreText ?? currentAssessment.scoreNumeric ?? "resultado registrado"}</span></div> : null}</header>
       {activeCore ? renderCore(activeCore) : activeComplementary ? renderComplementary(activeComplementary) : renderOncogeriatric(activeOption)}
+      {previousAssessment ? <div className={styles.previous}><strong>Último registro anterior</strong><span>{displayClinicalDate(previousAssessment.appliedAt)} · versão {previousAssessment.scaleVersion} · {previousResultLabel(previousAssessment)}</span><p>A escala não foi selecionada automaticamente; a decisão de reaplicá-la permanece médica.</p></div> : null}
       {currentAssessment ? <div className={styles.previous}><strong>Último registro desta consulta</strong><span>{currentAssessment.classification ?? "Sem classificação automática"}</span>{currentAssessment.interpretation ? <p>{currentAssessment.interpretation}</p> : null}</div> : null}
       {result ? <div className={styles.result} role="status"><span>Resultado calculado no servidor</span><strong>{result.scoreText ?? (result.combinedScore !== undefined ? String(result.combinedScore) : "Resultado registrado")}</strong><b>{resultClassification(result)}</b><p>{resultInterpretation(result)}</p></div> : null}
       {feedback ? <p className={feedback.kind === "error" ? styles.error : styles.success} role={feedback.kind === "error" ? "alert" : "status"}>{feedback.text}</p> : null}

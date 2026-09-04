@@ -5,8 +5,8 @@ import { CapacityDimensionHistoryChart } from "@/components/reports/capacity-dim
 import {
   buildCapacityDimensionHistory,
   type CapacityTimelineAssessment,
-  type CapacityTimelineMilestone,
 } from "@/domain/capacity-dimension-history";
+import { buildProblemCapacityMilestones } from "@/domain/capacity-timeline-milestones";
 import { isProblemLogicalDeletionNote } from "@/domain/as-of-consultation";
 import type { ClinicalProblem } from "@/domain/problems";
 import { isProgram55Eligible } from "@/domain/program55/eligibility";
@@ -84,33 +84,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
     !problem.events.some((event) => isProblemLogicalDeletionNote(event.note)),
   );
 
-  const milestones: CapacityTimelineMilestone[] = visibleProblems.flatMap((problem) => {
-    const items: CapacityTimelineMilestone[] = [];
-    const originNote = problem.description?.trim();
-    if (originNote) {
-      items.push({
-        patientId: problem.patientId,
-        consultationId: problem.originConsultationId,
-        title: problem.title,
-        note: originNote,
-        recordedAt: problem.createdAt,
-        source: "problem-origin",
-      });
-    }
-    for (const event of problem.events) {
-      const eventNote = event.note?.trim();
-      if (!eventNote || isProblemLogicalDeletionNote(eventNote)) continue;
-      items.push({
-        patientId: event.patientId,
-        consultationId: event.consultationId,
-        title: problem.title,
-        note: eventNote,
-        recordedAt: event.createdAt,
-        source: "problem-event",
-      });
-    }
-    return items;
-  });
+  const milestones = buildProblemCapacityMilestones({ patientId: patient.id, problems: visibleProblems });
 
   const capacityHistory = buildCapacityDimensionHistory({
     patientId: patient.id,

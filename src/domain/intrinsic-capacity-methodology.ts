@@ -35,7 +35,7 @@ export interface CapacityInstrumentMethodology {
  * comparabilidade exige uma nova versão. Snapshots/documentos já emitidos não
  * devem ser reescritos silenciosamente.
  */
-export const INTRINSIC_CAPACITY_MODEL_VERSION = "intrinsic-capacity-model-v1.0.0" as const;
+export const INTRINSIC_CAPACITY_MODEL_VERSION = "intrinsic-capacity-model-v1.1.0" as const;
 
 /**
  * Definição operacional da primeira versão.
