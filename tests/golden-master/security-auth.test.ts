@@ -13,6 +13,7 @@ import {
 
 const allowed = parseEmailSet("medica@example.com; admin@example.com");
 const authServer = readFileSync("src/server/auth/auth.ts", "utf8");
+const requireUserServer = readFileSync("src/server/auth/require-user.ts", "utf8");
 const loginPage = readFileSync("src/app/login/page.tsx", "utf8");
 const approvedProductionPrincipalFingerprints = [
   "f3edb3d5dbf548434e230325bc7835275146d04fcc65dcf55d83385956691210",
@@ -67,10 +68,18 @@ test("regressão: produção mantém exatamente três identidades médicas aprov
 });
 
 test("regressão: as três identidades aprovadas não dependem da allowlist externa para autenticar", () => {
-  const authorizationFunction = authServer.match(/function isAuthorizedEmail\(email: string\): boolean \{[\s\S]*?\n\}/)?.[0] ?? "";
+  const authorizationFunction = authServer.match(/(?:export )?function isAuthorizedEmail\(email: string\): boolean \{[\s\S]*?\n\}/)?.[0] ?? "";
   const productionContractFunction = authServer.match(/function usesApprovedProductionAccessContract\(\): boolean \{[\s\S]*?\n\}/)?.[0] ?? "";
 
   assert.match(authorizationFunction, /if \(isApprovedProductionEmail\(email\)\) return true;/);
   assert.match(authorizationFunction, /usesApprovedProductionAccessContract\(\)/);
   assert.match(productionContractFunction, /process\.env\.NODE_ENV === "production"[\s\S]*\|\|[\s\S]*canonicalProductionAppUrl/);
+});
+
+test("regressão: rotas protegidas usam o mesmo contrato das três médicas após o OAuth", () => {
+  assert.match(authServer, /export function isAuthorizedEmail\(email: string\): boolean/);
+  assert.match(requireUserServer, /import \{ auth, isAuthorizedEmail \} from "\.\/auth"/);
+  assert.match(requireUserServer, /!user\.active \|\| !isAuthorizedEmail\(user\.email\)/);
+  assert.doesNotMatch(requireUserServer, /AUTH_ALLOWED_EMAILS/);
+  assert.doesNotMatch(requireUserServer, /assertActiveAllowedUser|parseEmailSet/);
 });
