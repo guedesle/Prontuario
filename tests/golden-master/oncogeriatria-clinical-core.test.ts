@@ -47,12 +47,37 @@ test("delta geriátrico nunca mistura versões diferentes", () => {
     { code: "MNA_SF", version: "1", occurredAt: new Date("2026-04-01"), value: 9 },
   ]);
   assert.deepEqual(sameVersion && { baseline: sameVersion.baseline, current: sameVersion.current, delta: sameVersion.delta }, { baseline: 13, current: 9, delta: -4 });
+  assert.equal(sameVersion?.trend, "unfavorable");
 
   const mixed = buildOncogeriatricDelta([
     { code: "MNA_SF", version: "1", occurredAt: new Date("2026-01-01"), value: 13 },
     { code: "MNA_SF", version: "2", occurredAt: new Date("2026-04-01"), value: 9 },
   ]);
   assert.equal(mixed, null);
+});
+
+test("delta oncogeriátrico respeita a direção própria de cada escala", () => {
+  const ecog = buildOncogeriatricDelta([
+    { code: "ecog", version: "1", occurredAt: new Date("2026-01-01"), value: 1 },
+    { code: "ecog", version: "1", occurredAt: new Date("2026-04-01"), value: 3 },
+  ]);
+  const lawton = buildOncogeriatricDelta([
+    { code: "lawton", version: "1", occurredAt: new Date("2026-01-01"), value: 18 },
+    { code: "lawton", version: "1", occurredAt: new Date("2026-04-01"), value: 21 },
+  ]);
+  assert.equal(ecog?.trend, "unfavorable");
+  assert.equal(lawton?.trend, "favorable");
+});
+
+test("gráficos numéricos usam distância temporal proporcional e identificam valores brutos", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const chart = await readFile("src/components/reports/clinical-metric-trend-chart.tsx", "utf8");
+  const generalChart = await readFile("src/components/reports/scale-history-chart.tsx", "utf8");
+  assert.match(chart, /data-time-scale="proportional"/);
+  assert.match(chart, /proportionalAxisPosition/);
+  assert.match(chart, /Eixo vertical: intervalo observado/);
+  assert.match(generalChart, /data-time-scale="proportional"/);
+  assert.match(generalChart, /proportionalAxisPosition/);
 });
 
 test("relatório pós-tratamento usa a avaliação de recuperação mais recente de cada domínio", () => {
@@ -146,4 +171,24 @@ test("último estado oncogeriátrico por domínio persiste quando checkpoint pos
   assert.equal(latest?.status, "altered");
   assert.equal(latest?.occurredAt?.slice(0, 10), "2026-03-01");
   assert.equal(latest?.instruments[0]?.code, "lawton");
+});
+
+test("evento oncológico vinculado contextualiza inflexão sem declarar causalidade", () => {
+  const patientId = "patient-context";
+  const history = buildOncogeriatricCapacityHistory({
+    patientId,
+    checkpoints: [{ consultationId: "baseline" }, { consultationId: "cycle" }],
+    consultations: [
+      { id: "baseline", patientId, occurredAt: "2026-01-01" },
+      { id: "cycle", patientId, occurredAt: "2026-02-01" },
+    ],
+    assessments: [
+      { patientId, consultationId: "baseline", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "verde", appliedAt: "2026-01-01" },
+      { patientId, consultationId: "cycle", scaleCode: "lawton", scaleVersion: "1", clinicalColor: "vermelho", appliedAt: "2026-02-01" },
+    ],
+    milestones: [{ patientId, consultationId: "cycle", title: "Hospitalização associada a toxicidade", recordedAt: "2026-02-01", source: "oncology-event" }],
+  });
+
+  assert.equal(history.inflectionPoints[0]?.milestones[0]?.title, "Hospitalização associada a toxicidade");
+  assert.equal(history.inflectionPoints[0]?.milestones[0]?.source, "oncology-event");
 });

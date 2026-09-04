@@ -4,6 +4,7 @@ import {
   type CapacityDimensionStatus,
   type CapacityTimelineAssessment,
   type CapacityTimelineConsultation,
+  type CapacityTimelineMilestone,
 } from "../capacity-dimension-history.ts";
 
 export const ONCOGERIATRIC_DOMAIN_STATUS_LABEL: Record<CapacityDimensionStatus, string> = {
@@ -60,6 +61,7 @@ export function buildOncogeriatricCapacityHistory(input: {
   checkpoints: readonly OncogeriatricLinkedCheckpoint[];
   consultations: readonly OncogeriatricCapacityConsultation[];
   assessments: readonly OncogeriatricCapacityAssessment[];
+  milestones?: readonly CapacityTimelineMilestone[];
 }): CapacityDimensionHistory {
   const linkedConsultationIds = new Set(
     input.checkpoints.flatMap((checkpoint) => checkpoint.consultationId ? [checkpoint.consultationId] : []),
@@ -99,6 +101,7 @@ export function buildOncogeriatricCapacityHistory(input: {
     patientId: input.patientId,
     consultations,
     assessments,
+    milestones: (input.milestones ?? []).filter((milestone) => linkedConsultationIds.has(milestone.consultationId)),
     targetConsultationId: latestConsultationId,
     includeTargetWhenEmpty: false,
   });

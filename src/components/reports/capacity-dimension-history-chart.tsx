@@ -5,6 +5,7 @@ import {
   type CapacityDimensionRow,
   type CapacityDimensionStatus,
 } from "@/domain/capacity-dimension-history";
+import { proportionalAxisPosition } from "@/domain/chart-geometry";
 import styles from "./capacity-dimension-history-chart.module.css";
 
 const STATUS_LABEL: Record<CapacityDimensionStatus, string> = {
@@ -50,7 +51,9 @@ function assessmentDetail(item: CapacityDimensionRow["cells"][number]["assessmen
 function lineSegments(
   dimension: CapacityDimensionRow,
   xByConsultation: ReadonlyMap<string, number>,
-): Array<Array<{
+): Array<{
+  crossesUnassessedVisit: boolean;
+  points: Array<{
   x: number;
   y: number;
   consultationId: string;
@@ -58,8 +61,9 @@ function lineSegments(
   comparabilityKey: string;
   instruments: string[];
   reason: string;
-}>> {
-  const segments: Array<Array<{
+}>;
+}> {
+  type Point = {
     x: number;
     y: number;
     consultationId: string;
@@ -67,33 +71,26 @@ function lineSegments(
     comparabilityKey: string;
     instruments: string[];
     reason: string;
-  }>> = [];
-  let current: Array<{
-    x: number;
-    y: number;
-    consultationId: string;
-    status: CapacityComparableStatus;
-    comparabilityKey: string;
-    instruments: string[];
-    reason: string;
-  }> = [];
+  };
+  const segments: Array<{ crossesUnassessedVisit: boolean; points: Point[] }> = [];
+  let previous: Point | undefined;
+  let crossesUnassessedVisit = false;
 
   for (const cell of dimension.cells) {
+    if (cell.status === "not-assessed") {
+      if (previous) crossesUnassessedVisit = true;
+      continue;
+    }
     if (!isComparable(cell.status) || !cell.comparabilityKey) {
-      if (current.length > 0) segments.push(current);
-      current = [];
+      previous = undefined;
+      crossesUnassessedVisit = false;
       continue;
     }
 
     const x = xByConsultation.get(cell.consultationId);
     if (x === undefined) continue;
 
-    if (current.length > 0 && current.at(-1)?.comparabilityKey !== cell.comparabilityKey) {
-      segments.push(current);
-      current = [];
-    }
-
-    current.push({
+    const point: Point = {
       x,
       y: STATUS_Y[cell.status],
       consultationId: cell.consultationId,
@@ -101,15 +98,19 @@ function lineSegments(
       comparabilityKey: cell.comparabilityKey,
       instruments: cell.assessments.map(assessmentDetail),
       reason: cell.statusReason,
-    });
+    };
+    if (previous?.comparabilityKey === point.comparabilityKey) {
+      segments.push({ crossesUnassessedVisit, points: [previous, point] });
+    }
+    previous = point;
+    crossesUnassessedVisit = false;
   }
 
-  if (current.length > 0) segments.push(current);
   return segments;
 }
 
-function latestStatus(dimension: CapacityDimensionRow): CapacityDimensionStatus {
-  return dimension.cells.at(-1)?.status ?? "not-assessed";
+function latestRecordedCell(dimension: CapacityDimensionRow): CapacityDimensionRow["cells"][number] | undefined {
+  return [...dimension.cells].reverse().find((cell) => cell.assessments.length > 0);
 }
 
 function DimensionTimeline({
@@ -118,15 +119,21 @@ function DimensionTimeline({
   xByConsultation,
   inflectionKeys,
   targetConsultationId,
+  dateByConsultation,
 }: {
   dimension: CapacityDimensionRow;
   chartWidth: number;
   xByConsultation: ReadonlyMap<string, number>;
   inflectionKeys: ReadonlySet<string>;
   targetConsultationId?: string;
+  dateByConsultation: ReadonlyMap<string, string>;
 }) {
   const segments = lineSegments(dimension, xByConsultation);
-  const currentStatus = latestStatus(dimension);
+  const currentCell = dimension.cells.at(-1);
+  const latestRecorded = latestRecordedCell(dimension);
+  const currentStatus = latestRecorded?.status ?? "not-assessed";
+  const latestDate = latestRecorded ? dateByConsultation.get(latestRecorded.consultationId) : undefined;
+  const notReappliedNow = Boolean(latestRecorded && currentCell && latestRecorded.consultationId !== currentCell.consultationId);
 
   return (
     <div className={styles.dimensionRow} data-dimension={dimension.code}>
@@ -135,9 +142,12 @@ function DimensionTimeline({
           <strong>{dimension.label}</strong>
           <span>{dimension.framework === "functional-capacity" ? "Independência funcional" : "Capacidade intrínseca"}</span>
         </div>
-        <span className={styles.latestBadge} data-status={currentStatus}>
-          {STATUS_LABEL[currentStatus]}
-        </span>
+        <div className={styles.latestState}>
+          <span className={styles.latestBadge} data-status={currentStatus}>
+            {latestRecorded ? `Último: ${STATUS_LABEL[currentStatus]}` : STATUS_LABEL[currentStatus]}
+          </span>
+          {latestDate ? <small>{displayDate(latestDate)}{notReappliedNow ? " · não reaplicada na mais recente" : ""}</small> : null}
+        </div>
       </div>
 
       <svg
@@ -163,7 +173,8 @@ function DimensionTimeline({
           <polyline
             key={`${dimension.code}-segment-${index}`}
             className={styles.seriesLine}
-            points={segment.map((point) => `${point.x},${point.y}`).join(" ")}
+            data-gap={segment.crossesUnassessedVisit ? "unassessed" : "none"}
+            points={segment.points.map((point) => `${point.x},${point.y}`).join(" ")}
           />
         ))}
 
@@ -262,18 +273,29 @@ export function CapacityDimensionHistoryChart({
   const times = history.consultations.map((consultation) => new Date(consultation.occurredAt).getTime());
   const minTime = Math.min(...times);
   const maxTime = Math.max(...times);
-  const timeSpan = maxTime - minTime;
   const xByConsultation = new Map(history.consultations.map((consultation) => {
     const currentTime = new Date(consultation.occurredAt).getTime();
-    const x = timeSpan > 0
-      ? left + usableWidth * ((currentTime - minTime) / timeSpan)
-      : left + usableWidth / 2;
+    const x = proportionalAxisPosition({ value: currentTime, min: minTime, max: maxTime, start: left, end: left + usableWidth });
     return [consultation.id, x] as const;
   }));
   const targetConsultationId = history.consultations.find((consultation) => consultation.isTarget)?.id;
+  const dateByConsultation = new Map(history.consultations.map((consultation) => [consultation.id, consultation.occurredAt]));
   const inflectionKeys = new Set(history.inflectionPoints.map((point) => `${point.dimensionCode}:${point.consultationId}`));
   const functionalDimension = history.dimensions.find((dimension) => dimension.framework === "functional-capacity");
   const intrinsicDimensions = history.dimensions.filter((dimension) => dimension.framework === "intrinsic-capacity");
+  const assessedByConsultation = history.consultations.map((consultation) => {
+    const unique = new Map<string, { name: string; version: string }>();
+    for (const dimension of history.dimensions) {
+      const cell = dimension.cells.find((item) => item.consultationId === consultation.id);
+      for (const assessment of cell?.assessments ?? []) {
+        unique.set(`${assessment.scaleCode}@${assessment.scaleVersion}`, {
+          name: assessment.scaleName,
+          version: assessment.scaleVersion,
+        });
+      }
+    }
+    return { consultation, scales: [...unique.values()].sort((left, right) => left.name.localeCompare(right.name, "pt-BR")) };
+  }).filter((item) => item.scales.length > 0);
   return (
     <figure className={styles.figure} data-chart="line-small-multiples">
       <figcaption className={styles.caption}>
@@ -342,6 +364,7 @@ export function CapacityDimensionHistoryChart({
                   xByConsultation={xByConsultation}
                   inflectionKeys={inflectionKeys}
                   targetConsultationId={targetConsultationId}
+                  dateByConsultation={dateByConsultation}
                 />
               </>
             ) : null}
@@ -357,15 +380,31 @@ export function CapacityDimensionHistoryChart({
                 xByConsultation={xByConsultation}
                 inflectionKeys={inflectionKeys}
                 targetConsultationId={targetConsultationId}
+                dateByConsultation={dateByConsultation}
               />
             ))}
           </section>
         </div>
       </div>
 
+      {assessedByConsultation.length > 0 ? (
+        <details className={styles.assessmentIndex} open={context === "final-report"}>
+          <summary>Escalas registradas por consulta ({assessedByConsultation.length})</summary>
+          <div>
+            {assessedByConsultation.map(({ consultation, scales }) => (
+              <section key={consultation.id}>
+                <strong>{displayDate(consultation.occurredAt)}{consultation.isTarget ? " · mais recente" : ""}</strong>
+                <span>{scales.map((scale) => `${scale.name} (${scale.version})`).join(" · ")}</span>
+              </section>
+            ))}
+          </div>
+        </details>
+      ) : null}
+
       <div className={styles.readingGuide}>
         <strong>Como ler</strong>
         <span>Acima = sem redução • centro = atenção • abaixo = redução. A linha só continua quando instrumento e versão são comparáveis.</span>
+        <span>Trecho tracejado = houve consulta intermediária sem reaplicação; compara somente os dois resultados medidos e não implica estabilidade no intervalo.</span>
         <span>Círculo cinza = não avaliada • quadrado = registro sem estado • losango = resultados discordantes. O estado mais recente fica no badge à esquerda.</span>
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { AgaScaleReportSection } from "@/domain/aga-report";
+import { proportionalAxisPosition } from "@/domain/chart-geometry";
 import { buildScaleChartPresentation } from "@/domain/scale-chart-presentation";
 import { selectScaleChartWindow, type ScaleChartWindow } from "@/domain/scale-chart-window";
 import styles from "./scale-history-chart.module.css";
@@ -36,16 +37,13 @@ function chartWidth(pointCount: number): number {
   return Math.max(MIN_WIDTH, LEFT + RIGHT + Math.max(1, pointCount - 1) * pointSpacing(pointCount));
 }
 
-function positionX(index: number, total: number, width: number): number {
-  const usable = width - LEFT - RIGHT;
-  if (total <= 1) return LEFT + usable / 2;
-  return LEFT + (usable * index) / (total - 1);
+function positionX(appliedAt: string, minTime: number, maxTime: number, width: number): number {
+  const current = new Date(appliedAt).getTime();
+  return proportionalAxisPosition({ value: current, min: minTime, max: maxTime, start: LEFT, end: width - RIGHT });
 }
 
 function positionY(score: number, min: number, max: number): number {
-  const usable = HEIGHT - TOP - BOTTOM;
-  if (max === min) return TOP + usable / 2;
-  return TOP + ((max - score) / (max - min)) * usable;
+  return proportionalAxisPosition({ value: score, min, max, start: HEIGHT - BOTTOM, end: TOP });
 }
 
 export function ScaleHistoryChart({ scale }: { scale: AgaScaleReportSection }) {
@@ -60,8 +58,11 @@ export function ScaleHistoryChart({ scale }: { scale: AgaScaleReportSection }) {
   const min = presentation.canPlot ? Math.min(...numeric.map((point) => point.score)) : 0;
   const max = presentation.canPlot ? Math.max(...numeric.map((point) => point.score)) : 0;
   const width = chartWidth(points.length);
+  const times = points.map((point) => new Date(point.appliedAt).getTime());
+  const minTime = Math.min(...times);
+  const maxTime = Math.max(...times);
   const chartTitle = `Trajetória de ${scale.name}`;
-  const chartDescription = `Janela visual com ${points.length} de ${fullSeries.points.length} registro(s). Trechos incompatíveis ou sem dados suficientes são exibidos com uma interrupção, sem conexão visual.`;
+  const chartDescription = `Janela visual com ${points.length} de ${fullSeries.points.length} registro(s). Distâncias horizontais são proporcionais ao tempo real. Trechos incompatíveis ou sem dados suficientes são exibidos com uma interrupção, sem conexão visual.`;
   const pointIndex = new Map(points.map((point, index) => [point.consultationId, index]));
   const visibleDateLabels = new Set(presentation.visibleDateLabelIndexes);
   const canChooseWindow = fullSeries.points.length > 6;
@@ -71,7 +72,7 @@ export function ScaleHistoryChart({ scale }: { scale: AgaScaleReportSection }) {
       <figcaption className={styles.caption}>
         <strong>{chartTitle}</strong>
         <span>
-          Histórico dos escores registrados. Linhas aparecem somente entre pontos que o domínio considera comparáveis; interrupções são preservadas explicitamente.
+          Histórico dos escores registrados em datas reais. Linhas aparecem somente entre pontos que o domínio considera comparáveis; interrupções são preservadas explicitamente.
         </span>
       </figcaption>
 
@@ -99,6 +100,7 @@ export function ScaleHistoryChart({ scale }: { scale: AgaScaleReportSection }) {
         >
           <svg
             className={styles.chart}
+            data-time-scale="proportional"
             viewBox={`0 0 ${width} ${HEIGHT}`}
             width={width}
             role="img"
@@ -117,9 +119,9 @@ export function ScaleHistoryChart({ scale }: { scale: AgaScaleReportSection }) {
               return (
                 <line
                   key={`${segment.fromConsultationId}-${segment.toConsultationId}`}
-                  x1={positionX(fromIndex, points.length, width)}
+                  x1={positionX(from.appliedAt, minTime, maxTime, width)}
                   y1={positionY(from.score, min, max)}
-                  x2={positionX(toIndex, points.length, width)}
+                  x2={positionX(to.appliedAt, minTime, maxTime, width)}
                   y2={positionY(to.score, min, max)}
                   className={styles.axis}
                   aria-hidden="true"
@@ -128,7 +130,7 @@ export function ScaleHistoryChart({ scale }: { scale: AgaScaleReportSection }) {
             })}
 
             {points.map((point, index) => {
-              const x = positionX(index, points.length, width);
+              const x = positionX(point.appliedAt, minTime, maxTime, width);
               const score = point.score;
               return (
                 <g key={`${point.consultationId}-${point.appliedAt}`}>

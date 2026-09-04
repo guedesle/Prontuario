@@ -121,9 +121,29 @@
   line-height: 1.35;
 }
 
+.scaleLabel {
+  display: grid;
+  gap: 3px;
+}
+
+.scaleLabel small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-transform: none;
+}
+
 .checkRow strong {
   color: var(--success);
   font-size: 10px;
+}
+
+.historyBadge {
+  color: var(--primary-strong);
+  font-size: 9px;
+  font-weight: 800;
 }
 
 .selectedBar {

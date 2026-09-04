@@ -28,7 +28,7 @@ test("modelo usa independência funcional separada dos cinco domínios de capaci
     "sensorial",
   ]);
   assert.equal(CAPACITY_DIMENSIONS[0]?.label, "Independência funcional");
-  assert.equal(INTRINSIC_CAPACITY_MODEL_VERSION, "intrinsic-capacity-model-v1.0.0");
+  assert.equal(INTRINSIC_CAPACITY_MODEL_VERSION, "intrinsic-capacity-model-v1.1.0");
 });
 
 test("modelo não aplica pior resultado vence quando assessments de mesma prioridade discordam", () => {
@@ -164,7 +164,7 @@ test("instrumentos ou versões diferentes não criam falsa tendência longitudin
   assert.equal(differentVersion.hasLongitudinalTrendData, false);
 });
 
-test("consulta sem avaliação de capacidade permanece no eixo como missing explícito e interrompe comparabilidade", () => {
+test("consulta sem reaplicação permanece missing e a próxima medida comparável usa trecho tracejado", () => {
   const history = buildCapacityDimensionHistory({
     patientId: "p1",
     consultations,
@@ -179,10 +179,10 @@ test("consulta sem avaliação de capacidade permanece no eixo como missing expl
   assert.equal(functionality.cells[0]?.status, "preserved");
   assert.equal(functionality.cells[1]?.status, "not-assessed");
   assert.equal(functionality.cells[2]?.status, "altered");
-  assert.equal(history.inflectionPoints.length, 0);
+  assert.equal(history.inflectionPoints.length, 1);
   assert.equal(history.hasLongitudinalHistoryData, true);
   assert.equal(hasDisplayableLongitudinalHistory(history), true);
-  assert.equal(history.hasLongitudinalTrendData, false);
+  assert.equal(history.hasLongitudinalTrendData, true);
 });
 
 test("gráfico permanece após consulta subsequente sem reaplicação", () => {
@@ -322,8 +322,10 @@ test("UI usa tempo real, comparabilidade e o design system clínico aprovado sem
   assert.match(generator, /includeTargetWhenEmpty: true/);
   assert.match(generator, /definitionHash/);
   assert.match(generator, /content: \{ report, text \}/);
-  assert.match(chart, /timeSpan/);
+  assert.match(chart, /proportionalAxisPosition/);
   assert.match(chart, /comparabilityKey/);
+  assert.match(chart, /data-gap/);
+  assert.match(chart, /Escalas registradas por consulta/);
   assert.match(chart, /Ponto de inflexão observado/);
   assert.match(chart, /não atribui causa/);
   assert.doesNotMatch(chart, /<table/);

@@ -1,11 +1,27 @@
 import { OncogeriatricDomainStatusSummary } from "@/components/oncogeriatria/domain-status-summary";
 import { OncogeriatricNav } from "@/components/oncogeriatria/oncogeriatric-nav";
-import { OncogeriatricTrendChart } from "@/components/oncogeriatria/oncogeriatric-trend-chart";
 import { CapacityDimensionHistoryChart } from "@/components/reports/capacity-dimension-history-chart";
+import { ClinicalMetricTrendChart } from "@/components/reports/clinical-metric-trend-chart";
+import { SCALE_DIRECTIONS } from "@/domain/longitudinal-scales";
 import { buildOncogeriatricDelta, groupComparableObservations } from "@/domain/oncogeriatria/longitudinal";
+import { scaleCatalogEntry } from "@/domain/scale-catalog";
 import { capacityHistoryForOncogeriatricEpisode, formatClinicalDate, loadEpisodeWorkspace, loadOncogeriatricPatient, readStructuredRecord, requireOncogeriatricReadAccess, resolveOncogeriatricEpisode } from "@/server/oncogeriatria/read";
 
 function dayKey(date: Date): string { return date.toISOString().slice(0, 10); }
+
+function trendLabel(trend: string): string {
+  if (trend === "favorable") return "tendência numérica favorável";
+  if (trend === "unfavorable") return "tendência numérica desfavorável";
+  if (trend === "stable") return "estável numericamente";
+  return "direção clínica não configurada";
+}
+
+function directionLabel(code: string): string {
+  const direction = SCALE_DIRECTIONS[code.toLocaleLowerCase("pt-BR")];
+  if (direction === "higher-better") return "Nesta escala, valores maiores representam melhor resultado.";
+  if (direction === "higher-worse") return "Nesta escala, valores maiores representam pior resultado.";
+  return "Valores brutos registrados; direção clínica não configurada.";
+}
 
 export default async function OncogeriatricLongitudinalPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ episode?: string }> }) {
   await requireOncogeriatricReadAccess();
@@ -16,20 +32,23 @@ export default async function OncogeriatricLongitudinalPage({ params, searchPara
   if (!episode) return <main className="shell"><p>Inicie um episódio oncogeriátrico para visualizar a trajetória.</p></main>;
   const workspace = await loadEpisodeWorkspace(patientId, episode.id);
   const capacityHistory = capacityHistoryForOncogeriatricEpisode(patientId, workspace);
-  const firstCheckpointAt = workspace.checkpoints[0]?.occurredAt ?? episode.diagnosedAt ?? episode.createdAt;
+  const linkedConsultationIds = new Set(workspace.checkpoints.flatMap((checkpoint) => checkpoint.consultationId ? [checkpoint.consultationId] : []));
+  const consultationDateById = new Map(workspace.consultations.map((consultation) => [consultation.id, consultation.occurredAt]));
   const eventsByDay = new Map<string, string[]>();
   const addEvent = (date: Date | null | undefined, label: string) => {
     if (!date) return;
     const key = dayKey(date);
-    eventsByDay.set(key, [...(eventsByDay.get(key) ?? []), label]);
+    const current = eventsByDay.get(key) ?? [];
+    if (!current.includes(label)) eventsByDay.set(key, [...current, label]);
   };
   workspace.courses.forEach((course) => addEvent(course.actualStartAt, `Início ${course.regimenName}`));
   workspace.checkpoints.forEach((checkpoint) => addEvent(checkpoint.occurredAt, checkpoint.type === "CYCLE" ? `Ciclo ${checkpoint.cycleNumber ?? ""}`.trim() : checkpoint.type));
   workspace.toxicities.filter((item) => item.hospitalizationAssociated).forEach((item) => addEvent(item.occurredAt, "Hospitalização"));
+  workspace.problemMilestones.forEach((milestone) => addEvent(consultationDateById.get(milestone.consultationId) ?? new Date(milestone.recordedAt), `${milestone.title}${milestone.note ? ` — ${milestone.note}` : ""}`));
 
   const numericObservations = workspace.scaleAssessments
-    .filter((item) => item.appliedAt.getTime() >= firstCheckpointAt.getTime() && item.scoreNumeric !== null)
-    .map((item) => ({ code: item.scaleCode, version: item.scaleVersion, occurredAt: item.appliedAt, value: Number(item.scoreNumeric) }))
+    .filter((item) => linkedConsultationIds.has(item.consultationId) && item.scoreNumeric !== null)
+    .map((item) => ({ id: item.id, consultationId: item.consultationId, code: item.scaleCode, version: item.scaleVersion, occurredAt: item.appliedAt, value: Number(item.scoreNumeric) }))
     .filter((item) => Number.isFinite(item.value));
   const scaleGroups = groupComparableObservations(numericObservations);
   const deltas = scaleGroups.map((group) => buildOncogeriatricDelta(group.observations)).filter(Boolean);
@@ -54,14 +73,14 @@ export default async function OncogeriatricLongitudinalPage({ params, searchPara
       </section>
 
       <section className="panel"><div className="section-heading"><div><p className="eyebrow">Mudança temporal</p><h2>Baseline → atual</h2></div><span className="muted">Mudança numérica não é rotulada automaticamente como clinicamente significativa.</span></div>
-        {deltas.length ? <div className="evolution-list">{deltas.map((delta) => delta ? <article className="evolution-card" key={`${delta.code}-${delta.version}`}><div><h3>{delta.code}</h3><p className="dimension">versão {delta.version}</p><p className="trend">Δ numérico: {delta.delta > 0 ? "+" : ""}{delta.delta}</p></div><div className="score-block"><span>Baseline</span><strong>{delta.baseline}</strong></div><div className="score-arrow">→</div><div className="score-block current-score"><span>Atual</span><strong>{delta.current}</strong></div><div className="score-block"><span>Período</span><strong>{formatClinicalDate(delta.currentAt)}</strong></div></article> : null)}</div> : <p className="muted">Dados insuficientes para comparação de escalas com código e versão compatíveis.</p>}
+        {deltas.length ? <div className="evolution-list">{deltas.map((delta) => delta ? <article className="evolution-card" key={`${delta.code}-${delta.version}`}><div><h3>{scaleCatalogEntry(delta.code).name}</h3><p className="dimension">versão {delta.version}</p><p className="trend">Δ numérico: {delta.delta > 0 ? "+" : ""}{delta.delta} · {trendLabel(delta.trend)}</p></div><div className="score-block"><span>Baseline</span><strong>{delta.baseline}</strong></div><div className="score-arrow">→</div><div className="score-block current-score"><span>Atual</span><strong>{delta.current}</strong></div><div className="score-block"><span>Período</span><strong>{formatClinicalDate(delta.currentAt)}</strong></div></article> : null)}</div> : <p className="muted">Dados insuficientes para comparação de escalas com código e versão compatíveis.</p>}
       </section>
 
       <section className="panel"><h2>Linha temporal oncológica</h2>{eventsByDay.size ? <ul className="clean-list">{[...eventsByDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, labels]) => <li key={date}><strong>{date.split("-").reverse().join("/")}</strong><span>{labels.join(" · ")}</span></li>)}</ul> : <p className="muted">Sem eventos temporais registrados.</p>}</section>
 
       <section className="grid" aria-label="Gráficos longitudinais oncogeriátricos">
-        <OncogeriatricTrendChart title="Peso" unit="kg" points={weightPoints} />
-        {chartGroups.map((group) => <OncogeriatricTrendChart key={`${group.code}-${group.version}`} title={`${group.code} · ${group.version}`} points={group.observations.map((item) => ({ at: item.occurredAt, value: item.value, label: (eventsByDay.get(dayKey(item.occurredAt)) ?? []).join(" · ") }))} />)}
+        <ClinicalMetricTrendChart title="Peso" unit="kg" points={weightPoints.map((point, index) => ({ id: `weight-${point.at.toISOString()}-${index}`, at: point.at, value: point.value, context: point.label }))} />
+        {chartGroups.map((group) => <ClinicalMetricTrendChart key={`${group.code}-${group.version}`} title={`${scaleCatalogEntry(group.code).name} · versão ${group.version}`} directionLabel={directionLabel(group.code)} points={group.observations.map((item, index) => ({ id: item.id ?? `${group.code}-${item.occurredAt.toISOString()}-${index}`, at: item.occurredAt, value: item.value, context: (eventsByDay.get(dayKey(item.occurredAt)) ?? []).join(" · ") }))} />)}
       </section>
     </main>
   );
