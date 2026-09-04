@@ -34,7 +34,13 @@ function fastScale(score: number, scoreText = String(score), classification = "E
       vsPrevious: "Sem avaliação anterior comparável.",
       vsBaseline: "insufficient-data",
     },
-    chartSeries: [],
+    chartSeries: {
+      patientId: "patient-1",
+      scaleCode: "fast",
+      points: [],
+      segments: [],
+      hasMultipleVersions: false,
+    },
     source: { status: "verified", note: "Teste de regressão" },
   };
 }
