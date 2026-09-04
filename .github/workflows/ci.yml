@@ -65,8 +65,10 @@ jobs:
         run: npx prisma migrate deploy
       - name: MySQL concurrency and patient isolation
         run: npm run test:integration
-      - name: Clinical golden master and domain typecheck
-        run: npm run validate:domain
+      - name: Clinical golden master
+        run: npm run test:golden
+      - name: Domain typecheck
+        run: npm run typecheck:domain
       - name: Full typecheck
         run: npm run typecheck
       - name: Production build
