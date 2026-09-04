@@ -35,7 +35,7 @@ function usesApprovedProductionAccessContract(): boolean {
     || appUrl.replace(/\/$/, "") === canonicalProductionAppUrl;
 }
 
-function isAuthorizedEmail(email: string): boolean {
+export function isAuthorizedEmail(email: string): boolean {
   if (isApprovedProductionEmail(email)) return true;
   return usesApprovedProductionAccessContract()
     ? false

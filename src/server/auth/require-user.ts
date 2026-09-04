@@ -1,10 +1,8 @@
 import { headers } from "next/headers";
-import { auth } from "./auth";
+import { auth, isAuthorizedEmail } from "./auth";
 import { prisma } from "../db";
 import {
-  assertActiveAllowedUser,
   assertPermission,
-  parseEmailSet,
   type Permission,
 } from "../../domain/security/auth-policy";
 import { AccessForbiddenError, AuthenticationRequiredError } from "./access-errors";
@@ -27,10 +25,9 @@ export async function requireAuthenticatedUser(permission?: Permission) {
   if (!user) throw new AccessForbiddenError();
 
   try {
-    assertActiveAllowedUser({
-      user,
-      allowedEmails: parseEmailSet(process.env.AUTH_ALLOWED_EMAILS),
-    });
+    if (!user.active || !isAuthorizedEmail(user.email)) {
+      throw new Error("Usuário inativo ou fora do contrato de acesso autorizado.");
+    }
 
     if (permission) assertPermission(user.role, permission);
   } catch {
