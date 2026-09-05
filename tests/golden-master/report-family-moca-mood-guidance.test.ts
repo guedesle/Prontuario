@@ -11,7 +11,7 @@ const EMPTY_INTRINSIC_CAPACITY = { alteredDomains: [] } as unknown as IntrinsicC
 function scale(input: {
   code: string;
   name: string;
-  dimension: string;
+  dimension: AgaScaleReportSection["dimension"];
   score: number;
   scoreText?: string;
   classification?: string;
