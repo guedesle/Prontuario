@@ -32,7 +32,7 @@ async function request(base: URL, path: string, redirect: RequestRedirect = "man
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       "cache-control": "no-cache",
-      "user-agent": "prontuario-clinical-release-smoke/2.0",
+      "user-agent": "prontuario-clinical-release-smoke/2.1",
     },
   });
 }
@@ -45,6 +45,41 @@ function responseCookies(response: Response): string[] {
       : [];
 }
 
+function safeHeader(response: Response, name: string): string {
+  return response.headers.get(name) ?? "ausente";
+}
+
+function relevantLoginHrefs(html: string): string[] {
+  return Array.from(html.matchAll(/href="([^"]+)"/g), (match) => match[1])
+    .filter((href) => href.includes("auth") || href.includes("login"))
+    .slice(0, 8);
+}
+
+async function logLoginDeliveryMismatch(base: URL, response: Response, html: string) {
+  console.error("LOGIN_DELIVERY_DIAGNOSTIC");
+  console.error(`- cache-control: ${safeHeader(response, "cache-control")}`);
+  console.error(`- cdn-cache-control: ${safeHeader(response, "cdn-cache-control")}`);
+  console.error(`- surrogate-control: ${safeHeader(response, "surrogate-control")}`);
+  console.error(`- x-hcdn-cache-status: ${safeHeader(response, "x-hcdn-cache-status")}`);
+  console.error(`- age: ${safeHeader(response, "age")}`);
+  console.error(`- etag: ${safeHeader(response, "etag")}`);
+  console.error(`- data-google-auth-entrypoint presente: ${html.includes('data-google-auth-entrypoint="true"')}`);
+  const hrefs = relevantLoginHrefs(html);
+  console.error(`- hrefs auth/login observados: ${hrefs.length > 0 ? hrefs.join(", ") : "nenhum"}`);
+
+  try {
+    const cacheBustingPath = `/login?release=${encodeURIComponent(CLINICAL_RELEASE_ID)}&smoke=${Date.now()}`;
+    const fresh = await request(base, cacheBustingPath, "follow");
+    const freshHtml = await fresh.text();
+    console.error(`- cache-busting HTTP: ${fresh.status}`);
+    console.error(`- cache-busting x-hcdn-cache-status: ${safeHeader(fresh, "x-hcdn-cache-status")}`);
+    console.error(`- cache-busting contém href canônico: ${freshHtml.includes('href="/auth/google"')}`);
+    console.error(`- cache-busting contém marcador vigente: ${freshHtml.includes('data-google-auth-entrypoint="true"')}`);
+  } catch {
+    console.error("- cache-busting: falha de rede ao diagnosticar representação fresca");
+  }
+}
+
 async function startGoogleOAuth(base: URL) {
   const url = new URL("/api/auth/sign-in/social", base);
   const response = await fetch(url, {
@@ -55,7 +90,7 @@ async function startGoogleOAuth(base: URL) {
     headers: {
       "cache-control": "no-cache",
       "content-type": "application/json",
-      "user-agent": "prontuario-clinical-release-smoke/2.0",
+      "user-agent": "prontuario-clinical-release-smoke/2.1",
     },
     body: JSON.stringify({ provider: "google", callbackURL: "/", errorCallbackURL: "/login?error=google" }),
   });
@@ -127,7 +162,10 @@ try {
   if (login.status !== 200) blocked(`/login respondeu HTTP ${login.status}.`);
   const loginHtml = await login.text();
   if (!loginHtml.includes("Entrar com Google")) blocked("/login não contém a ação de autenticação Google.");
-  if (!loginHtml.includes('href="/auth/google"')) blocked("/login não contém o link navegável vigente para autenticação Google.");
+  if (!loginHtml.includes('href="/auth/google"')) {
+    await logLoginDeliveryMismatch(base, login, loginHtml);
+    blocked("/login não contém o link navegável vigente para autenticação Google.");
+  }
   if (!loginHtml.includes("Se o prontuário estiver aberto dentro de outro aplicativo")) blocked("/login não corresponde à interface de acesso vigente.");
 
   await startGoogleOAuth(base);
