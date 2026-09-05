@@ -59,6 +59,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </p>
         <a
           href="/auth/google"
+          data-google-auth-entrypoint="true"
           style={{
             display: "inline-block",
             padding: "10px 16px",
