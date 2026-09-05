@@ -19,6 +19,25 @@ function list(items: readonly string[]): string {
   return items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "- Sem dados registrados";
 }
 
+const SELF_HARM_OR_VIOLENCE_PATTERN = /suic|autoagress|machucar|ferir|fala\s+(?:sobre|de)\s+morte|ideação|ideacao|risco\s+(?:para|a)\s+(?:outra|outras|terceira|terceiras)\s+pessoa/i;
+
+export function conciseUrgentGuidance(items: readonly string[]): string[] {
+  const uniqueItems = [...new Set(items.map((item) => item.trim()).filter(Boolean))];
+  if (uniqueItems.length === 0) return [];
+
+  const concise = [
+    "Procure atendimento imediatamente se houver uma piora súbita importante — por exemplo, falta de ar intensa, dor forte no peito, desmaio, novo sintoma neurológico, sangramento importante, trauma relevante ou uma mudança rápida que faça a pessoa parecer gravemente doente ou muito diferente do habitual.",
+  ];
+
+  if (uniqueItems.some((item) => SELF_HARM_OR_VIOLENCE_PATTERN.test(item))) {
+    concise.push(
+      "Se houver fala sobre morte, intenção de se machucar ou risco para alguém, permaneça com a pessoa e procure ajuda imediatamente.",
+    );
+  }
+
+  return concise;
+}
+
 type AccessibleAgaReportModel = AgaReportModel & {
   overview?: AgaReportOverview;
   advanceDirectives?: AgaAdvanceDirectivesReportSection;
@@ -171,7 +190,7 @@ export function renderAccessibleAgaReportText(model: AccessibleAgaReportModel): 
   blocks.push(
     "",
     "QUANDO PROCURAR AJUDA MÉDICA IMEDIATA",
-    list(model.safetyGuidance.urgent),
+    list(conciseUrgentGuidance(model.safetyGuidance.urgent)),
     "",
     "QUANDO ENTRAR EM CONTATO COM A EQUIPE",
     list(model.safetyGuidance.contact),
