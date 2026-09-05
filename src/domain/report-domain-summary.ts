@@ -179,8 +179,64 @@ const DOMAIN_GUIDANCE: Readonly<Partial<Record<string, DomainGuidance>>> = {
   },
 };
 
+const LATE_LIFE_DEPRESSION_GUIDANCE: readonly string[] = [
+  "Um resultado alterado na GDS é um sinal para olhar o humor com cuidado. Tristeza persistente, perda de interesse, apatia ou isolamento não devem ser tratados como algo esperado do envelhecimento. Acolha o relato sem julgamento e compartilhe mudanças com a equipe assistencial.",
+  "Ajude a manter uma rotina simples, com horários regulares, alimentação, movimento seguro e pelo menos uma atividade prazerosa ou contato com alguém de confiança. Se já houver tratamento, incentive o acompanhamento e não altere medicamentos por conta própria.",
+  "Se houver fala sobre morte, desesperança intensa, intenção de se machucar ou risco para outra pessoa, permaneça com a pessoa e procure ajuda imediatamente.",
+];
+
+const LATE_LIFE_DEPRESSION_EVIDENCE: readonly IntrinsicCapacityEvidenceReference[] = [
+  {
+    label: "Tratamento da depressão em pessoas idosas",
+    pmid: "36649548",
+    url: "https://pubmed.ncbi.nlm.nih.gov/36649548/",
+    relevance: "Revisão clínica: psicoterapia e tratamento farmacológico podem ser eficazes na depressão tardia; a escolha deve ser individualizada e acompanhada clinicamente.",
+  },
+  {
+    label: "Depressão tardia e risco de suicídio",
+    pmid: "40809860",
+    url: "https://pubmed.ncbi.nlm.nih.gov/40809860/",
+    relevance: "Revisão destaca a necessidade de reconhecer risco suicida e intervir precocemente em pessoas idosas com depressão.",
+  },
+];
+
+const IADL_FAMILY_GUIDANCE: readonly string[] = [
+  "Atenção às atividades fora do domicílio ou mais complexas, como finanças, compras, transporte, organização da casa e medicamentos. Essa fase é de autonomia vigiada: preserve o que a pessoa ainda faz com segurança e acompanhe de perto o que já traz risco ou erros.",
+  "Evite retirar toda a independência de uma vez. Ofereça ajuda proporcional à dificuldade e reavalie se novas tarefas passarem a exigir supervisão.",
+];
+
 function unique(items: readonly string[]): string[] {
   return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
+}
+
+function scoreNumber(scale: AgaScaleReportSection): number | undefined {
+  if (typeof scale.result.score === "number" && Number.isFinite(scale.result.score)) return scale.result.score;
+  const scoreText = scale.result.scoreText?.trim();
+  if (!scoreText) return undefined;
+  const corrected = scoreText.match(/corrigido\s+(\d+(?:[.,]\d+)?)/i);
+  const first = scoreText.match(/(\d+(?:[.,]\d+)?)/);
+  const raw = corrected?.[1] ?? first?.[1];
+  if (!raw) return undefined;
+  const parsed = Number(raw.replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function isMocaScale(scale: AgaScaleReportSection): boolean {
+  return scale.code === "moca" || scale.code === "moca_br_freitas";
+}
+
+function isGdsScale(scale: AgaScaleReportSection): boolean {
+  return scale.code === "gds15" || scale.code === "gds_15";
+}
+
+function currentMocaScore(scales: readonly AgaScaleReportSection[]): number | undefined {
+  const moca = scales.find((scale) => scale.assessedInTargetConsultation && isMocaScale(scale));
+  return moca ? scoreNumber(moca) : undefined;
+}
+
+function currentGdsScore(scales: readonly AgaScaleReportSection[]): number | undefined {
+  const gds = scales.find((scale) => scale.assessedInTargetConsultation && isGdsScale(scale));
+  return gds ? scoreNumber(gds) : undefined;
 }
 
 function functionalDependenceDetected(scales: readonly AgaScaleReportSection[]): boolean {
@@ -200,7 +256,16 @@ function stateFor(scales: readonly AgaScaleReportSection[], dimension: string): 
   // técnica ausente/inconsistente em registros legados.
   if (dimension === "funcionalidade" && functionalDependenceDetected(current)) return "altered";
   if (current.some((scale) => scale.clinicalColor === "vermelho")) return "altered";
+
+  const mocaScore = dimension === "cognicao" ? currentMocaScore(current) : undefined;
+  if (typeof mocaScore === "number" && mocaScore <= 17) return "altered";
+
+  const gdsScore = dimension === "humor" ? currentGdsScore(current) : undefined;
+  if (typeof gdsScore === "number" && gdsScore >= 11) return "altered";
+
   if (current.some((scale) => scale.clinicalColor === "amarelo")) return "attention";
+  if (typeof mocaScore === "number" && mocaScore >= 18 && mocaScore <= 25) return "attention";
+  if (typeof gdsScore === "number" && gdsScore >= 6) return "attention";
   return "preserved";
 }
 
@@ -211,9 +276,28 @@ function stateLabelFor(state: ReportDomainState): string {
   return "Não avaliado nesta consulta";
 }
 
+function mocaFamilyClassification(score: number): string {
+  if (score >= 26) return "Cognição normal no rastreio — sem indício de declínio significativo neste teste";
+  if (score >= 18) return "Faixa de rastreio: comprometimento cognitivo leve (CCL / MCI)";
+  if (score >= 10) return "Faixa de rastreio: comprometimento cognitivo moderado";
+  return "Faixa de rastreio: comprometimento cognitivo grave";
+}
+
 function familyResultValue(scale: AgaScaleReportSection): string {
+  if (isMocaScale(scale)) {
+    const score = scoreNumber(scale);
+    if (typeof score === "number") return `${score}/30 — ${mocaFamilyClassification(score)}`;
+  }
   const score = scale.result.scoreText ?? (scale.result.score !== null ? String(scale.result.score) : undefined);
   return unique([score ?? "Resultado registrado", scale.result.classification ?? ""]).join(" — ");
+}
+
+function familyScaleName(scale: AgaScaleReportSection): string {
+  if (isMocaScale(scale)) return "MoCA";
+  if (scale.code === "lawton") return "AIVD — atividades instrumentais da vida diária (Lawton)";
+  if (scale.code === "katz") return "ABVD — atividades básicas da vida diária (Katz)";
+  if (scale.code === "barthel") return "ABVD — atividades básicas da vida diária (Barthel)";
+  return scale.name;
 }
 
 export function buildReportDomainSummaries(
@@ -251,22 +335,30 @@ export function buildReportDomainSummaries(
       genericGuidance,
       functionalContext,
     );
+    const gdsScore = dimension === "humor" ? currentGdsScore(dimensionScales) : undefined;
+    const isAlteredGds = typeof gdsScore === "number" && gdsScore >= 6;
+    const isIadlSupport = dimension === "funcionalidade" && functionalContext.level === "iadl-support";
     // Imobilidade contextualiza mobilidade, mas não pode apagar a orientação de
     // Funcionalidade derivada de Katz/Barthel/Lawton.
-    const guidance = unique(
-      dimension === "funcionalidade"
-        ? functionallyContextualized
-        : contextualizeImmobilityDomainGuidance(
-            dimension,
-            functionallyContextualized,
-            immobilityContext,
-          ),
-    ).slice(0, 2);
+    const contextGuidance = isIadlSupport
+      ? IADL_FAMILY_GUIDANCE
+      : isAlteredGds
+        ? LATE_LIFE_DEPRESSION_GUIDANCE
+        : dimension === "funcionalidade"
+          ? functionallyContextualized
+          : contextualizeImmobilityDomainGuidance(
+              dimension,
+              functionallyContextualized,
+              immobilityContext,
+            );
+    const guidance = unique(contextGuidance).slice(0, isAlteredGds ? 3 : 2);
     const requiresMedicalGuidance = (state === "altered" || state === "attention") && guidance.length === 0;
-    const evidenceReferences = alteredIntrinsicGuidance?.evidenceReferences
-      ?? intrinsicGuidance?.evidenceReferences
-      ?? domainGuidance?.evidenceReferences
-      ?? [];
+    const evidenceReferences = isAlteredGds
+      ? LATE_LIFE_DEPRESSION_EVIDENCE
+      : alteredIntrinsicGuidance?.evidenceReferences
+        ?? intrinsicGuidance?.evidenceReferences
+        ?? domainGuidance?.evidenceReferences
+        ?? [];
 
     return [{
       code: dimension,
@@ -275,7 +367,7 @@ export function buildReportDomainSummaries(
       stateLabel: stateLabelFor(state),
       results: dimensionScales.map((scale) => ({
         scaleCode: scale.code,
-        scaleName: scale.name,
+        scaleName: familyScaleName(scale),
         value: familyResultValue(scale),
       })),
       guidance,
