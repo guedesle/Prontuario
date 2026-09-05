@@ -115,7 +115,28 @@ function fastStageValue(scale: AgaScaleReportSection): string | undefined {
   return FAST_STAGE_LABELS[scoreText.replace(",", ".")];
 }
 
+function isMoca(scale: AgaScaleReportSection): boolean {
+  return scale.code === "moca" || scale.code === "moca_br_freitas";
+}
+
+function mocaScoreValue(scale: AgaScaleReportSection): string | undefined {
+  if (!isMoca(scale)) return undefined;
+  if (typeof scale.result.score === "number" && Number.isFinite(scale.result.score)) {
+    return `${scale.result.score}/30`;
+  }
+
+  const scoreText = scale.result.scoreText?.trim();
+  if (!scoreText) return undefined;
+  const corrected = scoreText.match(/corrigido\s+(\d+(?:[.,]\d+)?)\s*\/\s*30/i);
+  const fallback = scoreText.match(/(\d+(?:[.,]\d+)?)\s*\/\s*30/i);
+  const value = corrected?.[1] ?? fallback?.[1];
+  return value ? `${value.replace(",", ".")}/30` : undefined;
+}
+
 function scaleValue(scale: AgaScaleReportSection): string | undefined {
+  const conciseMoca = mocaScoreValue(scale);
+  if (conciseMoca) return conciseMoca;
+
   const canonicalFastStage = scale.code === "fast" ? fastStageValue(scale) : undefined;
   const primary = canonicalFastStage
     || scale.result.scoreText?.trim()
@@ -132,13 +153,21 @@ function scaleValue(scale: AgaScaleReportSection): string | undefined {
   return primary;
 }
 
+function overviewScaleLabel(scale: AgaScaleReportSection): string {
+  if (isMoca(scale)) return "MoCA";
+  if (scale.code === "lawton") return "AIVD (atividades instrumentais da vida diária) — Lawton";
+  if (scale.code === "katz") return "ABVD (atividades básicas da vida diária) — Katz";
+  if (scale.code === "barthel") return "ABVD (atividades básicas da vida diária) — Barthel";
+  return scale.name;
+}
+
 function scaleOverviewItem(scale: AgaScaleReportSection | undefined): AgaReportOverviewScaleItem | undefined {
   if (!scale) return undefined;
   const value = scaleValue(scale);
   if (!value) return undefined;
   return {
     scaleCode: scale.code,
-    label: scale.name,
+    label: overviewScaleLabel(scale),
     value,
     assessedInTargetConsultation: scale.assessedInTargetConsultation,
     sourceDate: scale.lastKnown.appliedAt,

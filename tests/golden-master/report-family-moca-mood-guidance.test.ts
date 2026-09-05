@@ -1,0 +1,176 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import type { AgaScaleReportSection } from "../../src/domain/aga-report.ts";
+import { conciseUrgentGuidance } from "../../src/domain/accessible-aga-report-text.ts";
+import type { IntrinsicCapacityGuidance } from "../../src/domain/intrinsic-capacity-guidance.ts";
+import { buildReportDomainSummaries } from "../../src/domain/report-domain-summary.ts";
+import { buildAgaReportEnrichment } from "../../src/domain/report-overview.ts";
+
+const EMPTY_INTRINSIC_CAPACITY = { alteredDomains: [] } as unknown as IntrinsicCapacityGuidance;
+
+function scale(input: {
+  code: string;
+  name: string;
+  dimension: AgaScaleReportSection["dimension"];
+  score: number;
+  scoreText?: string;
+  classification?: string;
+}): AgaScaleReportSection {
+  return {
+    code: input.code,
+    version: "1.0",
+    name: input.name,
+    dimension: input.dimension,
+    assessedInTargetConsultation: true,
+    lastKnown: {
+      consultationId: "consultation-1",
+      appliedAt: "2026-09-04T12:00:00.000Z",
+      score: input.score,
+      version: "1.0",
+    },
+    collectedData: [],
+    result: {
+      score: input.score,
+      scoreText: input.scoreText ?? `${input.score}`,
+      ...(input.classification ? { classification: input.classification } : {}),
+    },
+    interpretation: input.classification,
+    relatedProblemProposals: [],
+    interventionSuggestions: [],
+    evolution: {
+      previous: null,
+      previousVersion: null,
+      baseline: null,
+      baselineVersion: "1.0",
+      current: input.score,
+      currentVersion: "1.0",
+      trend: "insufficient-data",
+      vsPrevious: "Sem avaliação anterior comparável.",
+      vsBaseline: "insufficient-data",
+    },
+    chartSeries: {
+      patientId: "patient-1",
+      scaleCode: input.code,
+      points: [],
+      segments: [],
+      hasMultipleVersions: false,
+    },
+    source: { status: "verified", note: "Teste de regressão" },
+  };
+}
+
+function domainSummary(scales: AgaScaleReportSection[], code: string) {
+  const summary = buildReportDomainSummaries(scales, EMPTY_INTRINSIC_CAPACITY).find((item) => item.code === code);
+  assert.ok(summary);
+  return summary;
+}
+
+test("visão geral mostra MoCA conciso e explica ABVD/AIVD", () => {
+  const moca = scale({
+    code: "moca",
+    name: "MoCA",
+    dimension: "cognicao",
+    score: 21,
+    scoreText: "Bruto 21/30 · corrigido 21/30",
+    classification: "Na ou acima da referência de rastreio educacional adotada",
+  });
+  const katz = scale({ code: "katz", name: "Katz", dimension: "funcionalidade", score: 6, scoreText: "6/6" });
+  const lawton = scale({ code: "lawton", name: "Lawton", dimension: "funcionalidade", score: 15, scoreText: "15/21" });
+
+  const enrichment = buildAgaReportEnrichment({
+    consultationDate: "2026-09-04",
+    scales: [moca, katz, lawton],
+    gastrostomyPresent: false,
+    directiveHistory: [],
+  });
+
+  assert.equal(enrichment.overview.cognition?.label, "MoCA");
+  assert.equal(enrichment.overview.cognition?.value, "21/30");
+  assert.doesNotMatch(enrichment.overview.cognition?.value ?? "", /Bruto|corrigido|referência de rastreio/i);
+  assert.ok(enrichment.overview.functionality.some((item) => item.label.includes("ABVD (atividades básicas da vida diária)")));
+  assert.ok(enrichment.overview.functionality.some((item) => item.label.includes("AIVD (atividades instrumentais da vida diária)")));
+});
+
+test("MoCA usa faixas familiares solicitadas sem transformar rastreio em diagnóstico", () => {
+  const cases = [
+    { score: 27, state: "preserved", text: /Cognição normal no rastreio/i },
+    { score: 21, state: "attention", text: /comprometimento cognitivo leve/i },
+    { score: 15, state: "altered", text: /comprometimento cognitivo moderado/i },
+    { score: 8, state: "altered", text: /comprometimento cognitivo grave/i },
+  ] as const;
+
+  for (const current of cases) {
+    const summary = domainSummary([
+      scale({
+        code: "moca",
+        name: "MoCA",
+        dimension: "cognicao",
+        score: current.score,
+        scoreText: `Bruto ${current.score}/30 · corrigido ${current.score}/30`,
+        classification: "Classificação educacional legada",
+      }),
+    ], "cognicao");
+
+    assert.equal(summary.state, current.state);
+    assert.match(summary.results[0]?.value ?? "", current.text);
+    assert.match(summary.results[0]?.value ?? "", /rastreio/i);
+    assert.doesNotMatch(summary.results[0]?.value ?? "", /Bruto|corrigido|Classificação educacional legada/i);
+    if (current.score < 26) assert.notEqual(summary.stateLabel, "Sem alteração sinalizada nesta consulta");
+  }
+});
+
+test("GDS alterada nunca aparece como preservada e recebe orientação específica para depressão tardia", () => {
+  const attention = domainSummary([
+    scale({
+      code: "gds15",
+      name: "GDS-15",
+      dimension: "humor",
+      score: 8,
+      scoreText: "8/15",
+      classification: "Rastreio positivo",
+    }),
+  ], "humor");
+  const altered = domainSummary([
+    scale({
+      code: "gds15",
+      name: "GDS-15",
+      dimension: "humor",
+      score: 12,
+      scoreText: "12/15",
+      classification: "Sintomas moderados a graves",
+    }),
+  ], "humor");
+
+  assert.equal(attention.state, "attention");
+  assert.equal(altered.state, "altered");
+  assert.notEqual(attention.stateLabel, "Sem alteração sinalizada nesta consulta");
+  assert.notEqual(altered.stateLabel, "Sem alteração sinalizada nesta consulta");
+  assert.ok(attention.guidance.some((item) => item.includes("GDS") && item.includes("envelhecimento")));
+  assert.ok(attention.guidance.some((item) => item.includes("não altere medicamentos por conta própria")));
+  assert.ok(attention.guidance.some((item) => /fala sobre morte|intenção de se machucar/i.test(item)));
+  assert.ok(attention.evidenceReferences.some((reference) => reference.pmid === "36649548"));
+  assert.ok(attention.evidenceReferences.some((reference) => reference.pmid === "40809860"));
+});
+
+test("dependência apenas em AIVD usa linguagem de autonomia vigiada", () => {
+  const summary = domainSummary([
+    scale({ code: "katz", name: "Katz", dimension: "funcionalidade", score: 6, scoreText: "6/6" }),
+    scale({ code: "lawton", name: "Lawton", dimension: "funcionalidade", score: 15, scoreText: "15/21" }),
+  ], "funcionalidade");
+
+  assert.ok(summary.guidance.some((item) => item.includes("autonomia vigiada")));
+  assert.ok(summary.results.some((result) => result.scaleName.includes("ABVD — atividades básicas da vida diária")));
+  assert.ok(summary.results.some((result) => result.scaleName.includes("AIVD — atividades instrumentais da vida diária")));
+});
+
+test("ajuda médica imediata é resumida sem perder alerta de autoagressão", () => {
+  const guidance = conciseUrgentGuidance([
+    "Dor torácica intensa, falta de ar ou desmaio exigem avaliação imediata.",
+    "Fala sobre morte, desesperança intensa ou intenção de se machucar exige ajuda imediata.",
+    "Sangramento importante ou piora súbita do estado geral exigem atendimento.",
+  ]);
+
+  assert.ok(guidance.length <= 2);
+  assert.match(guidance[0] ?? "", /piora súbita importante/i);
+  assert.ok(guidance.some((item) => /fala sobre morte|intenção de se machucar/i.test(item)));
+});
