@@ -1,0 +1,24 @@
+.page{min-height:100svh;background:linear-gradient(145deg,#f3f0f9 0%,#faf9fc 65%);padding:24px;}
+.shell{width:min(1140px,100%);margin:auto;}
+.header{display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #e5ddea;padding:8px 4px 28px;}
+.brand{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:850;color:#3b2758;}
+.brandMark{width:37px;height:37px;display:grid;place-items:center;border-radius:11px;background:#5f2a91;color:white;font-size:24px;}
+.account{color:#736a7e;font-size:12px;}
+.intro{text-align:center;max-width:760px;margin:70px auto 42px;}
+.eyebrow{color:#63318a;text-transform:uppercase;font-size:12px;font-weight:800;letter-spacing:.11em;margin:0 0 16px;}
+.intro h1{color:#2e233a;font-size:clamp(31px,4.3vw,49px);line-height:1.12;letter-spacing:-.045em;margin:0 0 17px;}
+.intro p:not(.eyebrow){color:#6f6879;font-size:16px;line-height:1.65;margin:0;}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;}
+.card{position:relative;min-height:350px;display:flex;flex-direction:column;align-items:flex-start;padding:33px;border:1px solid #e4deea;background:white;color:#292238;border-radius:23px;box-shadow:0 12px 32px rgba(55,27,88,.06);text-decoration:none;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;}
+.card:hover{transform:translateY(-3px);border-color:#b8a4d1;box-shadow:0 20px 55px rgba(55,27,88,.11);color:#292238;}
+.card:focus-visible{outline:3px solid #6b55d9;outline-offset:3px;}
+.accent{background:linear-gradient(145deg,#fdfbff,#f4eefb);border-color:#d5c2e9;}
+.icon{width:60px;height:60px;display:grid;place-items:center;background:#f0e9f8;color:#5f2a91;border-radius:18px;font-size:31px;margin-bottom:25px;}
+.accent .icon{background:#5f2a91;color:white;}
+.tag{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#73558e;font-weight:850;}
+.card h2{font-size:clamp(24px,2.8vw,31px);color:#30213c;letter-spacing:-.03em;margin:12px 0;}
+.card p{color:#655e70;line-height:1.6;font-size:15px;margin:0 0 32px;}
+.card strong{margin-top:auto;color:#602b8f;font-size:14px;}
+.note{text-align:center;color:#817989;font-size:12px;line-height:1.6;margin:28px auto;}
+@media(max-width:730px){.page{padding:16px;}.intro{margin:45px auto 32px;}.grid{grid-template-columns:1fr;}.card{min-height:285px;padding:26px;}.header{align-items:flex-start;}.account{max-width:130px;text-align:right;}}
+@media(prefers-reduced-motion:reduce){.card{transition:none;}}
